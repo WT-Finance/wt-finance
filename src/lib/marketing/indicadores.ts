@@ -1,4 +1,4 @@
-// Indicadores da página "Gastos de Marketing" (v6.3.0) — módulo PURO.
+// Indicadores da página "Despesas de Marketing" (v6.3.0) — módulo PURO.
 //
 // ── CONVENÇÃO DO Δ% (decisão desta versão, a validar visualmente pelo Yan) ───────────────
 // O Δ% é o MESMO da DRE: `deltaYtd(anoAnterior, atual)` sobre valores COM SINAL, denominador em
@@ -57,7 +57,7 @@ export function sentidoDoDelta(delta: number | null): SentidoDelta | null {
 }
 
 export interface Indicadores {
-  /** Gasto no recorte do ano selecionado. */
+  /** Despesa no recorte do ano selecionado. */
   periodo: { valor: number; qtd: number }
   /** Mesmo recorte no ano anterior; `null` = o ano anterior não tem histórico na base
    *  (`anteriorSemHistorico`) ou o resumo dele não carregou. */

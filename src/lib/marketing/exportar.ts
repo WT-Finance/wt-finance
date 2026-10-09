@@ -9,7 +9,7 @@
 // ── Contrato (decisão do Yan, v6.3.0) ────────────────────────────────────────────
 //  · Colunas = lista FECHADA, na ordem da tabela: Data, Categoria, Fornecedor, Descrição,
 //    Nº do documento, Valor. Nada de `id` (ele renumera a cada carga — ver `tipos.ts`).
-//  · Valor com o SINAL DA DRE (gasto negativo, estorno positivo), como NÚMERO com formato
+//  · Valor com o SINAL DA DRE (despesa negativa, estorno positivo), como NÚMERO com formato
 //    contábil de 2 casas — a planilha precisa somar e ordenar.
 //  · Fornecedor ausente sai "(sem fornecedor)", igual à tela.
 //
@@ -37,7 +37,7 @@ import { MESES_ABREV, rotuloRecorteAno, type Recorte } from './periodo'
 import type { LancamentoMkt } from './tipos'
 
 export const NOME_ABA_LANCAMENTOS = 'Lançamentos'
-const TITULO_EXPORTACAO = 'Gastos de Marketing — Lançamentos'
+const TITULO_EXPORTACAO = 'Despesas de Marketing — Lançamentos'
 /** Formato de data do Excel; o Excel pt-BR o exibe como dd/mm/aaaa. */
 export const FMT_DATA = 'dd/mm/yyyy'
 
@@ -132,10 +132,10 @@ export function montarExportacaoMarketing(e: EntradaExportacaoMkt): ExportacaoMa
   return { nome: NOME_ABA_LANCAMENTOS, linhas, larguras: [...LARGURAS] }
 }
 
-/** Nome do arquivo, sem acento: `gastos-marketing-2026-jan-out.xlsx`; um mês só:
- *  `gastos-marketing-2026-mar.xlsx`. */
+/** Nome do arquivo, sem acento: `despesas-marketing-2026-jan-out.xlsx`; um mês só:
+ *  `despesas-marketing-2026-mar.xlsx`. */
 export function nomeArquivoExportacaoMarketing(ano: number, r: Recorte): string {
   const ini = `${MESES_ABREV[r.mesIni - 1]}`.toLowerCase()
   const fim = `${MESES_ABREV[r.mesFim - 1]}`.toLowerCase()
-  return `gastos-marketing-${ano}-${r.mesIni === r.mesFim ? ini : `${ini}-${fim}`}.xlsx`
+  return `despesas-marketing-${ano}-${r.mesIni === r.mesFim ? ini : `${ini}-${fim}`}.xlsx`
 }

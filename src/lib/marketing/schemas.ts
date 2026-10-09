@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { FornecedoresMarketing, LancamentoMkt, ResumoMarketing } from './tipos'
 
-// ── Schemas Zod das 3 RPCs de "Gastos de Marketing" (v6.3.0 · migration 0292) ────────────
+// ── Schemas Zod das 3 RPCs de "Despesas de Marketing" (v6.3.0 · migration 0292) ────────────
 // Regra do projeto: o schema reflete o retorno REAL da RPC, não o tipo TS. Os três retornos são
 // `json` (database.ts tipa como `Json`), então o `tsc` não protege nada aqui — é este schema, via
 // `parseRpc`, que impede um campo ausente de chegar à UI. Os casos contra a RPC viva estão em

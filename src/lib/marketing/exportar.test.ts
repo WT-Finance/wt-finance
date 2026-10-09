@@ -181,8 +181,8 @@ describe('(e) recorte/filtro vazio', () => {
 
 describe('nomeArquivoExportacaoMarketing', () => {
   it('intervalo, mês único e ano inteiro — minúsculo e sem acento', () => {
-    expect(nomeArquivoExportacaoMarketing(2026, { mesIni: 1, mesFim: 10 })).toBe('gastos-marketing-2026-jan-out.xlsx')
-    expect(nomeArquivoExportacaoMarketing(2026, { mesIni: 3, mesFim: 3 })).toBe('gastos-marketing-2026-mar.xlsx')
-    expect(nomeArquivoExportacaoMarketing(2025, { mesIni: 1, mesFim: 12 })).toBe('gastos-marketing-2025-jan-dez.xlsx')
+    expect(nomeArquivoExportacaoMarketing(2026, { mesIni: 1, mesFim: 10 })).toBe('despesas-marketing-2026-jan-out.xlsx')
+    expect(nomeArquivoExportacaoMarketing(2026, { mesIni: 3, mesFim: 3 })).toBe('despesas-marketing-2026-mar.xlsx')
+    expect(nomeArquivoExportacaoMarketing(2025, { mesIni: 1, mesFim: 12 })).toBe('despesas-marketing-2025-jan-dez.xlsx')
   })
 })

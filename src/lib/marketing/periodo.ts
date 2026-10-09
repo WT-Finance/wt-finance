@@ -1,7 +1,8 @@
-// Recorte de meses da página "Gastos de Marketing" (v6.3.0) — módulo PURO, sem I/O nem React.
+// Recorte de meses da página "Despesas de Marketing" (v6.3.0) — módulo PURO, sem I/O nem React.
 //
-// O recorte global é: UM ano (pills, vem da URL) + um intervalo CONTÍGUO de meses dentro dele
-// (`mesIni..mesFim`, 1..12, inclusivo nas duas pontas). Todos os cards respeitam o mesmo recorte.
+// O recorte é DERIVADO do ano (pills, vem da URL) — não há seleção de meses: `recortePadrao`
+// devolve jan–dez num ano fechado e jan até o mês corrente no ano em curso (`mesIni..mesFim`,
+// 1..12, inclusivo nas duas pontas). Todos os cards respeitam o mesmo recorte.
 // "Hoje" é SEMPRE parâmetro ('YYYY-MM-DD', calculado no servidor) — nunca `Date.now()` aqui.
 
 export const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'] as const
@@ -32,38 +33,10 @@ export function mesLimite(ano: number, hoje: string): number {
   return 1
 }
 
-/** Recorte inicial: do janeiro até o último mês alcançado — num ano em curso é o YTD, o que
- *  torna o "mesmo período do ano anterior" comparável por construção. */
+/** O recorte da página: de janeiro até o último mês alcançado — ano fechado = jan–dez; ano em
+ *  curso = YTD, o que torna o "mesmo período do ano anterior" comparável por construção. */
 export function recortePadrao(ano: number, hoje: string): Recorte {
   return { mesIni: 1, mesFim: mesLimite(ano, hoje) }
-}
-
-/** Prende `mes` em 1..limite (limite ≥ 1). */
-function prender(mes: number, limite: number): number {
-  return Math.min(Math.max(1, Math.trunc(mes)), Math.max(1, limite))
-}
-
-/** Normaliza um recorte: meses inteiros em 1..limite e `mesIni ≤ mesFim` (inverte se vierem
- *  trocados — a ordem dos cliques/seleções é indiferente). */
-export function normalizarRecorte(r: Recorte, limite = 12): Recorte {
-  const a = prender(r.mesIni, limite)
-  const b = prender(r.mesFim, limite)
-  return a <= b ? { mesIni: a, mesFim: b } : { mesIni: b, mesFim: a }
-}
-
-/** Muda UMA ponta do recorte e arrasta a outra se a ordem se desfizer (mudar o "de" para
- *  depois do "até" empurra o "até"; mudar o "até" para antes do "de" empurra o "de"). */
-export function ajustarRecorte(
-  atual: Recorte,
-  mudanca: { mesIni: number } | { mesFim: number },
-  limite = 12,
-): Recorte {
-  if ('mesIni' in mudanca) {
-    const mesIni = prender(mudanca.mesIni, limite)
-    return { mesIni, mesFim: Math.max(mesIni, prender(atual.mesFim, limite)) }
-  }
-  const mesFim = prender(mudanca.mesFim, limite)
-  return { mesIni: Math.min(mesFim, prender(atual.mesIni, limite)), mesFim }
 }
 
 export function mesNoRecorte(mes: number, r: Recorte): boolean {
@@ -94,9 +67,4 @@ export function somarDias(iso: string, dias: number): string {
   const dt = new Date(Date.UTC(y, m - 1, d + dias))
   const p = (n: number) => String(n).padStart(2, '0')
   return `${dt.getUTCFullYear()}-${p(dt.getUTCMonth() + 1)}-${p(dt.getUTCDate())}`
-}
-
-/** 'YYYY-MM-DD' → 'DD/MM' (o aviso "Cartão lançado até DD/MM"). */
-export function fmtDiaMes(iso: string): string {
-  return `${iso.slice(8, 10)}/${iso.slice(5, 7)}`
 }

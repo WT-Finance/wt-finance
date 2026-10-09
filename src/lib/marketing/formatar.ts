@@ -1,4 +1,4 @@
-// Formatação de percentuais da página "Gastos de Marketing" (v6.3.0) — módulo PURO.
+// Formatação de percentuais da página "Despesas de Marketing" (v6.3.0) — módulo PURO.
 // Valores monetários usam `fmtBRL2`/`<ValorContabil>` de `@/lib/fmt` e `@/components/shared`;
 // aqui só o que o `fmt` central não cobre (percentual com sinal e travessão).
 

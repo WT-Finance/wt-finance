@@ -98,7 +98,7 @@ export default function TabelaCategorias({ ano, recorte, resumo }: Props) {
                     % do total
                     <GatilhoAjuda
                       rotulo="% do total"
-                      texto="Participação da categoria no total de marketing do recorte (um único denominador para todas as linhas). Gasto sobre gasto: a razão é positiva."
+                      texto="Participação da categoria no total de marketing do recorte (um único denominador para todas as linhas). Despesa sobre despesa: a razão é positiva."
                       ancoraDireita
                     />
                   </span>

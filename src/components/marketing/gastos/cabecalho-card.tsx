@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-// Cabeçalho de card da página "Gastos de Marketing": o MESMO título/subtítulo do primitivo
+// Cabeçalho de card da página "Despesas de Marketing": o MESMO título/subtítulo do primitivo
 // `Card` (`text-base font-semibold text-text-primary` + `text-[13px] text-text-subtle`), com
 // um slot de AÇÃO à direita que o `Card` não tem. O subtítulo é onde cada card DECLARA o seu
 // recorte ("Jan–Set/2026 · pago · data de movimentação").

@@ -197,10 +197,10 @@ describe('filtro por permissão — a seção nova não vaza nem apaga o que já
   // 'admin/design-system', estes casos citavam a área provisória de propósito, para reprovar no
   // flip e lembrar que as quatro pontas (AREAS/AREA_INFO, areasDaRota, requireArea da page e a
   // `area` da subaba) viram juntas. Precedente: v5.6.0, Inventário de Ativos.
-  it('v6.3.0: "Marketing" é um grupo com a subaba Gastos, sem página própria na raiz', () => {
+  it('v6.3.0: "Marketing" é um grupo com a subaba Despesas, sem página própria na raiz', () => {
     const subs = NAV_GROUPS['/marketing']
     expect(subs.map(s => [s.label, s.href, s.area])).toEqual([
-      ['Gastos', '/marketing/gastos', 'marketing/gastos'],
+      ['Despesas', '/marketing/gastos', 'marketing/gastos'],
     ])
     expect(ROTAS).toContain('/marketing/gastos')
     // O item-pai só agrupa (como /gestao-pessoas): não existe app/marketing/page.tsx.
@@ -227,7 +227,7 @@ describe('filtro por permissão — a seção nova não vaza nem apaga o que já
     }
   })
 
-  it('v6.3.0: em /marketing/gastos acende só a subaba Gastos; rota de outra seção não acende nada', () => {
+  it('v6.3.0: em /marketing/gastos acende só a subaba Despesas; rota de outra seção não acende nada', () => {
     const subs = NAV_GROUPS['/marketing']
     expect(hrefAtivoDoGrupo(subs, '/marketing/gastos')).toBe('/marketing/gastos')
     expect(hrefAtivoDoGrupo(subs, '/gestao-pessoas/inventario')).toBeNull()

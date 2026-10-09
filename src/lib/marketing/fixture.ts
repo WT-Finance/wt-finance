@@ -1,4 +1,4 @@
-// FIXTURE FICTÍCIA da página "Gastos de Marketing" (v6.3.0) — massa de TESTE.
+// FIXTURE FICTÍCIA da página "Despesas de Marketing" (v6.3.0) — massa de TESTE.
 //
 // Tudo aqui é inventado: fornecedores, descrições, documentos e valores. Nada veio de produção
 // (nem de longe) — as marcas genéricas (Google, Meta, Adobe…) são só rótulos plausíveis. Os

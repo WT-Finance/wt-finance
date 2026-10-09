@@ -179,14 +179,15 @@ describe('completude — fixture', () => {
 describe('fixture — estados degradados', () => {
   const base = { ano: 2026, hoje: HOJE }
 
-  it('padrão: tudo carregado, pills de 2024 ao ano corrente, aviso do cartão com atraso', () => {
+  it('padrão: tudo carregado, pills de 2024 ao ano corrente, fatura do cartão com atraso na fixture', () => {
     const d = montarDadosFixture({ ...base, estado: null })
     expect(d.anosDisponiveis).toEqual([2024, 2025, 2026])
     expect([d.resumo.ok, d.resumoAnterior.ok, d.fornecedores.ok, d.lancamentos.ok]).toEqual([true, true, true, true])
     const resumo = d.resumo.ok ? d.resumo.dados : null
     expect(resumo?.ultimaDataCartao).toBe('2026-09-29')
     expect((resumo?.cobertura?.max ?? '9999-12-31') <= HOJE).toBe(true)
-    // O cartão está ATRASADO em relação ao fim dos dados — é o que o aviso existe para mostrar.
+    // O cartão está ATRASADO em relação ao fim dos dados (o campo segue no dado da RPC; a página
+    // não o exibe mais).
     expect((resumo?.ultimaDataCartao ?? '') < (resumo?.cobertura?.max ?? '')).toBe(true)
   })
 

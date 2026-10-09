@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
-  ajustarRecorte, anoDaData, fmtDiaMes, mesDaData, mesLimite, mesNoRecorte, mesesDoRecorte,
-  normalizarRecorte, recortePadrao, rotuloRecorte, rotuloRecorteAno, somarDias,
+  anoDaData, mesDaData, mesLimite, mesNoRecorte, mesesDoRecorte,
+  recortePadrao, rotuloRecorte, rotuloRecorteAno, somarDias,
 } from './periodo'
 
 const HOJE = '2026-10-08'
@@ -27,28 +27,6 @@ describe('mesLimite / recortePadrao', () => {
   })
 })
 
-describe('normalizarRecorte / ajustarRecorte', () => {
-  it('inverte pontas trocadas e prende em 1..limite', () => {
-    expect(normalizarRecorte({ mesIni: 5, mesFim: 2 })).toEqual({ mesIni: 2, mesFim: 5 })
-    expect(normalizarRecorte({ mesIni: 0, mesFim: 9 }, 3)).toEqual({ mesIni: 1, mesFim: 3 })
-    expect(normalizarRecorte({ mesIni: 13, mesFim: 20 })).toEqual({ mesIni: 12, mesFim: 12 })
-  })
-
-  it('mudar o "de" para depois do "até" arrasta o "até"', () => {
-    expect(ajustarRecorte({ mesIni: 3, mesFim: 6 }, { mesIni: 8 })).toEqual({ mesIni: 8, mesFim: 8 })
-    expect(ajustarRecorte({ mesIni: 3, mesFim: 6 }, { mesIni: 4 })).toEqual({ mesIni: 4, mesFim: 6 })
-  })
-
-  it('mudar o "até" para antes do "de" arrasta o "de"', () => {
-    expect(ajustarRecorte({ mesIni: 3, mesFim: 6 }, { mesFim: 1 })).toEqual({ mesIni: 1, mesFim: 1 })
-    expect(ajustarRecorte({ mesIni: 3, mesFim: 6 }, { mesFim: 9 })).toEqual({ mesIni: 3, mesFim: 9 })
-  })
-
-  it('respeita o limite do ano em curso', () => {
-    expect(ajustarRecorte({ mesIni: 1, mesFim: 10 }, { mesFim: 12 }, 10)).toEqual({ mesIni: 1, mesFim: 10 })
-  })
-})
-
 describe('mesesDoRecorte / mesNoRecorte / rótulos', () => {
   it('lista os meses inclusivos nas duas pontas', () => {
     expect(mesesDoRecorte({ mesIni: 3, mesFim: 5 })).toEqual([3, 4, 5])
@@ -65,16 +43,11 @@ describe('mesesDoRecorte / mesNoRecorte / rótulos', () => {
   })
 })
 
-describe('somarDias / fmtDiaMes (calendário puro, sem fuso)', () => {
+describe('somarDias (calendário puro, sem fuso)', () => {
   it('atravessa mês, ano e bissexto', () => {
     expect(somarDias('2026-10-08', -9)).toBe('2026-09-29')
     expect(somarDias('2026-03-01', -1)).toBe('2026-02-28')
     expect(somarDias('2024-03-01', -1)).toBe('2024-02-29')
     expect(somarDias('2026-12-31', 1)).toBe('2027-01-01')
-  })
-
-  it('DD/MM do aviso do cartão', () => {
-    expect(fmtDiaMes('2026-09-29')).toBe('29/09')
-    expect(fmtDiaMes('2026-01-05')).toBe('05/01')
   })
 })

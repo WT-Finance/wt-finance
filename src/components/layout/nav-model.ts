@@ -104,10 +104,11 @@ const API_EXTERNA_SUBS: NavSubItem[] = [
   { href: '/admin/api-externa/documentacao', label: 'Documentação', icon: BookOpen, area: 'solicitacoes/documentacao', areasAny: ['api-externa', 'solicitacoes/documentacao'] },
 ]
 
-// Marketing (v6.3.0) — seção NOVA da sidebar; "Gastos" é o 1º módulo. Área própria
-// 'marketing/gastos' (migration 0292) — a mesma de `areasDaRota` e do `requireArea` da página.
+// Marketing (v6.3.0) — seção NOVA da sidebar; "Despesas" é o 1º módulo. Área
+// própria 'marketing/gastos' (migration 0292) — a mesma de `areasDaRota` e do `requireArea` da
+// página; a rota e a área mantêm o nome técnico "gastos".
 const MARKETING_SUBS: NavSubItem[] = [
-  { href: '/marketing/gastos', label: 'Gastos', icon: HandCoins, area: 'marketing/gastos' },
+  { href: '/marketing/gastos', label: 'Despesas', icon: HandCoins, area: 'marketing/gastos' },
 ]
 
 /** Grupos com subabas — chave = href do item-pai em NAV_ITEMS. Único ponto que precisa
@@ -123,7 +124,7 @@ export const NAV_GROUPS: Record<string, NavSubItem[]> = {
 }
 
 // Ordem da sidebar (v6.3.0): Executiva › Performance › Metas › Financeiro › Gestão de
-// Pessoas › Marketing (Gastos) › Solicitações › Ingestão de Dados (Upload de Arquivos, Log de
+// Pessoas › Marketing (Despesas) › Solicitações › Ingestão de Dados (Upload de Arquivos, Log de
 // Ingestão) › API Externa (Configuração, Documentação) › Usuários e Acessos › Design System.
 // (v5.1.9: Metas subiu p/ cima de Financeiro; Solicitações subiu p/ cima de Upload de
 // Arquivos. v5.6.0: Gestão de Pessoas entrou entre Solicitações e o bloco administrativo;

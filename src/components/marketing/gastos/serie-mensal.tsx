@@ -68,7 +68,7 @@ export default function SerieMensal({ ano, recorte, limiteMes, resumo, anterior,
   if (!resumo) {
     return (
       <Card>
-        <CabecalhoCard titulo="Gasto mensal" />
+        <CabecalhoCard titulo="Despesa mensal" />
         <ErroCarregamento mensagem="Não foi possível carregar a série mensal." />
       </Card>
     )
@@ -78,7 +78,7 @@ export default function SerieMensal({ ano, recorte, limiteMes, resumo, anterior,
   if (vazio) {
     return (
       <Card>
-        <CabecalhoCard titulo="Gasto mensal" subtitulo={subtitulo} />
+        <CabecalhoCard titulo="Despesa mensal" subtitulo={subtitulo} />
         <EmptyState icon={ChartColumn} message={`Sem lançamentos pagos em ${rotuloRecorteAno(recorte, ano)}.`} />
       </Card>
     )
@@ -86,10 +86,10 @@ export default function SerieMensal({ ano, recorte, limiteMes, resumo, anterior,
 
   return (
     <Card>
-      <CabecalhoCard titulo="Gasto mensal" subtitulo={subtitulo} />
+      <CabecalhoCard titulo="Despesa mensal" subtitulo={subtitulo} />
 
       {/* `height` fixo no pai — `min-height` faz o ResponsiveContainer medir 0 e o gráfico some. */}
-      <div role="img" aria-label={`Gasto mensal de marketing em ${rotuloRecorteAno(recorte, ano)}${referencia ? `, comparado a ${ano - 1}` : ''}`}>
+      <div role="img" aria-label={`Despesa mensal de marketing em ${rotuloRecorteAno(recorte, ano)}${referencia ? `, comparado a ${ano - 1}` : ''}`}>
         <ResponsiveContainer width="100%" height={260}>
           <ComposedChart data={pontos} margin={chartMargins.default} barCategoryGap="22%">
             {ChartGrid()}

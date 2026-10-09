@@ -11,7 +11,7 @@ import {
 import GastosContent from '@/components/marketing/gastos/gastos-content'
 import type { Carregado, DadosGastosMarketing } from '@/lib/marketing/tipos'
 
-// Marketing · Gastos de Marketing (v6.3.0). Área própria 'marketing/gastos' (migration 0292).
+// Marketing · Despesas de Marketing (v6.3.0). Área própria 'marketing/gastos' (migration 0292).
 //
 // Dado: 3 RPCs de leitura (`get_marketing_gastos_resumo|fornecedores|lancamentos`), todas com o
 // MESMO predicado da DRE de caixa (bloco MKT, só realizado) — o total da página é a linha

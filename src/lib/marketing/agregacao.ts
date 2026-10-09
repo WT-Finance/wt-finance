@@ -1,4 +1,4 @@
-// Agregações da página "Gastos de Marketing" (v6.3.0) — módulo PURO.
+// Agregações da página "Despesas de Marketing" (v6.3.0) — módulo PURO.
 //
 // Duas famílias:
 //  • CUBOS a partir de lançamentos (`cuboCategorias`, `cuboFornecedores`): o que as RPCs de resumo

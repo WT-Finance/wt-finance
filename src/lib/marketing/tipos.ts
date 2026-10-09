@@ -1,4 +1,4 @@
-// Tipos da página "Gastos de Marketing" (v6.3.0).
+// Tipos da página "Despesas de Marketing" (v6.3.0).
 //
 // Estes tipos são o CONTRATO que as RPCs (migration 0292) devolvem; os schemas Zod que o validam
 // em runtime estão em `src/lib/marketing/schemas.ts`. O formato é o de uma RPC: dado cru, nada
@@ -9,8 +9,8 @@
 // caixa. Por construção o total da página É a linha de Marketing da DRE de caixa.
 //
 // ── SINAL (decisão firme do Yan) ────────────────────────────────────────────────────────
-// O gasto é NEGATIVO, exatamente como na DRE — o `valor` vem da base SEM inversão. Um estorno
-// (raro) é POSITIVO e reduz o gasto. Vale em toda a página: KPIs, tabelas, ranking, lançamentos
+// A despesa é NEGATIVA, exatamente como na DRE — o `valor` vem da base SEM inversão. Um estorno
+// (raro) é POSITIVO e reduz a despesa. Vale em toda a página: KPIs, tabelas, ranking, lançamentos
 // e tooltip. Nenhum componente aplica `Math.abs` para exibir valor monetário.
 //
 // ── RPCs (migration 0292) ───────────────────────────────────────────────────────────────
@@ -27,7 +27,7 @@
  *  degrada, a página fica de pé). Espelha o `allSettled` por item feito em `page.tsx`. */
 export type Carregado<T> = { ok: true; dados: T } | { ok: false }
 
-/** Um lançamento pago. `valor` com o sinal da DRE (gasto < 0, estorno > 0). */
+/** Um lançamento pago. `valor` com o sinal da DRE (despesa < 0, estorno > 0). */
 export interface LancamentoMkt {
   /** ⚠️ O `id` RENUMERA a cada carga da base (vem de `fato_fluxo`, que é recriada): serve SÓ de
    *  `key` do React na lista. Nunca em URL, nunca persistido, nunca guardado como seleção. */
@@ -67,14 +67,15 @@ export interface ResumoMarketing {
    *  ausência de dado (a UI mostra "—"), não zero. */
   anosDisponiveis: number[]
   porMesCategoria: LinhaMesCategoria[]
-  /** Primeira e última data de movimentação do dado do ano; `null` = ano sem lançamento. */
+  /** Primeira e última data de movimentação do dado do ano; `null` = ano sem lançamento.
+   *  A RPC devolve; a página não exibe mais (o cabeçalho só mostra `ultimaCarga`). */
   cobertura: { min: string; max: string } | null
   /** timestamptz da última carga da base de movimentação (ISO COM offset; exibir por `fmtDataSP`). */
   ultimaCarga: string | null
   /** Última data ('YYYY-MM-DD') com fatura de cartão lançada. A fatura entra com atraso —
    *  Google/Meta/Adobe são pagos no cartão, e o mês corrente fica subcontado até ela entrar.
-   *  ⚠️ É GLOBAL (a RPC não filtra por ano): em ano fechado o aviso seria enganoso. A página só o
-   *  exibe quando o ano selecionado é o corrente (`gastos-content.tsx`). */
+   *  A RPC devolve; a página NÃO exibe mais o aviso de defasagem do cartão (retirado a pedido do
+   *  dono do produto). É GLOBAL (a RPC não filtra por ano). */
   ultimaDataCartao: string | null
 }
 

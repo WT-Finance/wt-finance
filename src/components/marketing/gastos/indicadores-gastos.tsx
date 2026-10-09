@@ -6,9 +6,9 @@ import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import { fmtBRL2 } from '@/lib/fmt'
 import { fmtDeltaPct } from '@/lib/marketing/formatar'
 import type { Indicadores } from '@/lib/marketing/indicadores'
-import { MESES_ABREV, fmtDiaMes, rotuloRecorteAno, type Recorte } from '@/lib/marketing/periodo'
+import { MESES_ABREV, rotuloRecorteAno, type Recorte } from '@/lib/marketing/periodo'
 
-// Componente B — três indicadores: gasto no período, o MESMO período do ano anterior (com o Δ%)
+// Componente B — três indicadores: despesa no período, o MESMO período do ano anterior (com o Δ%)
 // e o mês corrente.
 //
 // Tile local, no molde do `Tile` do inventário, e não `KpiCard`: o `KpiCard` exige `KpiMetrica`
@@ -21,9 +21,9 @@ import { MESES_ABREV, fmtDiaMes, rotuloRecorteAno, type Recorte } from '@/lib/ma
 const plural = (n: number) => `${n} ${n === 1 ? 'lançamento' : 'lançamentos'}`
 
 const AJUDA_DELTA =
-  'Variação calculada como na DRE: sobre valores COM SINAL (gasto é negativo), com o módulo da ' +
-  'base no denominador. Gasto MAIOR que o do ano anterior dá variação NEGATIVA — desfavorável; ' +
-  'gasto menor dá variação positiva — favorável. É o mesmo Δ% que a DRE mostra para a linha ' +
+  'Variação calculada como na DRE: sobre valores COM SINAL (despesa é negativa), com o módulo da ' +
+  'base no denominador. Despesa MAIOR que a do ano anterior dá variação NEGATIVA — desfavorável; ' +
+  'despesa menor dá variação positiva — favorável. É o mesmo Δ% que a DRE mostra para a linha ' +
   'Marketing nos mesmos meses.'
 
 function Tile({ rotulo, valor, children }: {
@@ -49,20 +49,10 @@ function Tile({ rotulo, valor, children }: {
   )
 }
 
-function LinhaDelta({ ind, ano, ultimaDataCartao }: {
-  ind: Indicadores
-  ano: number
-  /** Só quando o recorte termina no mês corrente do ano corrente (o chamador decide, como no
-   *  tile do mês): o mês corrente subcontado pode fazer o Δ parecer mais favorável do que é, e a
-   *  dica avisa. */
-  ultimaDataCartao: string | null
-}) {
+function LinhaDelta({ ind, ano }: { ind: Indicadores; ano: number }) {
   if (ind.deltaPct === null || ind.sentido === null) {
     return <p>Sem base de comparação em {ano - 1}.</p>
   }
-  const dicaCartao = ultimaDataCartao
-    ? `Cartão lançado até ${fmtDiaMes(ultimaDataCartao)}: o mês corrente pode estar subcontado e a variação parecer mais favorável do que é.`
-    : undefined
   const cor =
     ind.sentido === 'favoravel' ? 'text-success'
     : ind.sentido === 'desfavoravel' ? 'text-danger'
@@ -73,8 +63,7 @@ function LinhaDelta({ ind, ano, ultimaDataCartao }: {
     : 'estável'
   return (
     <p className="flex flex-wrap items-center gap-x-1.5 text-xs">
-      {/* A dica nativa fica só no trio número + palavra + "vs": o "?" tem o Tooltip do DS. */}
-      <span className="inline-flex items-center gap-x-1.5" title={dicaCartao}>
+      <span className="inline-flex items-center gap-x-1.5">
         <span className={`font-semibold tabular-nums ${cor}`}>{fmtDeltaPct(ind.deltaPct)}</span>
         <span className={cor}>{palavra}</span>
         <span className="text-[var(--text-subtle)]">vs {ano - 1}</span>
@@ -91,10 +80,9 @@ interface Props {
   ind: Indicadores | null
   /** O resumo do ano ANTERIOR falhou (o resto dos indicadores segue). */
   anteriorFalhou: boolean
-  ultimaDataCartao: string | null
 }
 
-export default function IndicadoresGastos({ ano, recorte, ind, anteriorFalhou, ultimaDataCartao }: Props) {
+export default function IndicadoresGastos({ ano, recorte, ind, anteriorFalhou }: Props) {
   if (ind === null) {
     return <ErroCarregamento mensagem="Não foi possível carregar os indicadores — recarregue a página." />
   }
@@ -111,10 +99,10 @@ export default function IndicadoresGastos({ ano, recorte, ind, anteriorFalhou, u
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <Tile rotulo={`Gasto no período · ${rotuloRecorteAno(recorte, ano)}`} valor={fmtBRL2(ind.periodo.valor)}>
+      <Tile rotulo={`Despesa no período · ${rotuloRecorteAno(recorte, ano)}`} valor={fmtBRL2(ind.periodo.valor)}>
         {anteriorFalhou && !ind.anteriorSemHistorico
           ? <p>Variação indisponível.</p>
-          : <LinhaDelta ind={ind} ano={ano} ultimaDataCartao={ind.mesRef.corrente ? ultimaDataCartao : null} />}
+          : <LinhaDelta ind={ind} ano={ano} />}
         <p>{plural(ind.periodo.qtd)}</p>
       </Tile>
 
@@ -134,9 +122,6 @@ export default function IndicadoresGastos({ ano, recorte, ind, anteriorFalhou, u
         rotulo={mesRef.corrente ? `Mês corrente · ${rotuloMes}` : `Último mês do período · ${rotuloMes}`}
         valor={fmtBRL2(mesRef.valor)}
       >
-        {mesRef.corrente && ultimaDataCartao && (
-          <p className="text-warning-deep">Cartão lançado até {fmtDiaMes(ultimaDataCartao)}</p>
-        )}
         <p>{plural(mesRef.qtd)}</p>
       </Tile>
     </div>

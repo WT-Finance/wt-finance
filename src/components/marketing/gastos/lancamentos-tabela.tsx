@@ -73,8 +73,8 @@ function Linha({ l }: { l: LancamentoMkt }) {
       <td className={`${TD} tabular-nums text-[var(--text-muted)]`}>
         <span className="block truncate" title={l.documento ?? undefined}>{l.documento ?? '—'}</span>
       </td>
-      {/* Estorno (positivo) reduz o gasto: o número fica em verde e o title explica. */}
-      <td className={TD} title={estorno ? 'Estorno — reduz o gasto' : undefined}>
+      {/* Estorno (positivo) reduz a despesa: o número fica em verde e o title explica. */}
+      <td className={TD} title={estorno ? 'Estorno — reduz a despesa' : undefined}>
         <ValorContabil valor={l.valor} className={estorno ? 'text-success' : undefined} />
       </td>
     </tr>
