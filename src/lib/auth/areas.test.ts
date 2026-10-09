@@ -56,9 +56,24 @@ describe('areasDaRota — toda rota de página tem dono', () => {
     // requireArea da page e o gate do item de sidebar — têm de virar juntas. Reprovou, e
     // as quatro viraram no mesmo commit.
     ['/gestao-pessoas/inventario',          ['gestao-pessoas/inventario']],
+    // v6.3.0 — Marketing com área PRÓPRIA (migration 0292). Estes casos já reprovaram uma vez, de
+    // propósito, enquanto a seção ficava sob 'admin/design-system' (mockup): lembram que as
+    // quatro pontas — AREAS/AREA_INFO, areasDaRota, requireArea da page e a `area` da subaba na
+    // sidebar — viram juntas. Mesma disciplina do Inventário (v5.6.0), acima.
+    ['/marketing',                          ['marketing/gastos']],
+    ['/marketing/gastos',                   ['marketing/gastos']],
   ]
   it.each(casos)('%s → %j', (rota, esperado) => {
     expect(areasDaRota(rota)).toEqual(esperado)
+  })
+  it("v6.3.0/M3: 'marketing/gastos' existe no catálogo (migration 0292), no grupo próprio 'Marketing' e fora da Administração", () => {
+    expect((AREAS as readonly string[]).includes('marketing/gastos')).toBe(true)
+    expect(AREA_INFO['marketing/gastos']).toEqual({ rotulo: 'Gastos', grupo: 'Marketing', ordem: 70 })
+  })
+  it("v6.3.0: a rota de Marketing NÃO é liberada pela área de admin vizinha 'admin/design-system'", () => {
+    for (const rota of ['/marketing', '/marketing/gastos']) {
+      expect(areasDaRota(rota)).not.toContain('admin/design-system')
+    }
   })
   it('Estante e Inventário não se confundem dentro de /gestao-pessoas', () => {
     expect(areasDaRota('/gestao-pessoas/estante')).toEqual([
@@ -91,6 +106,8 @@ describe('rotaInicial — primeira área permitida', () => {
     expect(rotaInicial(['admin/uploads'])).toBe('/admin/ingestao/upload')
     // v6.1.1/M3: quem só tem a área da API Externa não cai em /sem-acesso.
     expect(rotaInicial(['api-externa'])).toBe('/admin/api-externa')
+    // v6.3.0: quem só tem a área de Marketing entra DIRETO na página (não cai em /sem-acesso).
+    expect(rotaInicial(['marketing/gastos'])).toBe('/marketing/gastos')
     expect(rotaInicial([])).toBeNull()
     expect(rotaInicial(['inexistente'])).toBeNull()
   })

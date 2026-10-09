@@ -26,6 +26,7 @@ export const AREAS = [
   'gestao-pessoas/inventario',
   'gestao-pessoas/estante',
   'gestao-pessoas/estante/gestao',
+  'marketing/gastos',
 ] as const
 
 export type Area = (typeof AREAS)[number]
@@ -93,6 +94,12 @@ export const AREA_INFO: Record<Area, { rotulo: string; grupo: string; ordem: num
   // apertado no seed (só quem já tinha 'admin/acessos').
   'gestao-pessoas/estante':        { rotulo: 'Estante Welcome',          grupo: 'Gestão de Pessoas', ordem: 61 },
   'gestao-pessoas/estante/gestao': { rotulo: 'Estante Welcome (gestão)', grupo: 'Gestão de Pessoas', ordem: 62 },
+  // Marketing · Gastos (v6.3.0/M3, migration 0292). Permissão ÚNICA de página (só leitura dos
+  // lançamentos pagos do bloco MKT da DRE de caixa). Grupo NOVO 'Marketing' — fora de
+  // 'Administração', então a role de máquina de verificação a recebe (rpc-contrato.test.ts exige
+  // TODA área fora desse grupo). A migration concede, por nome, a Administrador, Financeiro e
+  // 'Máquina · verificação'; qualquer outra role recebe pelo editor de roles.
+  'marketing/gastos':              { rotulo: 'Gastos',                   grupo: 'Marketing',         ordem: 70 },
 }
 
 /**
@@ -141,6 +148,9 @@ export function areasDaRota(pathname: string): Area[] | null {
   // Raiz da seção (só o item-pai da sidebar; não há página em /gestao-pessoas): qualquer
   // módulo da seção libera.
   if (p.startsWith('/gestao-pessoas'))            return ['gestao-pessoas/inventario', 'gestao-pessoas/estante', 'gestao-pessoas/estante/gestao']
+  // Marketing (v6.3.0): área própria 'marketing/gastos' (migration 0292). Cobre /marketing
+  // (item-pai da sidebar, sem página) e /marketing/gastos.
+  if (p.startsWith('/marketing'))                 return ['marketing/gastos']
   if (p.startsWith('/admin/design-system'))     return ['admin/design-system']
   if (p.startsWith('/admin/acessos'))           return ['admin/acessos']
   // /admin/uploads* é rota LEGADA desde a v6.1.1 (só redirect para /admin/ingestao/upload);
@@ -184,7 +194,9 @@ const PRIORIDADE_INICIAL: { area: Area; href: string }[] = [
   // v6.1.1/M3: área de Administração com entrada própria na sidebar, como as vizinhas — sem
   // isto, quem tem SÓ 'api-externa' cairia em /sem-acesso ao entrar pela raiz.
   { area: 'api-externa',             href: '/admin/api-externa' },
-  { area: 'admin/acessos',           href: '/admin/acessos' },
+  // v6.3.0: quem tem SÓ 'marketing/gastos' entra direto na página, não em /sem-acesso.
+  { area: 'marketing/gastos',        href: '/marketing/gastos' },
+  { area: 'admin/acessos',          href: '/admin/acessos' },
   { area: 'admin/design-system',     href: '/admin/design-system' },
 ]
 

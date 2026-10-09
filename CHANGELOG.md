@@ -6,6 +6,41 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [6.3.0] — 2026-10-08
+
+MINOR · **Despesas de Marketing: seção nova "Marketing" com as despesas pagas da área.** Out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v6-3-0_Gastos_Marketing.md`. Migrations **0292** e **0293** (aditivas,
+aplicadas). ADR-0182. Medição da M0: `docs/auditoria/v6-3-0-m0-marketing.md`.
+
+### Adicionado
+
+- **Seção "Marketing" na sidebar** com a subaba "Despesas" (`/marketing/gastos`) e área RBAC própria
+  `marketing/gastos` (grupo "Marketing"), concedida a Administrador, Financeiro e Máquina · verificação.
+  Quem tem só essa área entra direto na página (`PRIORIDADE_INICIAL`).
+- **Página "Despesas de Marketing"** — detalhamento das despesas pagas: pills de ano com **seleção
+  múltipla** sobre os anos da base (`?anos=`; abre com o ano corrente e os dois anteriores — 2024, 2025
+  e 2026; ano fechado = ano inteiro, ano corrente = até o mês atual); card "Total de despesas no período" (uma linha por ano — mesmo com um só —, do mais recente ao mais
+  antigo, com a variação % sobre o ano de baixo no mesmo recorte de meses, e o "Acumulado"); card
+  **"Proporção sobre a Receita Bruta"** (barras por ano, o mesmo número do gráfico da DRE, regime de
+  competência); gráfico "Despesas mensais" (jan–dez, uma barra por ano selecionado, os anteriores à
+  esquerda em cinzas progressivos, painel "Total por ano" com escala própria); tabela "Por categoria" com
+  uma coluna por ano, expansível nos meses daquele ano (como o "Previsto" da DRE de caixa), com o
+  cabeçalho de altura fixa (expandir não desloca a tabela) e a coluna "Total" do ano destacada em tom
+  próprio e presa à borda direita enquanto se rola pelos meses do ano; ranking de fornecedores somando os anos selecionados. Despesa com o **sinal da DRE** (negativa). Cada
+  card degrada sozinho.
+- **RPCs** `get_marketing_gastos_resumo|fornecedores|lancamentos(p_ano)` (0292) com o predicado do
+  Realizado de `get_dre_mensal` (bloco `MKT` do `dre_categoria_map` vivo) — o total da página **é** a
+  linha "(-) Despesas Marketing" da DRE de caixa (ADR-0182). `get_marketing_gastos_lancamentos` fica sem
+  uso na tela (a seção de lançamentos saiu), coberta pelo contrato.
+- **RPC** `get_marketing_proporcao_receita(p_ano)` (0293): o % de Marketing sobre a Receita Bruta por
+  competência, lendo as mesmas views da `get_dre_competencia_mensal` (sem tocar a DRE nem exigir
+  `financeiro/dre`). Devolve **só o percentual**, nunca a receita absoluta.
+- **Casos de contrato** (credencial `verificador`): paridade com a DRE de caixa por mês realizado,
+  completude lançamentos ≡ fornecedores ≡ resumo, proporção ≡ grade da DRE (`montarProporcaoGrupos`),
+  lista fechada, negação a `anon` e a usuário sem a área nas 4 RPCs.
+
+---
+
 ## [6.2.3] — 2026-10-08
 
 PATCH · **Ingestão de Vendas por Produto: venda sem Setor deixa de derrubar a carga.** Out-briefing
