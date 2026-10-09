@@ -28,7 +28,7 @@ medição `docs/auditoria/v6-3-0-m0-marketing.md`.
 > conta bancária; carimbo vigente sem "· parcial"; mapa vivo sem exceção (Endomarketing/Feiras fora);
 > texto "Despesas" (rota/área/RPCs mantêm `gastos`; rótulo da área no editor de roles segue "Gastos" —
 > trocar = UPDATE destrutivo, opcional); sem "Dados de…", sem aviso de cartão, sem seleção de mês;
-> subtítulo "Detalhamento das despesas de marketing"; pills de ano com seleção múltipla (até 3); card
+> subtítulo "Detalhamento das despesas de marketing"; pills de ano com seleção múltipla (sem limite — os anos da base); card
 > único de total + card de proporção (igual à DRE, competência, visível a todos com a área — o % permite
 > estimar a receita, aceito); "Despesas mensais" jan–dez com barra por ano + painel Total ao lado;
 > tabela/ranking somam os anos; seção "Lançamentos" e Exportar **removidos**.

@@ -108,6 +108,25 @@ Consequências técnicas:
 - **Cores por posição entre os selecionados:** o mais recente usa `--action-primary`, os anteriores
   `--action-soft-border` e `--text-subtle`. A escala desceu um degrau por contraste (ALTO do `revisor`).
 
+### 3ª rodada de ajustes do Yan com o PR aberto (09/10)
+
+Pedidos e o que virou:
+
+1. **Pills sem limite.** As pills correspondem aos anos da base. Saem o teto de 3, o "máx. 3 anos" e o
+   bloqueio da 4ª pill. Com mais de 3 anos, os mais antigos repetem o cinza mais claro; hoje a base tem 3.
+   O título do card total perde o período ("· 2024 + 2025 + 2026 (até out)").
+2. **Card total com 2+ anos.** Uma linha por ano, do mais recente ao mais antigo, e no fim o "Acumulado".
+   Cada linha traz a **variação %** sobre o ano selecionado logo abaixo, no **mesmo recorte de meses**:
+   2026 (jan–out) × 2025 (jan–out), e ano fechado × ano fechado. A conta é `deltaYtd`, a mesma da DRE.
+   Despesa que cresce é Δ negativo, rotulado "desfavorável"; Δ de 0,0% é "estável".
+3. **Card de proporção.** Sem subtítulo; o "?" fica junto do título e passa a explicar o regime de
+   competência e o `*`. O rótulo do ano parcial é só "2026*".
+4. **"Despesas mensais".** Sem subtítulo; o painel Total diz só "Total por ano". Havia um **defeito na
+   ordem das barras**: o Recharts posiciona cada série pela ordem de *montagem*. Partindo de `?anos=2026`
+   e ligando 2025 e depois 2024, as barras novas iam para a direita. Agora o gráfico remonta quando os
+   anos mudam (`key`), e os anteriores ficam à esquerda. Uma sonda estática trava a `key`, mas o efeito
+   só a tela prova: conferir clicando ano a ano, não recarregando.
+
 ### Técnicas (orquestrador)
 
 - **Correções ao briefing:**

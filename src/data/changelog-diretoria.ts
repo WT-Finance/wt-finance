@@ -42,8 +42,8 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
         tipo: 'novidade',
         texto:
           'A gestão de marketing passa a acompanhar no Janus as despesas pagas da área, com o mesmo número da ' +
-          'linha de Marketing da DRE: total do período, mês a mês, por categoria e por fornecedor, comparando ' +
-          'até três anos lado a lado, e quanto o marketing consumiu da receita bruta em cada ano (o mesmo ' +
+          'linha de Marketing da DRE: total do período com a variação de um ano para o outro, mês a mês, por categoria e por fornecedor, ' +
+          'comparando os anos lado a lado, e quanto o marketing consumiu da receita bruta em cada ano (o mesmo ' +
           'percentual do gráfico da DRE). A seção "Marketing" tem acesso próprio — a gestora não precisa de ' +
           'acesso ao Financeiro.',
       },

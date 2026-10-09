@@ -18,10 +18,12 @@ aplicadas). ADR-0182. Medição da M0: `docs/auditoria/v6-3-0-m0-marketing.md`.
   `marketing/gastos` (grupo "Marketing"), concedida a Administrador, Financeiro e Máquina · verificação.
   Quem tem só essa área entra direto na página (`PRIORIDADE_INICIAL`).
 - **Página "Despesas de Marketing"** — detalhamento das despesas pagas: pills de ano com **seleção
-  múltipla** (`?anos=`; ano fechado = ano inteiro, ano corrente = até o mês atual), card "Total de
-  despesas no período", card **"Proporção sobre a Receita Bruta"** (barras por ano, o mesmo número do
-  gráfico da DRE, regime de competência), gráfico "Despesas mensais" (jan–dez, uma barra por ano
-  selecionado em cinzas progressivos, painel "Total" com escala própria), tabela categoria × mês e
+  múltipla** sobre os anos da base (`?anos=`; ano fechado = ano inteiro, ano corrente = até o mês
+  atual); card "Total de despesas no período" (com 2+ anos, uma linha por ano, do mais recente ao mais
+  antigo, com a variação % sobre o ano de baixo no mesmo recorte de meses, e o "Acumulado"); card
+  **"Proporção sobre a Receita Bruta"** (barras por ano, o mesmo número do gráfico da DRE, regime de
+  competência); gráfico "Despesas mensais" (jan–dez, uma barra por ano selecionado, os anteriores à
+  esquerda em cinzas progressivos, painel "Total por ano" com escala própria); tabela categoria × mês e
   ranking de fornecedores somando os anos selecionados. Despesa com o **sinal da DRE** (negativa). Cada
   card degrada sozinho.
 - **RPCs** `get_marketing_gastos_resumo|fornecedores|lancamentos(p_ano)` (0292) com o predicado do
