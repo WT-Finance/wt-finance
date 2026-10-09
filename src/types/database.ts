@@ -530,6 +530,10 @@ export type Database = {
         Returns: Json
       }
       get_marketing_gastos_resumo: { Args: { p_ano: number }; Returns: Json }
+      get_marketing_proporcao_receita: {
+        Args: { p_ano: number }
+        Returns: Json
+      }
       get_minhas_permissoes: { Args: never; Returns: Json }
       get_mix_produto: {
         Args: {

@@ -3529,6 +3529,31 @@
       "security_definer": true,
       "volatilidade": "STABLE"
     },
+    "public.get_marketing_proporcao_receita(integer)": {
+      "acl": {
+        "authenticated": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        },
+        "verificador": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "03f69653da49f4450229b704dffa93c48a7f2e4fb92193096e0d1116cb48b9da",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "json",
+      "security_definer": true,
+      "volatilidade": "STABLE"
+    },
     "public.get_minhas_permissoes()": {
       "acl": {
         "authenticated": {
@@ -7279,6 +7304,7 @@
         "public.get_marketing_gastos_fornecedores(integer)",
         "public.get_marketing_gastos_lancamentos(integer)",
         "public.get_marketing_gastos_resumo(integer)",
+        "public.get_marketing_proporcao_receita(integer)",
         "public.get_minhas_permissoes()",
         "public.get_mix_produto(date, date, text, integer)",
         "public.get_operacoes_weddings(text, date, date, text, text, text, text, integer, integer)",
@@ -15722,7 +15748,7 @@
       "triggers": {}
     }
   },
-  "ultima_migration": "0292",
+  "ultima_migration": "0293",
   "views": {
     "analytics.mv_ranking_produtos_mensal": {
       "acl": {
