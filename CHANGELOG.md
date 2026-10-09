@@ -19,7 +19,7 @@ aplicadas). ADR-0182. Medição da M0: `docs/auditoria/v6-3-0-m0-marketing.md`.
   Quem tem só essa área entra direto na página (`PRIORIDADE_INICIAL`).
 - **Página "Despesas de Marketing"** — detalhamento das despesas pagas: pills de ano com **seleção
   múltipla** sobre os anos da base (`?anos=`; ano fechado = ano inteiro, ano corrente = até o mês
-  atual); card "Total de despesas no período" (com 2+ anos, uma linha por ano, do mais recente ao mais
+  atual); card "Total de despesas no período" (uma linha por ano — mesmo com um só —, do mais recente ao mais
   antigo, com a variação % sobre o ano de baixo no mesmo recorte de meses, e o "Acumulado"); card
   **"Proporção sobre a Receita Bruta"** (barras por ano, o mesmo número do gráfico da DRE, regime de
   competência); gráfico "Despesas mensais" (jan–dez, uma barra por ano selecionado, os anteriores à

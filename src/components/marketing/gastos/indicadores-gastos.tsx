@@ -18,9 +18,10 @@ import {
 // nada é renderizado e o total ocupa só a sua coluna. Os dois degradam de forma independente
 // (leituras diferentes, regimes diferentes).
 //
-// O título é fixo, SEM o período (quem diz o período são as pills de ano). Com UM ano: o valor dele
-// e o nº de lançamentos. Com DOIS OU MAIS: uma linha por ano, do mais recente ao mais antigo, cada
-// uma com o valor do ano e a variação % contra o ano logo abaixo, e no fim o "Acumulado" (a soma).
+// O título é fixo, SEM o período (quem diz o período são as pills de ano). Sempre uma linha por ano
+// selecionado — MESMO com um ano só (decisão do Yan, 09/10: o formato não muda com a seleção) —, do
+// mais recente ao mais antigo, cada uma com o valor do ano e a variação % contra o ano logo abaixo
+// (o mais antigo não tem), e no fim o "Acumulado" (a soma; com um ano, igual à linha).
 // As contas (ordem, recorte igual com igual, Δ, acumulado, fail-closed) estão em
 // `@/lib/marketing/total-por-ano` — aqui só se desenha.
 //
@@ -41,32 +42,10 @@ import {
 
 const TITULO = 'Total de despesas no período'
 
-const plural = (n: number) => `${n} ${n === 1 ? 'lançamento' : 'lançamentos'}`
-
 const CLASSE_ROTULO = 'text-2xs font-semibold uppercase leading-[1.3] tracking-[0.5px] text-[var(--text-muted)]'
 
 /** Casca branca comum aos estados do card. */
 const CASCA = 'flex h-full flex-col rounded-xl bg-white px-5 py-4 shadow-sm'
-
-/** Um ano: o valor grande e o nº de lançamentos. */
-function TileUmAno({ linha }: { linha: LinhaTotalAno }) {
-  return (
-    <div className={CASCA}>
-      <div className="flex min-h-8 items-start gap-1.5">
-        <p className={CLASSE_ROTULO}>{TITULO}</p>
-      </div>
-      <p
-        className="mt-auto whitespace-nowrap pt-1 font-extrabold leading-none tabular-nums text-zinc-800"
-        style={{ fontSize: 'clamp(16px, 1.7vw, 26px)' }}
-      >
-        {fmtBRL2(linha.valor)}
-      </p>
-      <div className="mt-1.5 min-h-8 space-y-0.5 text-2xs text-[var(--text-subtle)]">
-        <p>{plural(linha.qtd)}</p>
-      </div>
-    </div>
-  )
-}
 
 const PALAVRA: Record<SentidoVariacao, { texto: string; classe: string }> = {
   favoravel: { texto: 'favorável', classe: 'text-positive-deep' },
@@ -87,8 +66,8 @@ function Variacao({ v }: { v: VariacaoVsAnterior }) {
   )
 }
 
-/** Dois ou mais anos: uma linha por ano (mais recente primeiro) e o Acumulado no rodapé. */
-function TileVariosAnos({ linhas, acumulado }: { linhas: readonly LinhaTotalAno[]; acumulado: number }) {
+/** Uma linha por ano (mais recente primeiro) e o Acumulado no rodapé — com 1 ou com N anos. */
+function TilePorAno({ linhas, acumulado }: { linhas: readonly LinhaTotalAno[]; acumulado: number }) {
   return (
     <div className={CASCA}>
       <div className="flex min-h-8 items-start gap-1.5">
@@ -156,10 +135,8 @@ export default function IndicadoresGastos({ periodo, fatias, anosFalha, proporca
         <EmptyState icon={WalletMinimal} message={`Sem lançamentos pagos em ${periodo}.`} />
       </div>
     )
-  } else if (total.linhas.length === 1) {
-    primeira = <TileUmAno linha={total.linhas[0]} />
   } else {
-    primeira = <TileVariosAnos linhas={total.linhas} acumulado={total.acumulado.valor} />
+    primeira = <TilePorAno linhas={total.linhas} acumulado={total.acumulado.valor} />
   }
 
   return (

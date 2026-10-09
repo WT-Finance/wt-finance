@@ -115,7 +115,8 @@ Pedidos e o que virou:
 1. **Pills sem limite.** As pills correspondem aos anos da base. Saem o teto de 3, o "máx. 3 anos" e o
    bloqueio da 4ª pill. Com mais de 3 anos, os mais antigos repetem o cinza mais claro; hoje a base tem 3.
    O título do card total perde o período ("· 2024 + 2025 + 2026 (até out)").
-2. **Card total com 2+ anos.** Uma linha por ano, do mais recente ao mais antigo, e no fim o "Acumulado".
+2. **Card total.** Uma linha por ano, do mais recente ao mais antigo, e no fim o "Acumulado". Pelo ajuste
+   seguinte do Yan, isso vale **mesmo com um único ano selecionado**: o formato não muda com a seleção.
    Cada linha traz a **variação %** sobre o ano selecionado logo abaixo, no **mesmo recorte de meses**:
    2026 (jan–out) × 2025 (jan–out), e ano fechado × ano fechado. A conta é `deltaYtd`, a mesma da DRE.
    Despesa que cresce é Δ negativo, rotulado "desfavorável"; Δ de 0,0% é "estável".
