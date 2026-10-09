@@ -72,13 +72,19 @@ export function useTotalPreso(
     const tabela = tabelaRef.current
     if (!tabela) { grupos.current = []; viewport.current = null; return }
     viewport.current = acharViewport(tabela)
+    // Limpa o deslocamento de TODA célula que o tenha ANTES de remedir — não só das marcadas
+    // `data-total-ano`. O React reaproveita células entre renders e não sabe do estilo escrito aqui: o
+    // rótulo do ano no cabeçalho tem a MESMA key aberto e recolhido, mas só leva `data-total-ano` quando
+    // aberto. Ao RECOLHER, o atributo sumia, a célula escapava de um seletor por atributo e ficava com o
+    // translateX antigo — o ano "sumia" do cabeçalho (bug visto pelo Yan, duas vezes).
+    for (const c of tabela.querySelectorAll<HTMLElement>('th, td')) {
+      if (c.style.transform || c.style.boxShadow) {
+        c.style.transform = ''
+        c.style.boxShadow = ''
+      }
+    }
     const porAno = new Map<number, HTMLElement[]>()
     for (const c of tabela.querySelectorAll<HTMLElement>('[data-total-ano]')) {
-      // Limpa o deslocamento ANTES de remedir: o React reaproveita células entre renders (ex.: o
-      // rótulo do ano no cabeçalho) e não sabe do estilo escrito aqui — sem isto, ao RECOLHER um ano
-      // a célula dele ficava com o translateX antigo e o rótulo sumia da vista (bug visto pelo Yan).
-      c.style.transform = ''
-      c.style.boxShadow = ''
       const ano = Number(c.dataset.totalAno)
       porAno.set(ano, [...(porAno.get(ano) ?? []), c])
     }
