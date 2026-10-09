@@ -4,7 +4,6 @@ import { useMemo, useRef, useState } from 'react'
 import { ChevronsLeft, ChevronsRight, Tags } from 'lucide-react'
 import EmptyState from '@/components/shared/empty-state'
 import ErroCarregamento from '@/components/shared/erro-carregamento'
-import { CARD_TABELA_TH } from '@/components/shared/card-tabela'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { ValorContabil } from '@/components/shared/valor-contabil'
 import { Card } from '@/components/ui/card'
@@ -15,6 +14,7 @@ import {
 } from '@/lib/marketing/tabela-por-ano'
 import type { LinhaMesCategoria } from '@/lib/marketing/tipos'
 import CabecalhoCard from './cabecalho-card'
+import { useScrollAoAlternar } from './use-scroll-ao-alternar'
 import { useTotalPreso } from './use-total-preso'
 
 // Componente D — categoria × ANO, cada ano expansível nos meses dele.
@@ -31,18 +31,25 @@ import { useTotalPreso } from './use-total-preso'
 //
 // Tabela densa com scroll interno (skill `tabela-densa`): `border-separate border-spacing-0`,
 // fundo opaco NAS CÉLULAS, borda horizontal nas células (nunca no <tr>), cantos arredondados,
-// `table-fixed` + <colgroup>. Esta é a EXCEÇÃO de `min-w` prevista na skill: 12 meses por ano não
-// cabem em tela estreita, então a tabela tem largura mínima e rola num `ScrollAutoHide eixo="x"` —
-// a 1ª coluna (categoria) fica presa à esquerda. Cada grupo de ano abre com uma borda mais forte
-// (`border-l-2`), como a DRE separa os grupos.
+// `table-fixed` + <colgroup>. LARGURA EXATA (`width` = soma das colunas, SEM `w-full`): com `w-full`
+// o navegador reparte a sobra entre TODAS as `<col>` e a "Categoria" esticava (~530px). A DRE evita
+// isso por outro caminho (sem `table-fixed`, com `w/min-w/max-w` na célula "Conta"); aqui, tabela na
+// largura natural — se for mais estreita que o card, a sobra fica à direita, nunca na "Categoria"
+// (224px, mais enxuta que os 330px da DRE: categorias de marketing têm nomes curtos). Esta é a EXCEÇÃO
+// de `min-w` prevista na skill: 12 meses por ano não cabem em tela estreita, então a tabela rola num
+// `ScrollAutoHide eixo="x"` — a 1ª coluna (categoria) fica presa à esquerda. Cada grupo de ano abre com
+// uma borda mais forte (`border-l-2`), como a DRE separa os grupos.
 //
-// CABEÇALHO DE ALTURA FIXA (o bug do "pulo"): são SEMPRE duas linhas, com altura fixa (`ALTURA_TH`
-// em toda `<th>`), esteja algum ano expandido ou não. Na de cima fica o rótulo do ano (alinhado à
-// direita, com o chevron depois dele); na de baixo, o ano recolhido tem uma célula VAZIA (sem
-// `rowSpan`) e o expandido tem os meses + "Total". Assim expandir/recolher não muda a altura do
-// cabeçalho nem empurra o corpo. Só a "Categoria" usa `rowSpan={2}` (existe sempre) — por isso a
-// régua de base dela é aplicada direto na célula, e as demais usam o seletor de "última linha"
-// (ver skill `tabela-densa`, cabeçalho de duas linhas).
+// CABEÇALHO NO PADRÃO DA DRE, DE ALTURA FIXA (o bug do "pulo"): são SEMPRE duas linhas, com altura
+// fixa em toda `<th>` (`h-[27px]` em cima, `h-[25px]` embaixo), esteja algum ano expandido ou não. Na
+// de cima fica o rótulo do ano (à direita, com o chevron depois dele); na de baixo, o ano recolhido tem
+// uma célula "Total" (sem `rowSpan`) e o expandido tem os meses + "Total". Assim expandir/recolher não
+// muda a altura do cabeçalho nem empurra o corpo. Só a "Categoria" usa `rowSpan={2}` (existe sempre) —
+// a régua de base é aplicada direto em TODA célula da linha de baixo e na "Categoria" (ver skill
+// `tabela-densa`, cabeçalho de duas linhas; aqui sem seletor de "última linha").
+//
+// ANIMAÇÃO = a da DRE: rolagem suave ao expandir/recolher um ano (`use-scroll-ao-alternar`); a DRE não
+// anima largura de coluna.
 //
 // COLUNA "TOTAL" DO ANO EXPANDIDO PRESA À DIREITA: enquanto a borda direita da área visível está
 // dentro de um grupo de ano expandido, a coluna "Total" DAQUELE ano (rótulo+chevron e "Total" no
@@ -52,9 +59,10 @@ import { useTotalPreso } from './use-total-preso'
 // estado nem re-render por pixel (matemática pura em `lib/marketing/total-preso`). Por isso o
 // cabeçalho de cima de um ano expandido são DUAS células — uma vazia sobre os meses e o rótulo sobre
 // o "Total" —, para o rótulo acompanhar a coluna. A coluna de total tem fundo OPACO próprio (`--band`
-// no cabeçalho e rodapé, `--band-soft` no corpo): é o que a destaca dos meses e impede que eles
-// vazem por baixo quando ela flutua. A coluna "Categoria" (sticky à esquerda) usa os MESMOS tons
-// (pedido do Yan, 09/10 — coerência visual entre as colunas fixas/de referência e os meses).
+// no rodapé, `--band-soft` no corpo; no cabeçalho, `--band` contínuo como na DRE): é o que a destaca
+// dos meses e impede que eles vazem por baixo quando ela flutua. A coluna "Categoria" (sticky à
+// esquerda) usa os MESMOS tons (pedido do Yan, 09/10 — coerência visual entre as colunas fixas/de
+// referência e os meses).
 //
 // Valor = `<ValorContabil>`, no sinal da DRE (sem `Math.abs`). Célula "—" = ausência (a categoria
 // não teve lançamento naquele mês/ano), distinta de "R$ 0,00" (houve lançamento e somou zero).
@@ -63,21 +71,28 @@ const LARG_CATEGORIA = 224
 const LARG_MES = 116
 const LARG_TOTAL = 132
 
-const TH = CARD_TABELA_TH
-/** Altura FIXA de cada linha do cabeçalho — vale também para a célula vazia do ano recolhido, que
- *  de outro modo colapsaria à altura do padding e faria o cabeçalho crescer ao expandir. */
-const ALTURA_TH = 'h-9'
+// CABEÇALHO NO PADRÃO DA DRE (`tabela-dre.tsx`): rótulos em CAIXA ALTA, 10px, `font-semibold`,
+// `tracking-[0.09em]`, `text-text-secondary`; fundo `--band` contínuo; alturas `h-[27px]` (linha do
+// grupo) e `h-[25px]` (linha das colunas). A skill `tabela-densa` manda cabeçalho em caixa normal e
+// sem negrito — a instrução do dono do produto (coerência com a DRE) prevalece nesta tabela.
+/** Linha de BAIXO do cabeçalho (rótulos das colunas — meses e "Total"). A régua de base é aplicada
+ *  direto em cada célula, não por seletor de "última linha" (a "Categoria" tem `rowSpan`). Padding
+ *  horizontal igual ao do corpo (`px-3`) para o rótulo alinhar com os dígitos. */
+const TH = 'h-[25px] whitespace-nowrap px-3 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary border-b-[1.5px] border-b-wt-border-strong'
 const TD = 'py-2 px-3 text-xs border-b border-zinc-50'
 const TD_FOOT = 'px-3 py-2 text-xs font-semibold text-zinc-800'
-/** Rótulo do cabeçalho de grupo — o mesmo vocabulário do grupo "Previsto" da DRE; à direita, como
- *  os números da coluna. */
-const TH_GRUPO = 'whitespace-nowrap px-3 py-1.5 text-right text-xs font-semibold text-text-secondary'
-/** Régua mais forte na 1ª coluna de cada grupo de ano. */
+/** Linha de CIMA do cabeçalho (rótulo do grupo/ano). Altura FIXA (`h-[27px]`, a faixa da linha de grupo
+ *  da DRE), sem padding vertical para o chevron (17px) caber sem esticar a linha — vale também para a
+ *  célula vazia sobre os meses, que de outro modo colapsaria e faria o cabeçalho crescer ao expandir.
+ *  A régua fina (`border-b`) separa a linha de grupo da de colunas SÓ sobre os grupos (a "Categoria",
+ *  com `rowSpan`, não a tem). Rótulo à direita, como os números da coluna. */
+const TH_GRUPO = 'h-[27px] whitespace-nowrap px-3 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary border-b border-b-wt-border'
+/** Régua mais forte na 1ª coluna de cada grupo de ano (atravessa as duas linhas do cabeçalho). */
 const SEP = 'border-l-2 border-l-wt-border-strong'
-/** Fundo OPACO da coluna de total do ano (recolhida ou "Total" do expandido). Cabeçalho e rodapé
- *  precisam do `!`: `[&_th]:bg-zinc-50` / `[&_td]:bg-zinc-50` dos seus containers são mais
- *  específicos que uma classe de célula. O rodapé mantém a hierarquia (mais escuro que o corpo). */
-const BG_TOTAL_TH = '!bg-band'
+/** Fundo OPACO da coluna de total do ano no corpo (recolhida ou "Total" do expandido) e no rodapé:
+ *  impede os meses de vazarem por baixo quando ela flutua. No cabeçalho o fundo é `--band` contínuo
+ *  (como na DRE), então a coluna de total ali se distingue pela régua e pela sombra de quando prende.
+ *  O rodapé precisa do `!`: `[&_td]:bg-zinc-50` do container é mais específico que a classe da célula. */
 const BG_TOTAL_TD = 'bg-band-soft'
 const BG_TOTAL_FOOT = '!bg-band'
 
@@ -124,6 +139,8 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
     .map(a => `${a.ano}:${abertos.includes(a.ano) ? a.meses.length : 0}`)
     .join(',')}`
   const aoRolar = useTotalPreso(tabelaRef, chaveEstrutura, LARG_CATEGORIA)
+  // Rolagem suave ao expandir/recolher um ano — o "movimento" da DRE (ver o hook).
+  useScrollAoAlternar(tabelaRef, abertos, LARG_CATEGORIA)
 
   if (anosFalha.length > 0) {
     return (
@@ -166,8 +183,8 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
         >
           <table
             ref={tabelaRef}
-            className="w-full table-fixed border-separate border-spacing-0"
-            style={{ minWidth: larguraMin }}
+            className="table-fixed border-separate border-spacing-0"
+            style={{ width: larguraMin }}
           >
             <colgroup>
               <col style={{ width: LARG_CATEGORIA }} />
@@ -178,9 +195,11 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
             {/* Régua: a 1ª linha leva uma divisória leve; a última (e a "Categoria", que só existe na
                 1ª por causa do rowSpan) a régua de base. `!border-zinc-200` na "Categoria" vence o
                 seletor do thead, que é mais específico. */}
-            <thead className="[&_th]:bg-zinc-50 [&_tr:first-child_th]:border-b [&_tr:first-child_th]:border-zinc-100 [&_tr:last-child_th]:border-b [&_tr:last-child_th]:border-zinc-200">
+            <thead className="[&_th]:bg-band">
               <tr>
-                <th rowSpan={2} className={`${TH} ${ALTURA_TH} sticky left-0 z-20 ${BG_TOTAL_TH} rounded-tl-lg border-b !border-zinc-200 text-left align-bottom`}>Categoria</th>
+                {/* Como "Conta" na DRE: rowSpan 2, embaixo à esquerda, régua de base aplicada DIRETO na
+                    célula (o seletor de "última linha" nunca a alcança). */}
+                <th rowSpan={2} className="sticky left-0 z-20 rounded-tl-lg border-b-[1.5px] border-b-wt-border-strong pb-[7px] pl-3 pr-3 text-left align-bottom text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary">Categoria</th>
                 {tabela.anos.flatMap(a => {
                   const aberto = estaAberto(a.ano)
                   const titulo = a.recorte ? `${a.ano}: ${a.recorte}` : undefined
@@ -195,7 +214,7 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
                       key={`${a.ano}-rotulo`}
                       title={titulo}
                       data-total-ano={aberto ? a.ano : undefined}
-                      className={`${TH_GRUPO} ${ALTURA_TH} ${BG_TOTAL_TH} ${comMeses ? '' : SEP} ${canto}`}
+                      className={`${TH_GRUPO} ${comMeses ? '' : SEP} ${canto}`}
                     >
                       <span className="inline-flex items-center justify-end gap-1">
                         {a.rotulo}
@@ -213,29 +232,31 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
                     </th>
                   )
                   return comMeses
-                    ? [<th key={`${a.ano}-meses`} colSpan={a.meses.length} aria-hidden="true" className={`${TH_GRUPO} ${ALTURA_TH} ${SEP}`} />, rotulo]
+                    ? [<th key={`${a.ano}-meses`} colSpan={a.meses.length} aria-hidden="true" className={`${TH_GRUPO} ${SEP}`} />, rotulo]
                     : [rotulo]
                 })}
               </tr>
               <tr>
                 {tabela.anos.flatMap(a => {
-                  // Ano recolhido: UMA célula vazia (sem rowSpan) — a linha existe e tem altura.
+                  // Ano recolhido: UMA célula (sem rowSpan) com "Total" — como a DRE mostra "Total previsto"
+                  // sob o `»`. `data-ano-recolhido` é o alvo da rolagem ao recolher (não entra no
+                  // `useTotalPreso`, que só prende anos expandidos).
                   if (!estaAberto(a.ano)) {
-                    return [<th key={a.ano} aria-hidden="true" className={`${TH} ${ALTURA_TH} ${SEP} ${BG_TOTAL_TH}`} />]
+                    return [<th key={a.ano} data-ano-recolhido={a.ano} className={`${TH} ${SEP}`}>Total</th>]
                   }
                   return [
                     ...a.meses.map((m, i) => (
                       <th
                         key={`${a.ano}-${m}`}
                         data-grupo-ano={i === 0 ? a.ano : undefined}
-                        className={`${TH} ${ALTURA_TH} text-right ${i === 0 ? SEP : ''}`}
+                        className={`${TH} ${i === 0 ? SEP : ''}`}
                       >{MESES_ABREV[m - 1]}</th>
                     )),
                     <th
                       key={`${a.ano}-total`}
                       data-total-ano={a.ano}
                       data-total-ref=""
-                      className={`${TH} ${ALTURA_TH} text-right ${BG_TOTAL_TH} ${a.meses.length === 0 ? SEP : ''}`}
+                      className={`${TH} ${a.meses.length === 0 ? SEP : ''}`}
                     >Total</th>,
                   ]
                 })}

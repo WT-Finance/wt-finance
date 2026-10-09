@@ -24,7 +24,7 @@ interface GrupoMedido extends GrupoAno {
   aplicado: number
 }
 
-function acharViewport(tabela: HTMLElement): HTMLElement | null {
+export function acharViewport(tabela: HTMLElement): HTMLElement | null {
   for (let el = tabela.parentElement; el; el = el.parentElement) {
     const ox = getComputedStyle(el).overflowX
     if (ox === 'auto' || ox === 'scroll') return el

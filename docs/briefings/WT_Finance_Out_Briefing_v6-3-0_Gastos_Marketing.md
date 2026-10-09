@@ -166,6 +166,27 @@ Pedidos e o que virou:
   rolada, porque as células dos meses passam por baixo da "Categoria" fixa. A correção é um `clip-path`
   arredondado no viewport de rolagem. A barra de rolagem é um elemento irmão e não é cortada.
 
+### 6ª rodada (09/10) — padrão visual da DRE na tabela
+
+- **O ano que sumia ao recolher** voltou uma vez depois da 1ª correção. Causa: o rótulo do ano tem a
+  mesma key aberto e recolhido, mas só leva `data-total-ano` quando aberto; a limpeza por atributo não o
+  achava. Agora a remedição limpa toda th/td, e uma sonda estática trava a regra. O Yan confirmou o
+  conserto no preview.
+- **Animação ao expandir/recolher, "igual à DRE".** Ao ler `tabela-dre.tsx`, a premissa caiu: a DRE
+  **não** anima a largura das colunas, que entram e saem de uma vez. O que se percebe como animação é uma
+  rolagem suave até a coluna revelada (`useScrollAoAlternar`, interno à DRE). Foi replicada localmente
+  (`use-scroll-ao-alternar.ts`), com respeito a `prefers-reduced-motion` e fallback.
+- **Cabeçalho no padrão da DRE**, pelo print do Yan:
+  - fundo `--band` contínuo;
+  - "CATEGORIA" embaixo à esquerda;
+  - o ano e o chevron em cima, à direita do grupo;
+  - "JAN"…"DEZ" e "TOTAL" embaixo, com "TOTAL" sob o ano recolhido;
+  - caixa alta de 10px, como a DRE, contra a skill `tabela-densa` (prevaleceu a instrução do produto).
+  - Chevron neutro: o âmbar da DRE significa "previsto".
+- **Largura fixa da "Categoria" (224px).** A tabela deixou de ser `w-full` (que esticava a Categoria) e
+  fica na largura natural. Com poucos anos recolhidos, sobra espaço em branco à direita do card.
+- Coluna "Categoria" com o mesmo tom da coluna de total (`--band`/`--band-soft`).
+
 ### Técnicas (orquestrador)
 
 - **Correções ao briefing:**
