@@ -183,8 +183,11 @@ Pedidos e o que virou:
   - "JAN"…"DEZ" e "TOTAL" embaixo, com "TOTAL" sob o ano recolhido;
   - caixa alta de 10px, como a DRE, contra a skill `tabela-densa` (prevaleceu a instrução do produto).
   - Chevron neutro: o âmbar da DRE significa "previsto".
-- **Largura fixa da "Categoria" (224px).** A tabela deixou de ser `w-full` (que esticava a Categoria) e
-  fica na largura natural. Com poucos anos recolhidos, sobra espaço em branco à direita do card.
+- **Largura fixa da "Categoria" (224px).** Num 1º passo a tabela deixou de ser `w-full` (que esticava a Categoria) e
+  ficou na largura natural; com todos os anos recolhidos, ficava curta no canto do card. Por escolha do
+  Yan, a tabela voltou a ocupar o card (`w-full`, `minWidth` = soma das colunas). A "Categoria" e os
+  meses têm largura fixa; a coluna "Total" de cada ano fica sem largura declarada e absorve a sobra
+  dividida por igual.
 - Coluna "Categoria" com o mesmo tom da coluna de total (`--band`/`--band-soft`).
 
 ### Técnicas (orquestrador)

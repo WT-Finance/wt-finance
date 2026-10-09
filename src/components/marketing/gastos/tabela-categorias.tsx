@@ -31,11 +31,13 @@ import { useTotalPreso } from './use-total-preso'
 //
 // Tabela densa com scroll interno (skill `tabela-densa`): `border-separate border-spacing-0`,
 // fundo opaco NAS CÉLULAS, borda horizontal nas células (nunca no <tr>), cantos arredondados,
-// `table-fixed` + <colgroup>. LARGURA EXATA (`width` = soma das colunas, SEM `w-full`): com `w-full`
-// o navegador reparte a sobra entre TODAS as `<col>` e a "Categoria" esticava (~530px). A DRE evita
-// isso por outro caminho (sem `table-fixed`, com `w/min-w/max-w` na célula "Conta"); aqui, tabela na
-// largura natural — se for mais estreita que o card, a sobra fica à direita, nunca na "Categoria"
-// (224px, mais enxuta que os 330px da DRE: categorias de marketing têm nomes curtos). Esta é a EXCEÇÃO
+// `table-fixed` + <colgroup>. LARGURA: a tabela ocupa o card (`w-full`), com `minWidth` = soma das
+// colunas. A "Categoria" (224px — mais enxuta que os 330px da "Conta" da DRE: categorias de marketing
+// têm nomes curtos) e os meses têm `<col>` com largura FIXA; a coluna "Total" de cada ano fica SEM
+// largura declarada — no layout fixo, a sobra do card vai só para as colunas sem largura, então os
+// totais dos anos a dividem por igual e a "Categoria" nunca estica (decisão do Yan, 09/10: com todos os
+// anos recolhidos a tabela ficava curta no canto do card). Todo ano tem uma coluna de total, então
+// sempre há quem absorva a sobra; na largura mínima, cada total fica com LARG_TOTAL. Esta é a EXCEÇÃO
 // de `min-w` prevista na skill: 12 meses por ano não cabem em tela estreita, então a tabela rola num
 // `ScrollAutoHide eixo="x"` — a 1ª coluna (categoria) fica presa à esquerda. Cada grupo de ano abre com
 // uma borda mais forte (`border-l-2`), como a DRE separa os grupos.
@@ -183,13 +185,16 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
         >
           <table
             ref={tabelaRef}
-            className="table-fixed border-separate border-spacing-0"
-            style={{ width: larguraMin }}
+            className="w-full table-fixed border-separate border-spacing-0"
+            style={{ minWidth: larguraMin }}
           >
             <colgroup>
               <col style={{ width: LARG_CATEGORIA }} />
               {tabela.anos.flatMap(a =>
-                largurasDoAno(a, estaAberto(a.ano)).map((w, i) => <col key={`${a.ano}-${i}`} style={{ width: w }} />),
+                largurasDoAno(a, estaAberto(a.ano)).map((w, i, todas) => (
+                  // A última coluna do ano é o "Total": sem largura, ela recebe a sobra do card.
+                  <col key={`${a.ano}-${i}`} style={i === todas.length - 1 ? undefined : { width: w }} />
+                )),
               )}
             </colgroup>
             {/* Régua: a 1ª linha leva uma divisória leve; a última (e a "Categoria", que só existe na
