@@ -53,7 +53,8 @@ import { useTotalPreso } from './use-total-preso'
 // cabeçalho de cima de um ano expandido são DUAS células — uma vazia sobre os meses e o rótulo sobre
 // o "Total" —, para o rótulo acompanhar a coluna. A coluna de total tem fundo OPACO próprio (`--band`
 // no cabeçalho e rodapé, `--band-soft` no corpo): é o que a destaca dos meses e impede que eles
-// vazem por baixo quando ela flutua.
+// vazem por baixo quando ela flutua. A coluna "Categoria" (sticky à esquerda) usa os MESMOS tons
+// (pedido do Yan, 09/10 — coerência visual entre as colunas fixas/de referência e os meses).
 //
 // Valor = `<ValorContabil>`, no sinal da DRE (sem `Math.abs`). Célula "—" = ausência (a categoria
 // não teve lançamento naquele mês/ano), distinta de "R$ 0,00" (houve lançamento e somou zero).
@@ -179,7 +180,7 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
                 seletor do thead, que é mais específico. */}
             <thead className="[&_th]:bg-zinc-50 [&_tr:first-child_th]:border-b [&_tr:first-child_th]:border-zinc-100 [&_tr:last-child_th]:border-b [&_tr:last-child_th]:border-zinc-200">
               <tr>
-                <th rowSpan={2} className={`${TH} ${ALTURA_TH} sticky left-0 z-20 rounded-tl-lg border-b !border-zinc-200 text-left align-bottom`}>Categoria</th>
+                <th rowSpan={2} className={`${TH} ${ALTURA_TH} sticky left-0 z-20 ${BG_TOTAL_TH} rounded-tl-lg border-b !border-zinc-200 text-left align-bottom`}>Categoria</th>
                 {tabela.anos.flatMap(a => {
                   const aberto = estaAberto(a.ano)
                   const titulo = a.recorte ? `${a.ano}: ${a.recorte}` : undefined
@@ -243,7 +244,7 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
             <tbody>
               {tabela.linhas.map(l => (
                 <tr key={l.categoria}>
-                  <td className={`${TD} sticky left-0 z-10 bg-white text-zinc-700`}>
+                  <td className={`${TD} sticky left-0 z-10 ${BG_TOTAL_TD} text-zinc-700`}>
                     <span className="block truncate" title={l.categoria}>{l.categoria}</span>
                   </td>
                   {tabela.anos.flatMap((a, i) => {
@@ -267,7 +268,7 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
             </tbody>
             <tfoot className="[&_td]:bg-zinc-50">
               <tr>
-                <td className={`${TD_FOOT} sticky left-0 z-10 rounded-bl-lg`}>Total de marketing</td>
+                <td className={`${TD_FOOT} sticky left-0 z-10 ${BG_TOTAL_FOOT} rounded-bl-lg`}>Total de marketing</td>
                 {tabela.anos.flatMap(a => {
                   // O último <td> da última coluna de ano fecha o canto inferior direito do card.
                   const cantoFinal = a.ano === ultimoAno ? 'rounded-br-lg' : ''

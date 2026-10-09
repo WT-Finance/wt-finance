@@ -74,6 +74,11 @@ export function useTotalPreso(
     viewport.current = acharViewport(tabela)
     const porAno = new Map<number, HTMLElement[]>()
     for (const c of tabela.querySelectorAll<HTMLElement>('[data-total-ano]')) {
+      // Limpa o deslocamento ANTES de remedir: o React reaproveita células entre renders (ex.: o
+      // rótulo do ano no cabeçalho) e não sabe do estilo escrito aqui — sem isto, ao RECOLHER um ano
+      // a célula dele ficava com o translateX antigo e o rótulo sumia da vista (bug visto pelo Yan).
+      c.style.transform = ''
+      c.style.boxShadow = ''
       const ano = Number(c.dataset.totalAno)
       porAno.set(ano, [...(porAno.get(ano) ?? []), c])
     }
