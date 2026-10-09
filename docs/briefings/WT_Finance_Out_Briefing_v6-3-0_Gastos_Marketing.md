@@ -128,6 +128,21 @@ Pedidos e o que virou:
    anos mudam (`key`), e os anteriores ficam à esquerda. Uma sonda estática trava a `key`, mas o efeito
    só a tela prova: conferir clicando ano a ano, não recarregando.
 
+### 4ª rodada de ajustes do Yan com o PR aberto (09/10)
+
+- **Abertura padrão:** a página abre com **2024, 2025 e 2026** selecionados (`anosPadrao`: o ano
+  corrente e os dois anteriores, filtrados pelos anos da base). Antes abria só com o ano corrente.
+- **Tabela "Por categoria":**
+  - Sem subtítulo.
+  - **Cada ano é um grupo de colunas.** Recolhido, é uma coluna com o total do ano (`2026*` no
+    parcial). Expandido pelo chevron, mostra os meses daquele ano (o corrente só até o mês atual) e o
+    total do ano, no comportamento do grupo "Previsto" da DRE de caixa.
+  - Botões "Expandir tudo" e "Recolher tudo"; no fim, "Acumulado" e "% do total".
+  - A montagem está no módulo puro `tabela-por-ano.ts`, testado em centavos: soma dos meses = total do
+    ano, soma dos anos = acumulado = total do card, soma das categorias = rodapé.
+  - O cabeçalho de grupo não usa caixa alta, que a skill `tabela-densa` proíbe no cabeçalho, embora a DRE
+    use.
+
 ### Técnicas (orquestrador)
 
 - **Correções ao briefing:**

@@ -43,7 +43,7 @@ const unicosCrescentes = (anos: readonly number[]): number[] =>
   [...new Set(anos)].sort((a, b) => a - b)
 
 /** Quantos anos a página abre selecionados quando a URL não diz: o corrente e os dois anteriores. */
-export const ANOS_PADRAO = 3
+const ANOS_PADRAO = 3
 
 /** A seleção padrão: os `ANOS_PADRAO` anos até o corrente (ex.: 2024, 2025, 2026). Os que não têm
  *  lançamento na base são descartados depois por `resolverAnos`. */
