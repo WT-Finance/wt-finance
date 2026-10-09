@@ -27,6 +27,7 @@ import {
 import {
   resumoMarketingSchema, fornecedoresMarketingSchema, lancamentosMarketingSchema,
 } from './marketing/schemas'
+import { proporcaoReceitaMarketingSchema } from './marketing/schemas-proporcao'
 import { montarPonte } from './dre/ponte-regimes'
 import { montarDecomposicao } from './dre/decomposicao-variacao'
 import { LINHAS_CAIXA, LINHAS_COMPETENCIA } from './dre/linhas-resumo'
@@ -359,6 +360,9 @@ const CONTRATOS_PARSE_RPC: Array<{ fn: string; params: Record<string, unknown>; 
   { fn: 'get_marketing_gastos_resumo',       params: { p_ano: ANO_FECHADO_MKT },                                       schema: resumoMarketingSchema },
   { fn: 'get_marketing_gastos_fornecedores', params: { p_ano: ANO_FECHADO_MKT },                                       schema: fornecedoresMarketingSchema },
   { fn: 'get_marketing_gastos_lancamentos',  params: { p_ano: ANO_FECHADO_MKT },                                       schema: lancamentosMarketingSchema },
+  // v6.3.0 (0293): os insumos (centavos) da proporção Marketing / Receita Bruta por COMPETÊNCIA. A
+  // paridade com a grade da DRE tem bloco próprio logo após o de Gastos de Marketing.
+  { fn: 'get_marketing_proporcao_receita',   params: { p_ano: ANO_FECHADO_MKT },                                       schema: proporcaoReceitaMarketingSchema },
 ]
 
 describe.skipIf(!ON)('contrato RPC — schema parseRpc (F7) aceita o retorno REAL', () => {
@@ -2507,6 +2511,9 @@ const RPCS_MKT = [
   { fn: 'get_marketing_gastos_resumo' },
   { fn: 'get_marketing_gastos_fornecedores' },
   { fn: 'get_marketing_gastos_lancamentos' },
+  // 0293: mesma área e mesma validação de ano. Entrar aqui faz o caso "ano inválido", a negação
+  // `anon` e a negação "usuário sem a área" (blocos abaixo) cobrirem também a RPC de proporção.
+  { fn: 'get_marketing_proporcao_receita' },
 ] as const
 
 const ANO_INICIAL_MKT = 2024
@@ -2697,8 +2704,77 @@ describe.skipIf(!ON)('contrato RPC — Gastos de Marketing (v6.3.0, 0292)', () =
   })
 })
 
+// ── v6.3.0 (0293) — Gastos de Marketing: proporção sobre a Receita Bruta ≡ GRADE da DRE ──────
+// O card "Marketing ÷ Receita Bruta" da página de Gastos de Marketing mostra, POR COMPETÊNCIA, o
+// mesmo número que a grade "Proporção sobre a Receita Bruta" da DRE (`/financeiro/dre`) mostra para o
+// grupo MKT. São duas telas vizinhas com o MESMO número (skill contrato-rpc-front §5) — a igualdade é
+// caso de contrato, não nota de rodapé. A RPC nova NÃO chama `get_dre_competencia_mensal` (gated por
+// `financeiro/dre`): lê as mesmas views e repete só o filtro e as somas. Este bloco é o que cai se
+// alguma das duas pontas for "otimizada" sozinha.
+//
+// Oráculo = o que a página da DRE faz (financeiro/dre/page.tsx:341-351), com as funções TS REAIS:
+//   · janela por ano: `ano === anoCorrente ? janelaYtdCompetencia(payload do corrente) : 12`;
+//   · % : `montarProporcaoGrupos(...)` → série 'MKT' → `pontos[i].av`.
+// A RPC devolve SÓ o % (nunca os centavos de Marketing e de Receita Bruta — achado do revisor-db:
+// a receita exata vazaria para quem só tem a área de Marketing). O banco faz a divisão em NUMERIC
+// sobre os mesmos centavos inteiros; o TS, em float: tolerância de 1e-9 p.p. (muito abaixo da
+// 1 casa exibida), e null ≡ null (ano sem ponto, receita ≤ 0).
+describe.skipIf(!ON)('contrato RPC — Gastos de Marketing: proporção sobre a Receita Bruta ≡ grade da DRE (v6.3.0, 0293)', () => {
+  async function carregarProporcao() {
+    const porAno = await Promise.all(ANOS_MKT.map(async ano => ({
+      ano,
+      prop: exigirParseMkt(
+        proporcaoReceitaMarketingSchema,
+        await rpc('get_marketing_proporcao_receita', { p_ano: ano }),
+        `proporção ${ano}`,
+      ),
+      comp: dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: ano })),
+    })))
+    const corrente = porAno.find(x => x.ano === ANO_SP_MKT)
+    if (!corrente) throw new Error(`ano corrente ${ANO_SP_MKT} fora de ANOS_MKT`)
+    // A janela do ano corrente, exatamente como a página da DRE a obtém.
+    const mCob = janelaYtdCompetencia(corrente.comp)
+    const anos = porAno.map(x => ({ ano: x.ano, payload: x.comp, meses: x.ano === ANO_SP_MKT ? mCob : 12 }))
+    const serieMkt = montarProporcaoGrupos(anos).find(s => s.chave === 'MKT')
+    if (!serieMkt) throw new Error('a grade de proporção não tem a série MKT')
+    return { porAno, anos, serieMkt }
+  }
+  let cacheProporcao: ReturnType<typeof carregarProporcao> | undefined
+  const dadosProporcao = () => (cacheProporcao ??= carregarProporcao())
+
+  it.each(ANOS_MKT)('%i: janela — mesesCobertos, parcial e coberturaAte ≡ os da grade da DRE', async (ano) => {
+    const { porAno, anos, serieMkt } = await dadosProporcao()
+    const i = porAno.findIndex(x => x.ano === ano)
+    const { prop, comp } = porAno[i]
+    expect(prop.ano).toBe(ano)
+    expect(prop.mesesCobertos, `mesesCobertos ${ano}`).toBe(anos[i].meses)
+    expect(prop.parcial, `parcial ${ano}`).toBe(serieMkt.pontos[i].parcial)
+    expect(prop.coberturaAte, `coberturaAte ${ano} ≠ cobertura_ate da DRE`).toBe(comp.cobertura_ate ?? null)
+  }, 30_000)
+
+  it.each(ANOS_MKT)('%i: pct da RPC ≡ o ponto MKT de montarProporcaoGrupos (a grade)', async (ano) => {
+    const { porAno, serieMkt } = await dadosProporcao()
+    const i = porAno.findIndex(x => x.ano === ano)
+    const { prop } = porAno[i]
+    const daGrade = serieMkt.pontos[i].av
+    if (daGrade === null) {
+      expect(prop.pct, `pct ${ano}: a grade não tem ponto, a RPC deveria devolver null`).toBeNull()
+      return
+    }
+    expect(prop.pct, `pct ${ano}: a RPC devolveu null e a grade tem ${daGrade}`).not.toBeNull()
+    expect(prop.pct as number, `pct ${ano}: RPC ${String(prop.pct)} ≠ grade ${daGrade}`).toBeCloseTo(daGrade, 9)
+  }, 30_000)
+
+  it('caso POSITIVO: ao menos um ano tem % de Marketing ≠ 0 (sem isto a igualdade passaria 0=0 / null=null)', async () => {
+    const { porAno } = await dadosProporcao()
+    const comValor = porAno.filter(x => x.prop.pct !== null && x.prop.pct !== 0)
+    expect(comValor.length, 'nenhum ano com % de Marketing ≠ 0 na base viva — filtro quebrado ou de-para sem o grupo MKT?')
+      .toBeGreaterThan(0)
+  }, 30_000)
+})
+
 // ── NEGAÇÃO 1: anon (sem JWT) ────────────────────────────────────────────────────────────────
-// REVOKE EXECUTE de PUBLIC/anon nas 3 (0292) → o PostgREST responde com o erro de permissão
+// REVOKE EXECUTE de PUBLIC/anon nas 3 (0292) e na de proporção (0293) → o PostgREST responde com o erro de permissão
 // (42501), que para o papel `anon` vira HTTP 401 (403 para `authenticated`). Aceita-se as duas
 // faixas, e o que se EXIGE é o código do Postgres no corpo — não uma resposta 200 vazia.
 describe.skipIf(!ON || !ANON)('contrato RBAC — Gastos de Marketing: anon negado (v6.3.0)', () => {
@@ -2752,7 +2828,7 @@ describe.skipIf(!ON || !DB_URL)('contrato RBAC — Gastos de Marketing: usuário
     }
   }
 
-  it('um usuário ATIVO de cada role SEM a área recebe PERMISSAO_NEGADA (42501) nas 3 RPCs', async () => {
+  it('um usuário ATIVO de cada role SEM a área recebe PERMISSAO_NEGADA (42501) nas 4 RPCs (3 de gastos + proporção)', async () => {
     await comClienteMkt(async c => {
       const r = await c.query(
         `SELECT DISTINCT ON (u.role_id) u.user_id::text AS uid, ro.nome AS role
@@ -2778,7 +2854,7 @@ describe.skipIf(!ON || !DB_URL)('contrato RBAC — Gastos de Marketing: usuário
     })
   }, 30_000)
 
-  it('contraprova: um usuário ATIVO COM a área é atendido pelas 3 RPCs (a negação acima é pela área, não por função quebrada)', async () => {
+  it('contraprova: um usuário ATIVO COM a área é atendido pelas 4 RPCs (a negação acima é pela área, não por função quebrada)', async () => {
     await comClienteMkt(async c => {
       const r = await c.query(
         `SELECT u.user_id::text AS uid
@@ -2795,9 +2871,11 @@ describe.skipIf(!ON || !DB_URL)('contrato RBAC — Gastos de Marketing: usuário
       const resumo = await chamarComo(c, uid, 'get_marketing_gastos_resumo', ANO_FECHADO_MKT)
       const fornecedores = await chamarComo(c, uid, 'get_marketing_gastos_fornecedores', ANO_FECHADO_MKT)
       const lancamentos = await chamarComo(c, uid, 'get_marketing_gastos_lancamentos', ANO_FECHADO_MKT)
-      for (const [nome, res] of [['resumo', resumo], ['fornecedores', fornecedores], ['lancamentos', lancamentos]] as const) {
+      const proporcao = await chamarComo(c, uid, 'get_marketing_proporcao_receita', ANO_FECHADO_MKT)
+      for (const [nome, res] of [['resumo', resumo], ['fornecedores', fornecedores], ['lancamentos', lancamentos], ['proporção', proporcao]] as const) {
         expect(res.ok, `${nome}: ${res.ok ? '' : res.msg}`).toBe(true)
       }
+      if (proporcao.ok) exigirParseMkt(proporcaoReceitaMarketingSchema, proporcao.valor, 'proporção (como usuário com a área)')
       if (resumo.ok) exigirParseMkt(resumoMarketingSchema, resumo.valor, 'resumo (como usuário com a área)')
       if (fornecedores.ok) exigirParseMkt(fornecedoresMarketingSchema, fornecedores.valor, 'fornecedores (como usuário com a área)')
       if (lancamentos.ok) exigirParseMkt(lancamentosMarketingSchema, lancamentos.valor, 'lancamentos (como usuário com a área)')
