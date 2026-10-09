@@ -91,6 +91,10 @@ const TD_FOOT = 'px-3 py-2 text-xs font-semibold text-zinc-800'
 const TH_GRUPO = 'h-[27px] whitespace-nowrap px-3 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary border-b border-b-wt-border'
 /** Régua mais forte na 1ª coluna de cada grupo de ano (atravessa as duas linhas do cabeçalho). */
 const SEP = 'border-l-2 border-l-wt-border-strong'
+/** A mesma régua, na BORDA DIREITA da "Categoria" (sticky): rola junto com ela, então a linha bege
+ *  fica sempre ao lado da coluna fixa (pedido do Yan, 09/10). Por isso o 1º ano NÃO leva `SEP` — seria
+ *  uma linha dupla com a tabela parada. */
+const SEP_CATEGORIA = 'border-r-2 border-r-wt-border-strong'
 /** Fundo OPACO da coluna de total do ano no corpo (recolhida ou "Total" do expandido) e no rodapé:
  *  impede os meses de vazarem por baixo quando ela flutua. No cabeçalho o fundo é `--band` contínuo
  *  (como na DRE), então a coluna de total ali se distingue pela régua e pela sombra de quando prende.
@@ -165,6 +169,9 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
   const larguras = tabela.anos.flatMap(a => largurasDoAno(a, estaAberto(a.ano)))
   const larguraMin = LARG_CATEGORIA + larguras.reduce((s, w) => s + w, 0)
   const ultimoAno = tabela.anos[tabela.anos.length - 1].ano
+  const primeiroAno = tabela.anos[0].ano
+  /** Régua de início de grupo — o 1º ano não leva (a borda da "Categoria" já faz esse papel). */
+  const sep = (ano: number) => (ano === primeiroAno ? '' : SEP)
 
   return (
     <Card>
@@ -204,7 +211,7 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
               <tr>
                 {/* Como "Conta" na DRE: rowSpan 2, embaixo à esquerda, régua de base aplicada DIRETO na
                     célula (o seletor de "última linha" nunca a alcança). */}
-                <th rowSpan={2} className="sticky left-0 z-20 rounded-tl-lg border-b-[1.5px] border-b-wt-border-strong pb-[7px] pl-3 pr-3 text-left align-bottom text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary">Categoria</th>
+                <th rowSpan={2} className={`sticky left-0 z-20 rounded-tl-lg ${SEP_CATEGORIA} border-b-[1.5px] border-b-wt-border-strong pb-[7px] pl-3 pr-3 text-left align-bottom text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary`}>Categoria</th>
                 {tabela.anos.flatMap(a => {
                   const aberto = estaAberto(a.ano)
                   const titulo = a.recorte ? `${a.ano}: ${a.recorte}` : undefined
@@ -219,7 +226,7 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
                       key={`${a.ano}-rotulo`}
                       title={titulo}
                       data-total-ano={aberto ? a.ano : undefined}
-                      className={`${TH_GRUPO} ${comMeses ? '' : SEP} ${canto}`}
+                      className={`${TH_GRUPO} ${comMeses ? '' : sep(a.ano)} ${canto}`}
                     >
                       <span className="inline-flex items-center justify-end gap-1">
                         {a.rotulo}
@@ -237,7 +244,7 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
                     </th>
                   )
                   return comMeses
-                    ? [<th key={`${a.ano}-meses`} colSpan={a.meses.length} aria-hidden="true" className={`${TH_GRUPO} ${SEP}`} />, rotulo]
+                    ? [<th key={`${a.ano}-meses`} colSpan={a.meses.length} aria-hidden="true" className={`${TH_GRUPO} ${sep(a.ano)}`} />, rotulo]
                     : [rotulo]
                 })}
               </tr>
@@ -247,21 +254,21 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
                   // sob o `»`. `data-ano-recolhido` é o alvo da rolagem ao recolher (não entra no
                   // `useTotalPreso`, que só prende anos expandidos).
                   if (!estaAberto(a.ano)) {
-                    return [<th key={a.ano} data-ano-recolhido={a.ano} className={`${TH} ${SEP}`}>Total</th>]
+                    return [<th key={a.ano} data-ano-recolhido={a.ano} className={`${TH} ${sep(a.ano)}`}>Total</th>]
                   }
                   return [
                     ...a.meses.map((m, i) => (
                       <th
                         key={`${a.ano}-${m}`}
                         data-grupo-ano={i === 0 ? a.ano : undefined}
-                        className={`${TH} ${i === 0 ? SEP : ''}`}
+                        className={`${TH} ${i === 0 ? sep(a.ano) : ''}`}
                       >{MESES_ABREV[m - 1]}</th>
                     )),
                     <th
                       key={`${a.ano}-total`}
                       data-total-ano={a.ano}
                       data-total-ref=""
-                      className={`${TH} ${a.meses.length === 0 ? SEP : ''}`}
+                      className={`${TH} ${a.meses.length === 0 ? sep(a.ano) : ''}`}
                     >Total</th>,
                   ]
                 })}
@@ -270,22 +277,22 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
             <tbody>
               {tabela.linhas.map(l => (
                 <tr key={l.categoria}>
-                  <td className={`${TD} sticky left-0 z-10 ${BG_TOTAL_TD} text-zinc-700`}>
+                  <td className={`${TD} sticky left-0 z-10 ${SEP_CATEGORIA} ${BG_TOTAL_TD} text-zinc-700`}>
                     <span className="block truncate" title={l.categoria}>{l.categoria}</span>
                   </td>
                   {tabela.anos.flatMap((a, i) => {
                     const c = l.anos[i]
                     if (!estaAberto(a.ano)) {
-                      return [<td key={a.ano} className={`${TD} ${SEP} ${BG_TOTAL_TD} font-medium text-zinc-800`}><Valor v={c.total} /></td>]
+                      return [<td key={a.ano} className={`${TD} ${sep(a.ano)} ${BG_TOTAL_TD} font-medium text-zinc-800`}><Valor v={c.total} /></td>]
                     }
                     return [
                       ...a.meses.map((m, j) => (
-                        <td key={`${a.ano}-${m}`} className={`${TD} text-zinc-700 ${j === 0 ? SEP : ''}`}><Valor v={c.porMes[j]} /></td>
+                        <td key={`${a.ano}-${m}`} className={`${TD} text-zinc-700 ${j === 0 ? sep(a.ano) : ''}`}><Valor v={c.porMes[j]} /></td>
                       )),
                       <td
                         key={`${a.ano}-total`}
                         data-total-ano={a.ano}
-                        className={`${TD} ${BG_TOTAL_TD} font-medium text-zinc-800 ${a.meses.length === 0 ? SEP : ''}`}
+                        className={`${TD} ${BG_TOTAL_TD} font-medium text-zinc-800 ${a.meses.length === 0 ? sep(a.ano) : SEP}`}
                       ><Valor v={c.total} /></td>,
                     ]
                   })}
@@ -294,21 +301,21 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
             </tbody>
             <tfoot className="[&_td]:bg-zinc-50">
               <tr>
-                <td className={`${TD_FOOT} sticky left-0 z-10 ${BG_TOTAL_FOOT} rounded-bl-lg`}>Total de marketing</td>
+                <td className={`${TD_FOOT} sticky left-0 z-10 ${SEP_CATEGORIA} ${BG_TOTAL_FOOT} rounded-bl-lg`}>Total de marketing</td>
                 {tabela.anos.flatMap(a => {
                   // O último <td> da última coluna de ano fecha o canto inferior direito do card.
                   const cantoFinal = a.ano === ultimoAno ? 'rounded-br-lg' : ''
                   if (!estaAberto(a.ano)) {
-                    return [<td key={a.ano} className={`${TD_FOOT} ${SEP} ${BG_TOTAL_FOOT} ${cantoFinal}`}><Valor v={a.total} /></td>]
+                    return [<td key={a.ano} className={`${TD_FOOT} ${sep(a.ano)} ${BG_TOTAL_FOOT} ${cantoFinal}`}><Valor v={a.total} /></td>]
                   }
                   return [
                     ...a.meses.map((m, j) => (
-                      <td key={`${a.ano}-${m}`} className={`${TD_FOOT} ${j === 0 ? SEP : ''}`}><Valor v={a.totalPorMes[j]} /></td>
+                      <td key={`${a.ano}-${m}`} className={`${TD_FOOT} ${j === 0 ? sep(a.ano) : ''}`}><Valor v={a.totalPorMes[j]} /></td>
                     )),
                     <td
                       key={`${a.ano}-total`}
                       data-total-ano={a.ano}
-                      className={`${TD_FOOT} ${BG_TOTAL_FOOT} ${a.meses.length === 0 ? SEP : ''} ${cantoFinal}`}
+                      className={`${TD_FOOT} ${BG_TOTAL_FOOT} ${a.meses.length === 0 ? sep(a.ano) : SEP} ${cantoFinal}`}
                     ><Valor v={a.total} /></td>,
                   ]
                 })}
