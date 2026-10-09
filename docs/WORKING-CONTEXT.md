@@ -9,28 +9,32 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-08 (fechamento da v6.3.0 — PR #299, aguardando merge).
+Última atualização: 2026-10-09 (v6.3.0 — 2ª rodada de ajustes do Yan no PR #299, aguardando merge).
 
 ---
 
-## Em voo — v6.3.0 "Gastos de Marketing" (branch `feat/v6-3-0-gastos-marketing`, **PR #299**)
+## Em voo — v6.3.0 "Despesas de Marketing" (branch `feat/v6-3-0-gastos-marketing`, **PR #299**)
 
 Seção nova **Marketing** na sidebar → `/marketing/gastos`, área própria `marketing/gastos` (Administrador,
-Financeiro, Máquina · verificação). Gastos **pagos** do bloco MKT da DRE de caixa, lido do mapa vivo — o
-total da página **é** a linha "(-) Despesas Marketing" (ADR-0182; paridade 34/34 células provada e coberta
-em `rpc-contrato.test.ts`). **Migration 0292 APLICADA em 08/10** (aditiva, backup-gate verde) — banco na
-**0292**, livre **0293**; ADR livre **0183**. Out-briefing
-`docs/briefings/WT_Finance_Out_Briefing_v6-3-0_Gastos_Marketing.md`; medição `docs/auditoria/v6-3-0-m0-marketing.md`.
+Financeiro, Máquina · verificação). Despesas **pagas** do bloco MKT da DRE de caixa, lido do mapa vivo — o
+total da página **é** a linha "(-) Despesas Marketing" (ADR-0182; paridade provada e coberta em
+`rpc-contrato.test.ts`). Card "Proporção sobre a Receita Bruta" = o % de Marketing da grade da DRE
+(**competência**), via `get_marketing_proporcao_receita` (só o %, nunca a receita absoluta).
+**Migrations 0292 (08/10) e 0293 (09/10) APLICADAS** (aditivas, backup-gate verde) — banco na **0293**,
+livre **0294**; ADR livre **0183**. Out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-3-0_Gastos_Marketing.md`;
+medição `docs/auditoria/v6-3-0-m0-marketing.md`.
 
-> Decidido pelo Yan em 08/10 (GATE 0/1): despesa **negativa** como na DRE; sem filtro de setor; sem conta
-> bancária na tela; carimbo vigente sem "· parcial"; mapa vivo sem exceção (Endomarketing/Feiras ficam
-> fora). Ajustes de 09/10 com o PR aberto: texto "Despesas" no lugar de "Gastos" (rota/área/RPCs mantêm
-> `gastos`; rótulo da área no editor de roles segue "Gastos" — trocar exige UPDATE destrutivo, opcional);
-> sem "Dados de…", sem aviso de cartão, sem seleção de mês (só pills de ano); subtítulo "Detalhamento
-> das despesas de marketing" — não re-propor.
+> Decidido pelo Yan (08–09/10, não re-propor): despesa **negativa** como na DRE; sem filtro de setor; sem
+> conta bancária; carimbo vigente sem "· parcial"; mapa vivo sem exceção (Endomarketing/Feiras fora);
+> texto "Despesas" (rota/área/RPCs mantêm `gastos`; rótulo da área no editor de roles segue "Gastos" —
+> trocar = UPDATE destrutivo, opcional); sem "Dados de…", sem aviso de cartão, sem seleção de mês;
+> subtítulo "Detalhamento das despesas de marketing"; pills de ano com seleção múltipla (até 3); card
+> único de total + card de proporção (igual à DRE, competência, visível a todos com a área — o % permite
+> estimar a receita, aceito); "Despesas mensais" jan–dez com barra por ano + painel Total ao lado;
+> tabela/ranking somam os anos; seção "Lançamentos" e Exportar **removidos**.
 > 🔴 **Yan:** mergear o PR; criar a role/usuário da gestora (só `marketing/gastos`) pelo editor; conferir no
-> ar (só-Marketing entra direto, um mês × DRE, 2024 sem "zero" no ano anterior, Exportar, celular); mostrar
-> à gestora e anotar o que ela pedir.
+> ar (só-Marketing entra direto; um mês × DRE de caixa; proporção × gráfico da DRE; 2025+2026 juntos;
+> contraste do cinza mais claro; celular); mostrar à gestora e anotar o que ela pedir.
 
 ## Em produção — v6.2.3 "Vendas por Produto: venda sem Setor deixa de derrubar a carga" (PR #297, mergeado 08/10 às 11:34)
 
@@ -292,7 +296,7 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 | | |
 |---|---|
 | Produção | **v6.1.0** (PR #283, mergeado 29/09 às 14:41) · banco na **0288** |
-| Última migration aplicada | **0292** (v6.3.0 — área `marketing/gastos` + RPCs de Gastos de Marketing) · próxima livre: **0293** |
+| Última migration aplicada | **0293** (v6.3.0 — proporção de Marketing sobre a Receita Bruta para a área `marketing/gastos`) · próxima livre: **0294** |
 | Último ADR | **0182** (v6.3.0 — recorte de marketing derivado da DRE de caixa) · próximo livre: **0183** |
 | Suíte | **1.804 verdes + 6 skipped**, 104 arquivos; 1 falha por fixture ausente (`oraculo-demonstrativo`, B-38) — fechamento da v6.1.0, 29/09 |
 

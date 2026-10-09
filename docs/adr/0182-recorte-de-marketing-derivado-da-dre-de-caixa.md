@@ -69,6 +69,23 @@ dos casos de contrato). A lista de colunas expostas é **fechada** (data, catego
 descrição, nº do documento, valor): a conta bancária fica fora porque os cartões carregam o nome do
 portador.
 
+## Adendo (09/10/2026) — o card "Proporção sobre a Receita Bruta" é de competência
+
+O Yan pediu, com o PR aberto, um card com a proporção de Marketing sobre a Receita Bruta "igual ao
+gráfico da DRE". Esse gráfico (`grade-proporcao.tsx`) é do regime de **competência**, por ano. É a única
+exceção ao "caixa" da página, e a tela a declara ("Regime de competência · igual ao gráfico da DRE").
+
+- **Mesma regra, outra árvore.** `get_marketing_proporcao_receita(p_ano)` (migration **0293**) lê as
+  mesmas views que `get_dre_competencia_mensal` lê (`financeiro.vw_dre_competencia`,
+  `financeiro.vw_dre_comp_expansao`) e repete só o filtro (`sub_chave='MKT' AND NOT excluida`) e as somas
+  (`RB_H` pela expansão). Ela não chama a RPC da DRE porque `app.exigir_acesso` lê o JWT da requisição, e
+  quem só tem `marketing/gastos` seria negado. A DRE não foi tocada. O caso de contrato compara o % com o
+  ponto MKT de `montarProporcaoGrupos`, a função que monta o gráfico da DRE.
+- **Só o percentual sai do banco.** Devolver os centavos de Marketing e de Receita Bruta entregaria a
+  receita **exata** a quem só tem Marketing (achado MÉDIO do `revisor-db`). O Yan aceitou que o
+  percentual permite *estimar* a receita, mas não aceitou o valor absoluto. Custo: a divisão fica em dois
+  lugares (SQL e `av.ts`), amarrados pelo contrato.
+
 ## Quando revisitar
 
 - Se a gestora pedir uma visão que a DRE de caixa não tem (competência, "a pagar", orçado, setor): é

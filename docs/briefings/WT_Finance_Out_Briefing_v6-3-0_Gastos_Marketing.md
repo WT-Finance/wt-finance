@@ -22,15 +22,19 @@ predicado do Realizado de `get_dre_mensal`, sem lista de categorias. Por constru
 Remapear uma categoria no editor da DRE a tira da página (ou a põe) no mesmo instante. A prova foi feita
 em transação revertida: mover "Licença de Software (MKT)" para ADM a tira, e a paridade fecha nos dois estados.
 
-**A página ("Despesas de Marketing", subtítulo "Detalhamento das despesas de marketing") tem:**
+**A página ("Despesas de Marketing", subtítulo "Detalhamento das despesas de marketing"), no estado final
+depois das duas rodadas de ajustes do Yan (§2), tem:**
 
 - cabeçalho com o carimbo "Última atualização";
-- filtro só por ano (pills): ano fechado = ano inteiro, ano corrente = até o mês atual;
-- indicadores com Δ% sobre o mesmo período do ano anterior, usando a mesma função da DRE;
-- série mensal, com o ano em barras e o ano anterior tracejado;
-- tabela categoria × mês com % do total;
-- ranking de fornecedores, em que o clique filtra os lançamentos;
-- tabela de lançamentos com filtros, busca, ordenação e **Exportar** (xlsx com as mesmas linhas da tela).
+- pills de ano com **seleção múltipla** (até 3; ano fechado = ano inteiro, ano corrente = até o mês atual);
+- card **"Total de despesas no período"** (soma dos anos selecionados);
+- card **"Proporção sobre a Receita Bruta"**: barras por ano, o mesmo % do gráfico da DRE, em regime de
+  **competência** (migration 0293);
+- gráfico **"Despesas mensais"**: jan–dez, uma barra por ano selecionado em cinzas progressivos, e um
+  painel "Total" ao lado com escala própria;
+- tabela categoria × mês e ranking de fornecedores, somando os anos selecionados.
+
+A seção "Lançamentos" e o Exportar **saíram** na 2ª rodada.
 
 A despesa aparece **negativa, como na DRE**. Cada card degrada sozinho.
 
@@ -69,6 +73,40 @@ implementado:
 3. **Subtítulo** passou a ser "Detalhamento das despesas de marketing". A nota "Mesmo número da linha de
    Marketing da DRE de caixa. Gasto em negativo, como na DRE." saiu da tela. A paridade continua garantida
    por construção e pelo contrato (ADR-0182).
+
+### 2ª rodada de ajustes do Yan com o PR aberto (09/10)
+
+Pedidos:
+
+1. pills de ano selecionáveis em conjunto;
+2. o 1º card vira "Total de despesas no período", e o 2º e o 3º viram um único "Proporção sobre a Receita
+   Bruta", repetindo o gráfico da DRE em barras e respeitando as pills;
+3. "Despesas mensais" com os anos anteriores como barras à esquerda, em cinzas mais claros, meses até
+   dezembro e uma coluna Total;
+4. excluir "Lançamentos".
+
+O pedido pulava o item 4 da numeração; o Yan não indicou item faltante.
+
+Decisões do Yan (perguntadas, 09/10):
+
+- **Proporção igual à DRE**: competência, um valor por ano. O resto da página segue caixa, e o card diz
+  "Regime de competência · igual ao gráfico da DRE".
+- **Visível a todos com a área** `marketing/gastos`. O % permite estimar a receita, e o risco foi aceito.
+- **Total num painel ao lado**, com escala própria. No mesmo eixo ele achataria os meses.
+- **Multi-ano soma os anos** na tabela e no ranking.
+
+Consequências técnicas:
+
+- **Migration 0293:** `get_marketing_proporcao_receita` lê as mesmas views da RPC de competência da DRE,
+  sem tocar a DRE (ADR-0182, adendo). Devolve **só o %**: o `revisor-db` mostrou que devolver os centavos
+  entregaria a receita exata.
+- **Saíram com "Lançamentos":** Exportar, filtro por clique no ranking, cards de Δ% e mês corrente, e os
+  módulos `exportar`, `lancamentos` e `indicadores`. `get_marketing_gastos_lancamentos` fica sem uso na
+  tela, mantida e coberta pelo contrato.
+- **Limites de seleção:** até 3 anos, mínimo 1. A 4ª pill fica bloqueada com o motivo acessível.
+- **Falha parcial:** se um ano falha, os cards que somam fecham em erro em vez de somar só parte.
+- **Cores por posição entre os selecionados:** o mais recente usa `--action-primary`, os anteriores
+  `--action-soft-border` e `--text-subtle`. A escala desceu um degrau por contraste (ALTO do `revisor`).
 
 ### Técnicas (orquestrador)
 
@@ -157,6 +195,16 @@ Depois dos ajustes de 09/10:
 - knip com zero achados na seção;
 - grep sem texto visível com "Gasto", "Dados de", "Cartão lançado" ou "DRE de caixa", e sem select de mês.
 
+Depois da 2ª rodada de 09/10 (multi-ano, proporção, sem Lançamentos) e das correções do `revisor`:
+
+- build, `tsc` e `lint` verdes;
+- `npm test`: **2.149 passam**, 6 pulados, com o mesmo único vermelho do Demonstrativo (B-38);
+- knip com zero achados na seção;
+- contrato de Marketing contra produção: 33 casos verdes, depois da 0293 aplicada;
+- conferido por grep: escala de cinzas com `--action-primary`/`--action-soft-border`/`--text-subtle`,
+  `aria-describedby` + sr-only + "máx. 3 anos" na pill, aviso de falha parcial no mensal, e
+  `rotuloAnoNoTotal` (`2026*`) com a nota no painel Total.
+
 Notas da rodada de correções:
 
 - A coluna "Nº do documento" passou de 128 para 152 px, e a largura mínima da tabela de 1040 para 1064, para
@@ -180,14 +228,18 @@ Notas da rodada de correções:
    - abrir com o usuário só-Marketing: ele entra direto em `/marketing/gastos` e não vê nada do Financeiro;
    - comparar um mês da página com a linha de Marketing da DRE de caixa;
    - ver 2024, que não deve mostrar o ano anterior como zero;
-   - ver 2026: os textos dizem "Despesas", só as pills de ano, sem "Dados de" e sem aviso de cartão;
-   - testar o Exportar (`despesas-marketing-….xlsx`);
+   - selecionar 2025 + 2026: total, mensal (barras lado a lado, cinzas), painel Total (`2026*`), tabela e ranking somando;
+   - conferir o card de proporção contra o gráfico "Proporção sobre a Receita Bruta" da DRE (2024 −6,2%, 2025 −5,0%, 2026* −6,8% em 09/10);
+   - textos dizem "Despesas"; sem "Dados de", sem aviso de cartão, sem "Lançamentos";
    - abrir em largura de celular.
 3. **Mostrar à gestora e anotar o que ela pedir.** É o insumo da próxima versão da seção.
-4. **Opcional:** trocar o rótulo da área no editor de roles de "Gastos" para "Despesas". É um `UPDATE` de
+4. **Decidir o sentido do eixo do card de proporção** (achado MÉDIO do `revisor`, 2ª rodada). Hoje as
+   barras descem do zero, coerentes com "Despesas mensais". O gráfico da DRE **inverte** o eixo ("mais
+   despesa = mais alto"). Os dois gráficos leem o mesmo número em sentidos opostos. Trocar é uma linha.
+5. **Opcional:** trocar o rótulo da área no editor de roles de "Gastos" para "Despesas". É um `UPDATE` de
    uma linha em `app.rbac_areas` mais o `AREA_INFO` no código, em migration destrutiva aplicada por você
    em TTY. Basta pedir.
-5. Observações de dado da M0 para o Financeiro (não são da página):
+6. Observações de dado da M0 para o Financeiro (não são da página):
    - empresas do grupo aparecem como fornecedor no MKT;
    - descrições sugerem categoria trocada no Monde: "Licença de Software (ADM)", "Tecnicópias", "iCloud+".
 
@@ -237,6 +289,63 @@ vacuosa e o timeout com folga.
 - os oráculos de ingestão **quebram com ENOENT** quando falta fixture, em vez de se auto-pular como o
   README de `tests/fixtures/ingestao/` afirma.
 
+### revisor-db (0293, antes da aplicação) — APROVADA COM RESSALVAS, sem CRÍTICO/ALTO
+
+**Conferido por leitura:** equivalência com a 0260 (numerador MKT, denominador `RB_H` pela expansão,
+janela, fonte de `cobertura_ate`), exatidão em centavos, grants e guard.
+
+| Achado | Destino |
+|---|---|
+| MÉDIO — `rbCentavos` entregaria a Receita Bruta exata a quem só tem Marketing | **Corrigido antes de aplicar**: a RPC devolve só `pct`. O contrato compara com `montarProporcaoGrupos` com tolerância de 1e-9 p.p. |
+| BAIXO — `mes_num` sem piso | **Corrigido**: `BETWEEN 1 AND v_meses` |
+| BAIXO — virada de ano (base sem o ano novo) | Registrado no header |
+| BAIXO — guard sem `service_role` | Registrado; a verificação REST cobre |
+| BAIXO — snapshots separados no teste | Registrado (mesma ressalva da 0292) |
+
+**Ensaio em transação revertida:** % ≡ grade em 2024 (−6,22), 2025 (−5,00) e 2026 (10 meses, −6,76);
+a resposta traz só `ano`, `coberturaAte`, `mesesCobertos`, `parcial` e `pct`.
+
+**Aplicada em 09/10** com backup-gate verde (81/81). Contrato contra produção: **33 casos de Marketing
+verdes**, incluindo a proporção ≡ grade e `anon`/sem-área negados nas 4 RPCs. A allowlist derivada bate
+com o grant.
+
+### revisor (2ª rodada, e7d3778..b951d8f) — APROVADO COM RESSALVAS
+
+| Achado | Destino |
+|---|---|
+| ALTO — 3º tom (`--band`) invisível sobre branco | **Corrigido**: escala um degrau abaixo |
+| MÉDIO — ramo vazio do mensal escondia falha parcial | **Corrigido** |
+| MÉDIO — motivo da 4ª pill só em `title` | **Corrigido**: `aria-describedby` + sr-only + hint visível; sem hover de clicável |
+| MÉDIO — painel Total sem marcar o ano parcial | **Corrigido**: `2026*` com nota |
+| MÉDIO — eixo da proporção desce, e o da DRE é invertido | **Decisão do Yan pendente** (§6) |
+| BAIXO — seleção sem pill em falha total | **Corrigido** |
+| BAIXO — cor do mesmo ano divergente sob falha | **Corrigido** |
+| BAIXO — folga do rótulo em passos, não em pixels | Registrado; confortável nos valores atuais |
+| BAIXO — `fmtAxisPct` × `fmtAv` no mesmo gráfico | Registrado; mesma mistura da DRE |
+| BAIXO — tabela com 12 colunas e um ano parcial ("—" em nov/dez) | Registrado; segue o "até Dez" pedido |
+| BAIXO — `limitar` antes do filtro de pills | Registrado; improvável com a base atual |
+| BAIXO — estados do total reimplementam o card | Registrado |
+
+### Incidente: o computador reiniciou no meio da 2ª rodada (09/10)
+
+**O que aconteceu:**
+
+- O reinício deixou 47 arquivos de objeto vazios no repositório. A ref local do ramo apontava para um
+  commit vazio (`2c25dd4`) e o reflog terminava com uma linha corrompida.
+- O índice desta worktree referenciava objetos vazios.
+- Nenhuma alteração não commitada se perdeu (os arquivos estavam íntegros no disco). A 0293 ainda não
+  tinha sido aplicada.
+
+**Recuperação:**
+
+1. Backup dos arquivos da worktree em `$CLAUDE_JOB_DIR/tmp/backup-reboot/`.
+2. A ref do ramo voltou ao último commit íntegro, `61df214`, igual ao remoto (com o valor antigo
+   conferido).
+3. Os 47 objetos vazios foram apagados. Todos eram de 09/10 e tinham zero bytes, então nada se perdeu.
+4. O índice foi refeito a partir do disco.
+5. A checagem de integridade ficou limpa no repositório inteiro, e as outras worktrees e o checkout raiz
+   não foram afetados.
+
 ## 8. Backlog gerado
 
 - `rotaInicial`: 10 áreas continuam sem entrada (`financeiro/dre`, `financeiro/acervo{,/gestao}`,
@@ -269,10 +378,15 @@ Consultas declaradas nos retornos. Só o `implementador` consulta pelo protocolo
 | implementador — M4a (exportar) | 1 | 3 | sim |
 | implementador — M4b (contrato) | 2 | 1 e 3 | sim, nas duas |
 | implementador — correções do revisor | 1 | 3 | sim |
+| implementador — ajustes 09/10 (Despesas, só ano, subtítulo) | 0 | — | — |
+| implementador — 2ª rodada: front multi-ano | 2 | 1 e 3 | sim, nas duas |
+| implementador — 2ª rodada: migration 0293 + contrato | 2 | 1 e 3 | sim, nas duas |
+| implementador — 2ª rodada: card de proporção | 2 | 1 e 3 | sim, nas duas |
+| implementador — correções do revisor (2ª rodada) | 1 | 1 | sim |
 | revisor-db, revisor | 0 | — | — |
 | exploradores (plan mode, tipo Explore) | não declarado | — | — |
 
-Total: **9 consultas, todas do `implementador`, todas no protocolo (momentos 1 e 3), todas mudaram o
+Total: **16 consultas (9 na 1ª fase + 7 nos ajustes de 09/10), todas do `implementador`, todas no protocolo (momentos 1 e 3), todas mudaram o
 rumo**. Nenhuma consulta do orquestrador.
 
 **Custo:** pendência do Yan (`/usage`).
