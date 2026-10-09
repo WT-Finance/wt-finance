@@ -41,7 +41,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
       {
         tipo: 'novidade',
         texto:
-          'A gestão de marketing passa a acompanhar no Janus os gastos pagos da área, com o mesmo número da ' +
+          'A gestão de marketing passa a acompanhar no Janus as despesas pagas da área, com o mesmo número da ' +
           'linha de Marketing da DRE: por mês, por categoria, por fornecedor e lançamento a lançamento, com ' +
           'comparação com o ano anterior e exportação para Excel. A seção "Marketing" tem acesso próprio — ' +
           'a gestora não precisa de acesso ao Financeiro.',

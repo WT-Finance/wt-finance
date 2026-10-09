@@ -8,20 +8,20 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ## [6.3.0] — 2026-10-08
 
-MINOR · **Gastos de Marketing: seção nova "Marketing" com os gastos pagos da área.** Out-briefing
+MINOR · **Despesas de Marketing: seção nova "Marketing" com as despesas pagas da área.** Out-briefing
 `docs/briefings/WT_Finance_Out_Briefing_v6-3-0_Gastos_Marketing.md`. Migration **0292** (aditiva, aplicada).
 ADR-0182. Medição da M0: `docs/auditoria/v6-3-0-m0-marketing.md`.
 
 ### Adicionado
 
-- **Seção "Marketing" na sidebar** com a subaba "Gastos" (`/marketing/gastos`) e área RBAC própria
+- **Seção "Marketing" na sidebar** com a subaba "Despesas" (`/marketing/gastos`) e área RBAC própria
   `marketing/gastos` (grupo "Marketing"), concedida a Administrador, Financeiro e Máquina · verificação.
   Quem tem só essa área entra direto na página (`PRIORIDADE_INICIAL`).
-- **Página de gastos pagos** (cabeçalho com carimbo e cobertura, indicadores com Δ% sobre o ano
-  anterior, série mensal ano × ano anterior, tabela categoria × mês, ranking de fornecedores que filtra
-  os lançamentos, tabela de lançamentos com filtros, busca e ordenação). Gasto com o **sinal da DRE**
-  (negativo). Aviso "Cartão lançado até DD/MM" no ano corrente (a fatura do cartão entra com atraso).
-  Cada card degrada sozinho.
+- **Página "Despesas de Marketing"** — detalhamento das despesas pagas (carimbo de atualização,
+  indicadores com Δ% sobre o mesmo período do ano anterior, série mensal ano × ano anterior, tabela
+  categoria × mês, ranking de fornecedores que filtra os lançamentos, tabela de lançamentos com filtros,
+  busca e ordenação). Filtro só por ano (pills): ano fechado = ano inteiro; ano corrente = até o mês
+  atual. Despesa com o **sinal da DRE** (negativa). Cada card degrada sozinho.
 - **Exportar** (xlsx) das linhas que a tabela de lançamentos mostra, no mesmo recorte e filtros.
 - **RPCs** `get_marketing_gastos_resumo|fornecedores|lancamentos(p_ano)` com o predicado do Realizado de
   `get_dre_mensal` (bloco `MKT` do `dre_categoria_map` vivo) — o total da página **é** a linha

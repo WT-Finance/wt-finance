@@ -22,9 +22,12 @@ em `rpc-contrato.test.ts`). **Migration 0292 APLICADA em 08/10** (aditiva, backu
 **0292**, livre **0293**; ADR livre **0183**. Out-briefing
 `docs/briefings/WT_Finance_Out_Briefing_v6-3-0_Gastos_Marketing.md`; medição `docs/auditoria/v6-3-0-m0-marketing.md`.
 
-> Decidido pelo Yan em 08/10 (GATE 0/1): gasto **negativo** como na DRE; sem filtro de setor; sem conta
-> bancária na tela; carimbo vigente sem "· parcial" + aviso "Cartão lançado até"; mapa vivo sem exceção
-> (Endomarketing/Feiras ficam fora) — não re-propor.
+> Decidido pelo Yan em 08/10 (GATE 0/1): despesa **negativa** como na DRE; sem filtro de setor; sem conta
+> bancária na tela; carimbo vigente sem "· parcial"; mapa vivo sem exceção (Endomarketing/Feiras ficam
+> fora). Ajustes de 09/10 com o PR aberto: texto "Despesas" no lugar de "Gastos" (rota/área/RPCs mantêm
+> `gastos`; rótulo da área no editor de roles segue "Gastos" — trocar exige UPDATE destrutivo, opcional);
+> sem "Dados de…", sem aviso de cartão, sem seleção de mês (só pills de ano); subtítulo "Detalhamento
+> das despesas de marketing" — não re-propor.
 > 🔴 **Yan:** mergear o PR; criar a role/usuário da gestora (só `marketing/gastos`) pelo editor; conferir no
 > ar (só-Marketing entra direto, um mês × DRE, 2024 sem "zero" no ano anterior, Exportar, celular); mostrar
 > à gestora e anotar o que ela pedir.

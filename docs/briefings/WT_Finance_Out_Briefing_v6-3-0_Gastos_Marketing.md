@@ -22,17 +22,17 @@ predicado do Realizado de `get_dre_mensal`, sem lista de categorias. Por constru
 Remapear uma categoria no editor da DRE a tira da página (ou a põe) no mesmo instante. A prova foi feita
 em transação revertida: mover "Licença de Software (MKT)" para ADM a tira, e a paridade fecha nos dois estados.
 
-**A página tem:**
+**A página ("Despesas de Marketing", subtítulo "Detalhamento das despesas de marketing") tem:**
 
-- cabeçalho com o carimbo "Última atualização" e a cobertura;
-- aviso "Cartão lançado até DD/MM" no ano corrente;
+- cabeçalho com o carimbo "Última atualização";
+- filtro só por ano (pills): ano fechado = ano inteiro, ano corrente = até o mês atual;
 - indicadores com Δ% sobre o mesmo período do ano anterior, usando a mesma função da DRE;
 - série mensal, com o ano em barras e o ano anterior tracejado;
 - tabela categoria × mês com % do total;
 - ranking de fornecedores, em que o clique filtra os lançamentos;
 - tabela de lançamentos com filtros, busca, ordenação e **Exportar** (xlsx com as mesmas linhas da tela).
 
-O gasto aparece **negativo, como na DRE**. Cada card degrada sozinho.
+A despesa aparece **negativa, como na DRE**. Cada card degrada sozinho.
 
 ## 2. Decisões
 
@@ -43,7 +43,7 @@ O gasto aparece **negativo, como na DRE**. Cada card degrada sozinho.
 | D1 | Sem filtro de setor: o dado não tem setor, nem no fato nem no raw. |
 | D2 | **Gasto com o sinal da DRE (negativo)**. Foi decisão do Yan contra a recomendação da M0, que era exibir positivo. Um estorno aparece positivo. |
 | D3 | Lista FECHADA de colunas: data, categoria, fornecedor, descrição, nº do documento, valor. **Sem conta bancária**, porque os cartões "WCLARA - <nome>" carregam o nome do portador. |
-| D4 | Carimbo vigente ("Última atualização…"), **sem "· parcial"** (decisões da v6.0.0, out-briefing :212/:280, que a invariante 10 do briefing contrariava). Em vez disso, o aviso de defasagem do cartão. |
+| D4 | Carimbo vigente ("Última atualização…"), **sem "· parcial"** (decisões da v6.0.0, out-briefing :212/:280, que a invariante 10 do briefing contrariava). O aviso de defasagem do cartão, que entrou no lugar do "· parcial", **saiu nos ajustes de 09/10** (ver abaixo). |
 | D5 | Mapa vivo sem exceção. Endomarketing (RHB) e Feiras/Eventos (COM) ficam fora, salvo remapeamento no editor da DRE, que muda a DRE junto. |
 
 **GATE 1:** o Yan aprovou o mockup sem ajustes. Nos 4 pontos que ele podia decidir, ficou como estava
@@ -53,6 +53,22 @@ implementado:
 - 3º KPI = último mês do recorte;
 - carimbo no formato longo;
 - Marketing logo depois de Gestão de Pessoas na sidebar.
+
+### Ajustes do Yan com o PR aberto (09/10)
+
+1. **"Gastos" → "Despesas"** em todo texto visível (título "Despesas de Marketing", subaba "Despesas",
+   cards, dicas, planilha e nome do arquivo exportado), para alinhar com o nome do grupo de categoria na
+   DRE. Identificadores técnicos ficam: rota `/marketing/gastos`, área `marketing/gastos` e
+   `get_marketing_gastos_*`. Renomeá-los seria só cosmético e, no caso da área, exigiria migration
+   destrutiva. O **rótulo da área no editor de roles continua "Gastos"**: ele vem de `app.rbac_areas`, e
+   trocá-lo é um `UPDATE` em dado existente, que pelo regime do projeto é destrutivo (humano em TTY).
+   Fica como opção do Yan.
+2. **Saíram** a linha "Dados de … a …" (cobertura), o aviso "Cartão lançado até …" (cabeçalho, tile do
+   mês e dica do Δ) e a **seleção de meses**. Ficaram só as pills de ano, com o recorte fixo no padrão
+   do ano. A RPC continua devolvendo `cobertura` e `ultimaDataCartao`; só não são mais exibidos.
+3. **Subtítulo** passou a ser "Detalhamento das despesas de marketing". A nota "Mesmo número da linha de
+   Marketing da DRE de caixa. Gasto em negativo, como na DRE." saiu da tela. A paridade continua garantida
+   por construção e pelo contrato (ADR-0182).
 
 ### Técnicas (orquestrador)
 
@@ -132,6 +148,15 @@ implementado:
   - não há rótulo "(-) Despesas Marketing" fixo nos componentes;
   - "Sem dados em AAAA" aparece no tile.
 
+Depois dos ajustes de 09/10:
+
+- build, `tsc` e `lint` verdes;
+- `npm test`: 2.113 passam, com o mesmo único vermelho do Demonstrativo. São 5 a menos porque saíram
+  os testes de `normalizarRecorte`/`ajustarRecorte`/`fmtDiaMes`, que só serviam ao seletor de mês e ao
+  aviso de cartão;
+- knip com zero achados na seção;
+- grep sem texto visível com "Gasto", "Dados de", "Cartão lançado" ou "DRE de caixa", e sem select de mês.
+
 Notas da rodada de correções:
 
 - A coluna "Nº do documento" passou de 128 para 152 px, e a largura mínima da tabela de 1040 para 1064, para
@@ -155,11 +180,14 @@ Notas da rodada de correções:
    - abrir com o usuário só-Marketing: ele entra direto em `/marketing/gastos` e não vê nada do Financeiro;
    - comparar um mês da página com a linha de Marketing da DRE de caixa;
    - ver 2024, que não deve mostrar o ano anterior como zero;
-   - ver 2026, com o aviso de cartão;
-   - testar o Exportar;
+   - ver 2026: os textos dizem "Despesas", só as pills de ano, sem "Dados de" e sem aviso de cartão;
+   - testar o Exportar (`despesas-marketing-….xlsx`);
    - abrir em largura de celular.
 3. **Mostrar à gestora e anotar o que ela pedir.** É o insumo da próxima versão da seção.
-4. Observações de dado da M0 para o Financeiro (não são da página):
+4. **Opcional:** trocar o rótulo da área no editor de roles de "Gastos" para "Despesas". É um `UPDATE` de
+   uma linha em `app.rbac_areas` mais o `AREA_INFO` no código, em migration destrutiva aplicada por você
+   em TTY. Basta pedir.
+5. Observações de dado da M0 para o Financeiro (não são da página):
    - empresas do grupo aparecem como fornecedor no MKT;
    - descrições sugerem categoria trocada no Monde: "Licença de Software (ADM)", "Tecnicópias", "iCloud+".
 
