@@ -299,7 +299,7 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
                 </tr>
               ))}
             </tbody>
-            <tfoot className="[&_td]:bg-zinc-50">
+            <tfoot className="[&_td]:bg-band">
               <tr>
                 <td className={`${TD_FOOT} sticky left-0 z-10 ${SEP_CATEGORIA} ${BG_TOTAL_FOOT} rounded-bl-lg`}>Total de marketing</td>
                 {tabela.anos.flatMap(a => {
