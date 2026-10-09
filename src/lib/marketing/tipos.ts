@@ -10,18 +10,20 @@
 //
 // ── SINAL (decisão firme do Yan) ────────────────────────────────────────────────────────
 // A despesa é NEGATIVA, exatamente como na DRE — o `valor` vem da base SEM inversão. Um estorno
-// (raro) é POSITIVO e reduz a despesa. Vale em toda a página: KPIs, tabelas, ranking, lançamentos
+// (raro) é POSITIVO e reduz a despesa. Vale em toda a página: total, gráficos, tabela, ranking
 // e tooltip. Nenhum componente aplica `Math.abs` para exibir valor monetário.
 //
 // ── RPCs (migration 0292) ───────────────────────────────────────────────────────────────
 //   get_marketing_gastos_resumo(p_ano)       → ResumoMarketing    (por mês × categoria + metadados)
 //   get_marketing_gastos_fornecedores(p_ano) → FornecedoresMarketing (por mês × fornecedor)
 //   get_marketing_gastos_lancamentos(p_ano)  → LancamentoMkt[]    (o ano inteiro; sem paginação)
-// O resumo é chamado duas vezes (ano selecionado e anterior). Filtro, ordenação e busca da
-// tabela de lançamentos rodam no CLIENTE: ~230 linhas/ano não justificam paginar no servidor.
+// As RPCs são POR ANO. A página lê `resumo` e `fornecedores` de CADA ano selecionado (1 a 3, em
+// paralelo); a de lançamentos deixou de ter uso na tela (a seção "Lançamentos" saiu) — o schema e
+// o tipo `LancamentoMkt` ficam por causa de `src/lib/rpc-contrato.test.ts` e da fixture.
 // O contrato de completude (Σ lançamentos ≡ Σ resumo ≡ Σ fornecedores ≡ linha da DRE) é provado
 // contra a base viva em `src/lib/rpc-contrato.test.ts`; `src/lib/marketing/completude.test.ts`
-// prova a mesma identidade sobre a fixture (`src/lib/marketing/fixture.ts`).
+// prova a mesma identidade — agora também somando VÁRIOS anos — sobre a fixture
+// (`src/lib/marketing/fixture.ts`).
 
 /** Resultado de uma leitura que pode falhar sem derrubar a página (invariante 14: a seção
  *  degrada, a página fica de pé). Espelha o `allSettled` por item feito em `page.tsx`. */
@@ -84,16 +86,22 @@ export interface FornecedoresMarketing {
   porMesFornecedor: LinhaMesFornecedor[]
 }
 
-/** O que a página recebe do servidor. Cada leitura falha sozinha (`Carregado`). */
-export interface DadosGastosMarketing {
+/** As duas leituras de UM ano selecionado. Cada uma falha sozinha (`Carregado`). */
+export interface LeituraAno {
   ano: number
+  resumo: Carregado<ResumoMarketing>
+  fornecedores: Carregado<FornecedoresMarketing>
+}
+
+/** O que a página recebe do servidor. Array (não Map/Set): atravessa a fronteira RSC → client. */
+export interface DadosGastosMarketing {
+  /** Anos selecionados (1 a 3), em ordem CRESCENTE — o gráfico desenha do mais antigo ao mais recente. */
+  anos: number[]
   /** Anos com pill, em ordem crescente. */
   anosDisponiveis: number[]
   /** Hoje em São Paulo ('YYYY-MM-DD'), calculado NO SERVIDOR — o cliente não usa relógio
    *  próprio (mismatch de hidratação e fuso). Define o mês corrente. */
   hoje: string
-  resumo: Carregado<ResumoMarketing>
-  resumoAnterior: Carregado<ResumoMarketing>
-  fornecedores: Carregado<FornecedoresMarketing>
-  lancamentos: Carregado<LancamentoMkt[]>
+  /** Uma leitura por ano selecionado, na MESMA ordem de `anos`. */
+  porAno: LeituraAno[]
 }

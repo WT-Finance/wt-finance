@@ -4,8 +4,10 @@
 //  • CUBOS a partir de lançamentos (`cuboCategorias`, `cuboFornecedores`): o que as RPCs de resumo
 //    e de fornecedores fazem em SQL. A página lê os cubos prontos da RPC; aqui eles servem à
 //    fixture (`fixture.ts`) e à prova de completude (`completude.test.ts`).
-//  • LEITURAS do recorte sobre os cubos (`totalNoRecorte`, `serieMensal`, `tabelaPorCategoria`,
-//    `rankingFornecedores`): o que os cards mostram. Valem igual para o cubo da fixture e da RPC.
+//  • LEITURAS do recorte sobre os cubos (`totalNoRecorte`, `tabelaPorCategoria`,
+//    `rankingFornecedores`) e do PERÍODO de vários anos (`totalDoPeriodo`, `totaisPorAno`,
+//    `serieMensalMultiAno`, `tabelaPorCategoriaPeriodo`, `rankingFornecedoresPeriodo`): o que os
+//    cards mostram. Valem igual para o cubo da fixture e da RPC.
 //
 // DINHEIRO: somas em CENTAVOS INTEIROS e divididas por 100 uma vez no fim. Somar ~230 floats em
 // ordens diferentes (por categoria, por fornecedor, por mês) divergiria em 1e-10, e a identidade
@@ -108,32 +110,73 @@ export function totalDoMes(linhas: readonly ComMes[], mes: number): { valor: num
   return totalNoRecorte(linhas, { mesIni: mes, mesFim: mes })
 }
 
-export interface PontoMensal {
-  mes: number
-  /** `null` = mês ainda não alcançado no ano selecionado (ausência ≠ zero). */
-  atual: number | null
-  /** `null` = ano anterior indisponível (a leitura falhou, ou o ano não tem histórico na base).
-   *  Com o ano disponível, mês sem gasto é zero REAL. */
-  anterior: number | null
+// ── Vários anos: o PERÍODO da página é a união dos recortes dos anos selecionados ───────────
+//
+// Cada ano selecionado é uma `FatiaAno`: o cubo daquele ano (a RPC é por ano) + o recorte DELE
+// (ano fechado = jan–dez; ano corrente = jan até o mês corrente). Tudo o que soma anos passa por
+// `linhasDoPeriodo` — que mantém só as linhas dentro do recorte do SEU ano — e reaproveita as
+// funções de um ano só sobre o civil jan–dez. Assim a completude (Σ categoria ≡ Σ fornecedor ≡
+// total do período) vale por construção: os três leem a MESMA lista de linhas.
+
+export interface FatiaAno<L> {
+  ano: number
+  recorte: Recorte
+  linhas: readonly L[]
 }
 
-/**
- * Série do gráfico: um ponto por mês do recorte, ano selecionado × mesmo mês do ano anterior.
- * `limiteAtual` é o último mês alcançado do ano selecionado (`mesLimite`); depois dele o valor
- * é `null`, não zero. `anterior === null` quando o ano anterior está indisponível (a leitura
- * falhou ou o ano não consta em `anosDisponiveis`): a referência é omitida, nunca zerada.
- */
-export function serieMensal(
-  atual: readonly ComMes[],
-  anterior: readonly ComMes[] | null,
-  r: Recorte,
-  limiteAtual: number,
-): PontoMensal[] {
-  return mesesDoRecorte(r).map(mes => ({
-    mes,
-    atual: mes <= limiteAtual ? totalDoMes(atual, mes).valor : null,
-    anterior: anterior ? totalDoMes(anterior, mes).valor : null,
-  }))
+/** Janeiro a dezembro: o eixo de meses da tabela e do gráfico (o recorte já foi aplicado antes). */
+const ANO_CIVIL: Recorte = { mesIni: 1, mesFim: 12 }
+
+const MESES_DO_ANO: readonly number[] = mesesDoRecorte(ANO_CIVIL)
+
+const porAnoCrescente = <L>(fatias: readonly FatiaAno<L>[]): FatiaAno<L>[] =>
+  [...fatias].sort((a, b) => a.ano - b.ano)
+
+/** As linhas de todos os anos que caem no recorte do SEU ano (a ordem dos anos não importa). */
+export function linhasDoPeriodo<L extends ComMes>(fatias: readonly FatiaAno<L>[]): L[] {
+  return fatias.flatMap(f => f.linhas.filter(l => mesNoRecorte(l.mes, f.recorte)))
+}
+
+/** Total e nº de lançamentos do período: a soma dos anos selecionados, cada um no seu recorte. */
+export function totalDoPeriodo(fatias: readonly FatiaAno<ComMes>[]): { valor: number; qtd: number } {
+  return totalNoRecorte(linhasDoPeriodo(fatias), ANO_CIVIL)
+}
+
+export interface TotalDoAno {
+  ano: number
+  valor: number
+  qtd: number
+}
+
+/** Total de cada ano no seu recorte (o painel "Total" do gráfico), do mais antigo ao mais recente. */
+export function totaisPorAno(fatias: readonly FatiaAno<ComMes>[]): TotalDoAno[] {
+  return porAnoCrescente(fatias).map(f => ({ ano: f.ano, ...totalNoRecorte(f.linhas, f.recorte) }))
+}
+
+export interface PontoMensal {
+  mes: number
+  /** Um valor por ano, na ordem de `SerieMensal.anos`. `null` = mês ainda não alcançado naquele
+   *  ano (sem barra — ausência ≠ zero); mês alcançado e sem gasto é zero REAL. */
+  valores: (number | null)[]
+}
+
+export interface SerieMensal {
+  /** Anos da série, do mais antigo ao mais recente — a ordem das barras, lado a lado. */
+  anos: number[]
+  /** SEMPRE 12 pontos (jan–dez), inclusive no ano corrente. */
+  pontos: PontoMensal[]
+}
+
+/** Série do gráfico "Despesas mensais": 12 meses × uma barra por ano. */
+export function serieMensalMultiAno(fatias: readonly FatiaAno<ComMes>[]): SerieMensal {
+  const ordenadas = porAnoCrescente(fatias)
+  return {
+    anos: ordenadas.map(f => f.ano),
+    pontos: MESES_DO_ANO.map(mes => ({
+      mes,
+      valores: ordenadas.map(f => (mesNoRecorte(mes, f.recorte) ? totalDoMes(f.linhas, mes).valor : null)),
+    })),
+  }
 }
 
 interface LinhaCategoria {
@@ -237,4 +280,17 @@ export function rankingFornecedores(linhas: readonly LinhaMesFornecedor[], r: Re
     }
   }).sort((a, b) => a.valor - b.valor || a.rotulo.localeCompare(b.rotulo, 'pt-BR'))
   return { linhas: resultado, total, qtd: dentro.reduce((a, l) => a + l.qtd, 0) }
+}
+
+// ── Tabela e ranking do PERÍODO (vários anos somados) ───────────────────────────────────────
+
+/** Categoria × mês (jan–dez) somando os meses dos anos selecionados; "% do total" sobre o total
+ *  do período (um denominador só). */
+export function tabelaPorCategoriaPeriodo(fatias: readonly FatiaAno<LinhaMesCategoria>[]): TabelaCategorias {
+  return tabelaPorCategoria(linhasDoPeriodo(fatias), ANO_CIVIL)
+}
+
+/** Ranking de fornecedores somando os anos selecionados; "(sem fornecedor)" segue entrando. */
+export function rankingFornecedoresPeriodo(fatias: readonly FatiaAno<LinhaMesFornecedor>[]): RankingFornecedores {
+  return rankingFornecedores(linhasDoPeriodo(fatias), ANO_CIVIL)
 }

@@ -1,8 +1,10 @@
 // Recorte de meses da página "Despesas de Marketing" (v6.3.0) — módulo PURO, sem I/O nem React.
 //
-// O recorte é DERIVADO do ano (pills, vem da URL) — não há seleção de meses: `recortePadrao`
-// devolve jan–dez num ano fechado e jan até o mês corrente no ano em curso (`mesIni..mesFim`,
-// 1..12, inclusivo nas duas pontas). Todos os cards respeitam o mesmo recorte.
+// O recorte é DERIVADO de cada ano selecionado (pills, vem da URL) — não há seleção de meses:
+// `recortePadrao(ano, hoje)` devolve jan–dez num ano fechado e jan até o mês corrente no ano em
+// curso (`mesIni..mesFim`, 1..12, inclusivo nas duas pontas). O PERÍODO da página é a união dos
+// recortes dos anos selecionados (cada ano no seu): `rotuloPeriodoAnos` o descreve para os
+// subtítulos dos cards.
 // "Hoje" é SEMPRE parâmetro ('YYYY-MM-DD', calculado no servidor) — nunca `Date.now()` aqui.
 
 export const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'] as const
@@ -49,16 +51,24 @@ export function mesesDoRecorte(r: Recorte): number[] {
   return Array.from({ length: n }, (_, i) => r.mesIni + i)
 }
 
-/** "Jan–Set" (ou só "Mar" quando é um mês) — o rótulo que os subtítulos dos cards declaram. */
-export function rotuloRecorte(r: Recorte): string {
-  const ini = MESES_ABREV[r.mesIni - 1]
-  const fim = MESES_ABREV[r.mesFim - 1]
-  return r.mesIni === r.mesFim ? ini : `${ini}–${fim}`
+/** "2025 + 2026" — os anos selecionados, do mais antigo ao mais recente. */
+export function rotuloAnos(anos: readonly number[]): string {
+  return [...anos].sort((a, b) => a - b).join(' + ')
 }
 
-/** "Jan–Set/2026". */
-export function rotuloRecorteAno(r: Recorte, ano: number): string {
-  return `${rotuloRecorte(r)}/${ano}`
+/**
+ * O período da página, legível: "2025 + 2026 (até out)". Ano fechado entra só pelo número (jan–dez);
+ * o ano corrente, quando ainda não chegou a dezembro, acrescenta "(até <mês>)" — o sufixo vem no
+ * fim porque o ano corrente é sempre o mais recente dos selecionados. Ano corrente em dezembro é
+ * um ano inteiro e não leva sufixo.
+ */
+export function rotuloPeriodoAnos(anos: readonly number[], hoje: string): string {
+  const ordenados = [...anos].sort((a, b) => a - b)
+  const corrente = anoDaData(hoje)
+  const base = rotuloAnos(ordenados)
+  if (!ordenados.includes(corrente)) return base
+  const fim = mesLimite(corrente, hoje)
+  return fim < 12 ? `${base} (até ${MESES_ABREV[fim - 1].toLowerCase()})` : base
 }
 
 /** Soma `dias` a uma data 'YYYY-MM-DD' por componentes UTC (calendário puro, sem fuso). */

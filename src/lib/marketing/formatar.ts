@@ -1,6 +1,6 @@
 // Formatação de percentuais da página "Despesas de Marketing" (v6.3.0) — módulo PURO.
 // Valores monetários usam `fmtBRL2`/`<ValorContabil>` de `@/lib/fmt` e `@/components/shared`;
-// aqui só o que o `fmt` central não cobre (percentual com sinal e travessão).
+// aqui só o que o `fmt` central não cobre (percentual com travessão).
 
 import { fmtAxisPct } from '@/lib/fmt'
 
@@ -13,11 +13,4 @@ function umaCasa(v: number): number {
 /** Percentual sem sinal explícito de positivo: "12,3%"; `null` → travessão. */
 export function fmtPct(v: number | null): string {
   return v === null ? '—' : fmtAxisPct(umaCasa(v), 1)
-}
-
-/** Variação com sinal: "+12,3%" / "-12,3%" / "0,0%"; `null` → travessão. */
-export function fmtDeltaPct(v: number | null): string {
-  if (v === null) return '—'
-  const r = umaCasa(v)
-  return `${r > 0 ? '+' : ''}${fmtAxisPct(r, 1)}`
 }

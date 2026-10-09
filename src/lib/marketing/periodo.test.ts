@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   anoDaData, mesDaData, mesLimite, mesNoRecorte, mesesDoRecorte,
-  recortePadrao, rotuloRecorte, rotuloRecorteAno, somarDias,
+  recortePadrao, rotuloAnos, rotuloPeriodoAnos, somarDias,
 } from './periodo'
 
 const HOJE = '2026-10-08'
@@ -27,7 +27,7 @@ describe('mesLimite / recortePadrao', () => {
   })
 })
 
-describe('mesesDoRecorte / mesNoRecorte / rótulos', () => {
+describe('mesesDoRecorte / mesNoRecorte', () => {
   it('lista os meses inclusivos nas duas pontas', () => {
     expect(mesesDoRecorte({ mesIni: 3, mesFim: 5 })).toEqual([3, 4, 5])
     expect(mesesDoRecorte({ mesIni: 7, mesFim: 7 })).toEqual([7])
@@ -35,11 +35,33 @@ describe('mesesDoRecorte / mesNoRecorte / rótulos', () => {
     expect(mesNoRecorte(5, { mesIni: 3, mesFim: 5 })).toBe(true)
     expect(mesNoRecorte(6, { mesIni: 3, mesFim: 5 })).toBe(false)
   })
+})
 
-  it('rótulo do recorte para os subtítulos', () => {
-    expect(rotuloRecorte({ mesIni: 1, mesFim: 9 })).toBe('Jan–Set')
-    expect(rotuloRecorte({ mesIni: 3, mesFim: 3 })).toBe('Mar')
-    expect(rotuloRecorteAno({ mesIni: 1, mesFim: 9 }, 2026)).toBe('Jan–Set/2026')
+describe('período multi-ano: rótulo e meses de cada ano', () => {
+  it('rotuloAnos: do mais antigo ao mais recente, mesmo recebido fora de ordem', () => {
+    expect(rotuloAnos([2026])).toBe('2026')
+    expect(rotuloAnos([2025, 2026])).toBe('2025 + 2026')
+    expect(rotuloAnos([2026, 2024, 2025])).toBe('2024 + 2025 + 2026')
+  })
+
+  it('ano corrente sozinho ou somado: sufixo "(até <mês>)"; ano fechado: só o número', () => {
+    expect(rotuloPeriodoAnos([2026], HOJE)).toBe('2026 (até out)')
+    expect(rotuloPeriodoAnos([2025, 2026], HOJE)).toBe('2025 + 2026 (até out)')
+    expect(rotuloPeriodoAnos([2024, 2025, 2026], HOJE)).toBe('2024 + 2025 + 2026 (até out)')
+    expect(rotuloPeriodoAnos([2025], HOJE)).toBe('2025')
+    expect(rotuloPeriodoAnos([2024, 2025], HOJE)).toBe('2024 + 2025')
+  })
+
+  it('o sufixo acompanha o mês corrente; em dezembro o ano corrente já é inteiro', () => {
+    expect(rotuloPeriodoAnos([2026], '2026-01-05')).toBe('2026 (até jan)')
+    expect(rotuloPeriodoAnos([2025, 2026], '2026-03-31')).toBe('2025 + 2026 (até mar)')
+    expect(rotuloPeriodoAnos([2025, 2026], '2026-12-10')).toBe('2025 + 2026')
+  })
+
+  it('os meses de cada ano do período: fechado jan–dez, corrente jan até o mês de hoje', () => {
+    const recortes = [2025, 2026].map(a => mesesDoRecorte(recortePadrao(a, HOJE)))
+    expect(recortes[0]).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+    expect(recortes[1]).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
   })
 })
 

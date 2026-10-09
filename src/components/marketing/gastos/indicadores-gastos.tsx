@@ -1,30 +1,30 @@
-import type { ReactNode } from 'react'
+'use client'
+
+import { useMemo, type ReactNode } from 'react'
 import { WalletMinimal } from 'lucide-react'
 import EmptyState from '@/components/shared/empty-state'
 import ErroCarregamento from '@/components/shared/erro-carregamento'
-import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import { fmtBRL2 } from '@/lib/fmt'
-import { fmtDeltaPct } from '@/lib/marketing/formatar'
-import type { Indicadores } from '@/lib/marketing/indicadores'
-import { MESES_ABREV, rotuloRecorteAno, type Recorte } from '@/lib/marketing/periodo'
+import { totalDoPeriodo, type FatiaAno } from '@/lib/marketing/agregacao'
+import { rotuloAnos } from '@/lib/marketing/periodo'
+import type { LinhaMesCategoria } from '@/lib/marketing/tipos'
 
-// Componente B — três indicadores: despesa no período, o MESMO período do ano anterior (com o Δ%)
-// e o mês corrente.
+// Componente B — indicadores. Hoje UM card: "Total de despesas no período" (a soma dos anos
+// selecionados, cada um no seu recorte). Ao lado dele há um SLOT (`proporcao`) para o card
+// "Proporção sobre a Receita Bruta", que outra missão monta: ausente, nada é renderizado e o total
+// ocupa só a sua coluna.
 //
 // Tile local, no molde do `Tile` do inventário, e não `KpiCard`: o `KpiCard` exige `KpiMetrica`
-// do domínio de Performance e desenha seta ↑/↓ — que aqui reforçaria a leitura errada (ver a
-// convenção do Δ no cabeçalho de `@/lib/marketing/indicadores`).
+// do domínio de Performance e desenha seta ↑/↓ — que aqui reforçaria a leitura errada de uma
+// despesa (negativa, no sinal da DRE).
 //
-// Valores com 2 casas (`fmtBRL2`), não abreviados: a página existe para bater ao centavo com
-// a linha de Marketing da DRE, e "R$ -85,3 k" esconderia exatamente a diferença que se procura.
+// Valor com 2 casas (`fmtBRL2`), não abreviado: a página existe para bater ao centavo com a
+// linha de Marketing da DRE, e "R$ -85,3 k" esconderia exatamente a diferença que se procura.
+//
+// Soma de anos: se algum ano selecionado não carregou, o card mostra o erro nomeando o ano — o
+// total dos que chegaram, sob o rótulo "no período", seria um número errado.
 
 const plural = (n: number) => `${n} ${n === 1 ? 'lançamento' : 'lançamentos'}`
-
-const AJUDA_DELTA =
-  'Variação calculada como na DRE: sobre valores COM SINAL (despesa é negativa), com o módulo da ' +
-  'base no denominador. Despesa MAIOR que a do ano anterior dá variação NEGATIVA — desfavorável; ' +
-  'despesa menor dá variação positiva — favorável. É o mesmo Δ% que a DRE mostra para a linha ' +
-  'Marketing nos mesmos meses.'
 
 function Tile({ rotulo, valor, children }: {
   rotulo: string
@@ -49,81 +49,42 @@ function Tile({ rotulo, valor, children }: {
   )
 }
 
-function LinhaDelta({ ind, ano }: { ind: Indicadores; ano: number }) {
-  if (ind.deltaPct === null || ind.sentido === null) {
-    return <p>Sem base de comparação em {ano - 1}.</p>
-  }
-  const cor =
-    ind.sentido === 'favoravel' ? 'text-success'
-    : ind.sentido === 'desfavoravel' ? 'text-danger'
-    : 'text-[var(--text-muted)]'
-  const palavra =
-    ind.sentido === 'favoravel' ? 'favorável'
-    : ind.sentido === 'desfavoravel' ? 'desfavorável'
-    : 'estável'
-  return (
-    <p className="flex flex-wrap items-center gap-x-1.5 text-xs">
-      <span className="inline-flex items-center gap-x-1.5">
-        <span className={`font-semibold tabular-nums ${cor}`}>{fmtDeltaPct(ind.deltaPct)}</span>
-        <span className={cor}>{palavra}</span>
-        <span className="text-[var(--text-subtle)]">vs {ano - 1}</span>
-      </span>
-      <GatilhoAjuda rotulo="Variação" texto={AJUDA_DELTA} />
-    </p>
-  )
-}
-
 interface Props {
-  ano: number
-  recorte: Recorte
-  /** `null` = o resumo do ano selecionado não carregou. */
-  ind: Indicadores | null
-  /** O resumo do ano ANTERIOR falhou (o resto dos indicadores segue). */
-  anteriorFalhou: boolean
+  /** Rótulo do período ("2025 + 2026 (até out)"). */
+  periodo: string
+  /** Os anos selecionados que carregaram, cada um no seu recorte. */
+  fatias: readonly FatiaAno<LinhaMesCategoria>[]
+  /** Anos selecionados cujo resumo falhou (vazio = o total é completo). */
+  anosFalha: readonly number[]
+  /** Slot do card "Proporção sobre a Receita Bruta" — opcional; ausente, não renderiza nada. */
+  proporcao?: ReactNode
 }
 
-export default function IndicadoresGastos({ ano, recorte, ind, anteriorFalhou }: Props) {
-  if (ind === null) {
-    return <ErroCarregamento mensagem="Não foi possível carregar os indicadores — recarregue a página." />
+export default function IndicadoresGastos({ periodo, fatias, anosFalha, proporcao }: Props) {
+  const total = useMemo(() => totalDoPeriodo(fatias), [fatias])
+
+  if (anosFalha.length > 0) {
+    return (
+      <ErroCarregamento
+        mensagem={`Não foi possível carregar os indicadores de ${rotuloAnos(anosFalha)} — recarregue a página.`}
+      />
+    )
   }
-  if (ind.periodo.qtd === 0) {
+  if (total.qtd === 0) {
     return (
       <div className="rounded-xl bg-white shadow-sm">
-        <EmptyState icon={WalletMinimal} message={`Sem lançamentos pagos em ${rotuloRecorteAno(recorte, ano)}.`} />
+        <EmptyState icon={WalletMinimal} message={`Sem lançamentos pagos em ${periodo}.`} />
       </div>
     )
   }
 
-  const { mesRef } = ind
-  const rotuloMes = `${MESES_ABREV[mesRef.mes - 1]}/${String(ano).slice(2)}`
-
+  // Mesma grade de três colunas de antes: um card ocupa 1/3, dois ocupam 2/3 (total + proporção).
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <Tile rotulo={`Despesa no período · ${rotuloRecorteAno(recorte, ano)}`} valor={fmtBRL2(ind.periodo.valor)}>
-        {anteriorFalhou && !ind.anteriorSemHistorico
-          ? <p>Variação indisponível.</p>
-          : <LinhaDelta ind={ind} ano={ano} />}
-        <p>{plural(ind.periodo.qtd)}</p>
+      <Tile rotulo={`Total de despesas no período · ${periodo}`} valor={fmtBRL2(total.valor)}>
+        <p>{plural(total.qtd)}</p>
       </Tile>
-
-      {/* Ano anterior sem histórico na base: "—" (ausência de dado), nunca "R$ 0,00 · 0 lançamentos". */}
-      <Tile
-        rotulo={`Mesmo período de ${ano - 1} · ${rotuloRecorteAno(recorte, ano - 1)}`}
-        valor={ind.anoAnterior ? fmtBRL2(ind.anoAnterior.valor) : '—'}
-      >
-        {ind.anoAnterior
-          ? <p>{plural(ind.anoAnterior.qtd)}</p>
-          : ind.anteriorSemHistorico
-            ? <p>Sem dados em {ano - 1}</p>
-            : <ErroCarregamento mensagem={`Não foi possível carregar ${ano - 1}.`} />}
-      </Tile>
-
-      <Tile
-        rotulo={mesRef.corrente ? `Mês corrente · ${rotuloMes}` : `Último mês do período · ${rotuloMes}`}
-        valor={fmtBRL2(mesRef.valor)}
-      >
-        <p>{plural(mesRef.qtd)}</p>
-      </Tile>
+      {proporcao}
     </div>
   )
 }

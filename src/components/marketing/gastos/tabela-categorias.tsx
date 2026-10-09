@@ -9,13 +9,18 @@ import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { ValorContabil } from '@/components/shared/valor-contabil'
 import { Card } from '@/components/ui/card'
 import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
-import { pctDoTotal, tabelaPorCategoria } from '@/lib/marketing/agregacao'
+import { pctDoTotal, tabelaPorCategoriaPeriodo, type FatiaAno } from '@/lib/marketing/agregacao'
 import { fmtPct } from '@/lib/marketing/formatar'
-import { MESES_ABREV, rotuloRecorteAno, type Recorte } from '@/lib/marketing/periodo'
-import type { ResumoMarketing } from '@/lib/marketing/tipos'
+import { MESES_ABREV, rotuloAnos } from '@/lib/marketing/periodo'
+import type { LinhaMesCategoria } from '@/lib/marketing/tipos'
 import CabecalhoCard from './cabecalho-card'
 
-// Componente D — categoria × mês, com total e "% do total de marketing".
+// Componente D — categoria × mês (jan–dez), com total e "% do total de marketing".
+//
+// Soma os anos selecionados: a célula de um mês é a soma desse mês em cada ano (cada ano no seu
+// recorte), o total é o do período e a "% do total" é sobre o total do período. Se algum ano
+// selecionado não carregou, o card mostra o erro nomeando o ano — somar só os que chegaram daria
+// uma tabela cujo total não bate com a DRE.
 //
 // Tabela densa com scroll interno (skill `tabela-densa`): `border-separate border-spacing-0`,
 // fundo opaco NAS CÉLULAS, borda horizontal nas células (nunca no <tr>), cantos do cabeçalho
@@ -24,8 +29,9 @@ import CabecalhoCard from './cabecalho-card'
 // rola num `ScrollAutoHide eixo="x"` — a 1ª coluna (categoria) fica presa à esquerda.
 //
 // Valor = `<ValorContabil>`, no sinal da DRE (sem `Math.abs`). Célula "—" = a categoria não teve
-// lançamento naquele mês (ausência), distinta de "R$ 0,00" (houve lançamento e somou zero).
-// "% do total": UM denominador (o total de marketing do recorte) para todas as linhas; razão de
+// lançamento naquele mês em nenhum dos anos (ausência — inclusive o mês que o ano corrente ainda
+// não alcançou), distinta de "R$ 0,00" (houve lançamento e somou zero).
+// "% do total": UM denominador (o total de marketing do período) para todas as linhas; razão de
 // dois negativos é positiva e as linhas somam 100%.
 
 const LARG_CATEGORIA = 224
@@ -37,24 +43,23 @@ const TH = CARD_TABELA_TH
 const TD = 'py-2 px-3 text-xs border-b border-zinc-50'
 
 interface Props {
-  ano: number
-  recorte: Recorte
-  /** `null` = o resumo não carregou. */
-  resumo: ResumoMarketing | null
+  /** Rótulo do período ("2025 + 2026 (até out)"). */
+  periodo: string
+  /** Os anos selecionados que carregaram, cada um no seu recorte. */
+  fatias: readonly FatiaAno<LinhaMesCategoria>[]
+  /** Anos selecionados cujo resumo falhou (vazio = a tabela é completa). */
+  anosFalha: readonly number[]
 }
 
-export default function TabelaCategorias({ ano, recorte, resumo }: Props) {
-  const tabela = useMemo(
-    () => (resumo ? tabelaPorCategoria(resumo.porMesCategoria, recorte) : null),
-    [resumo, recorte],
-  )
-  const subtitulo = `${rotuloRecorteAno(recorte, ano)} · % sobre o total de marketing do período`
+export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) {
+  const tabela = useMemo(() => tabelaPorCategoriaPeriodo(fatias), [fatias])
+  const subtitulo = `${periodo} · % sobre o total de marketing do período`
 
-  if (!tabela) {
+  if (anosFalha.length > 0) {
     return (
       <Card>
         <CabecalhoCard titulo="Por categoria" />
-        <ErroCarregamento mensagem="Não foi possível carregar o resumo por categoria." />
+        <ErroCarregamento mensagem={`Não foi possível carregar o resumo por categoria de ${rotuloAnos(anosFalha)}.`} />
       </Card>
     )
   }
@@ -62,7 +67,7 @@ export default function TabelaCategorias({ ano, recorte, resumo }: Props) {
     return (
       <Card>
         <CabecalhoCard titulo="Por categoria" subtitulo={subtitulo} />
-        <EmptyState icon={Tags} message={`Sem lançamentos pagos em ${rotuloRecorteAno(recorte, ano)}.`} />
+        <EmptyState icon={Tags} message={`Sem lançamentos pagos em ${periodo}.`} />
       </Card>
     )
   }
@@ -98,7 +103,7 @@ export default function TabelaCategorias({ ano, recorte, resumo }: Props) {
                     % do total
                     <GatilhoAjuda
                       rotulo="% do total"
-                      texto="Participação da categoria no total de marketing do recorte (um único denominador para todas as linhas). Despesa sobre despesa: a razão é positiva."
+                      texto="Participação da categoria no total de marketing do período (um único denominador para todas as linhas). Despesa sobre despesa: a razão é positiva."
                       ancoraDireita
                     />
                   </span>

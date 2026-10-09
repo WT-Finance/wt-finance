@@ -1,5 +1,4 @@
 import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
-import type { ResumoMarketing } from '@/lib/marketing/tipos'
 
 // Componente A — cabeçalho: título, subtítulo e o carimbo de última atualização.
 //
@@ -7,11 +6,12 @@ import type { ResumoMarketing } from '@/lib/marketing/tipos'
 // movimentação é de cadência HUMANA (upload da controladoria), e a régua de 45 min do cron do
 // Monde acusaria atraso quase sempre — alerta permanente é ruído. NÃO há sufixo "· parcial" no
 // mês corrente. A cobertura de datas e a defasagem do cartão (`ultimaDataCartao`) seguem no dado
-// da RPC, mas não são exibidas.
+// da RPC, mas não são exibidas. A última carga é GLOBAL (a RPC não filtra por ano): vale a do
+// resumo mais recente que carregou (`ultimaCargaDe`).
 
-export default function CabecalhoGastos({ resumo }: {
-  /** `null` = o resumo não carregou; o título fica, o carimbo some. */
-  resumo: ResumoMarketing | null
+export default function CabecalhoGastos({ ultimaCarga }: {
+  /** `null` = nenhum resumo carregou; o título fica, o carimbo some. */
+  ultimaCarga: string | null
 }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
@@ -20,9 +20,9 @@ export default function CabecalhoGastos({ resumo }: {
         <p className="mt-0.5 text-sm text-text-subtle">Detalhamento das despesas de marketing</p>
       </div>
 
-      {resumo && (
+      {ultimaCarga && (
         <div className="flex flex-col items-start gap-y-0.5 text-2xs sm:items-end">
-          <UltimaAtualizacao iso={resumo.ultimaCarga} iconSize={12} vigiarAtraso={false} />
+          <UltimaAtualizacao iso={ultimaCarga} iconSize={12} vigiarAtraso={false} />
         </div>
       )}
     </div>

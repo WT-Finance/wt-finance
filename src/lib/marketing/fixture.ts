@@ -7,18 +7,19 @@
 // DETERMINÍSTICA: um PRNG com semente = o ano. A mesma chamada devolve sempre os mesmos
 // lançamentos, então os testes podem confiar nela.
 //
-// Só os testes importam este arquivo (`completude.test.ts`, `schemas.test.ts`): a página monta
-// `DadosGastosMarketing` a partir das RPCs (`page.tsx`; contrato em `tipos.ts`, schemas em
-// `schemas.ts`). As variantes do `montarDadosFixture` forjam dois estados degradados:
-//   vazio → o ano selecionado não tem lançamento (cada card mostra o próprio estado vazio);
-//   erro  → o ranking por fornecedor falha; os outros cards seguem de pé.
+// Só os testes importam este arquivo (`completude.test.ts`, `schemas.test.ts`, `fatias.test.ts`):
+// a página monta `DadosGastosMarketing` a partir das RPCs (`page.tsx`; contrato em `tipos.ts`,
+// schemas em `schemas.ts`). As variantes do `montarDadosFixture` forjam estados degradados:
+//   vazio           → os anos selecionados não têm lançamento (cada card mostra o estado vazio);
+//   erro            → o ranking por fornecedor falha; os outros cards seguem de pé;
+//   erro-resumo-ano → o resumo de UM ano falha (quem soma anos tem de acusar, não somar parcial).
 //
 // Como a base real, a fixture NÃO tem lançamento antes de `ANO_MINIMO_FIXTURE`: o resumo de um
 // ano anterior a ele vem vazio e fora de `anosDisponiveis` (ausência de dado, não zero).
 
 import { cuboCategorias, cuboFornecedores } from './agregacao'
 import { anoDaData, mesLimite, somarDias } from './periodo'
-import type { DadosGastosMarketing, LancamentoMkt, ResumoMarketing } from './tipos'
+import type { DadosGastosMarketing, LancamentoMkt, LeituraAno, ResumoMarketing } from './tipos'
 
 /** Primeiro ano com dado na fixture (o dado real também começa em 2024). */
 const ANO_MINIMO_FIXTURE = 2024
@@ -168,27 +169,36 @@ function resumoDe(ano: number, lancamentos: LancamentoMkt[], hoje: string): Resu
   }
 }
 
-/** Monta o payload completo da página a partir da fixture. */
+/** Monta o payload completo da página a partir da fixture: uma leitura por ano selecionado. */
 export function montarDadosFixture(args: {
-  ano: number
+  /** Anos selecionados (1 a 3); o payload os devolve em ordem crescente, como a página. */
+  anos: readonly number[]
   hoje: string
-  estado: 'vazio' | 'erro' | null
+  /** `vazio`: nenhum ano selecionado tem lançamento. `erro`: o ranking por fornecedor falha em
+   *  todos os anos. `erro-resumo-ano`: o RESUMO do ano em `anoComFalha` falha (os outros anos e
+   *  o ranking seguem). */
+  estado: 'vazio' | 'erro' | 'erro-resumo-ano' | null
+  anoComFalha?: number
 }): DadosGastosMarketing {
-  const { ano, hoje, estado } = args
-
-  const lancAtual = estado === 'vazio' ? [] : gerarLancamentos(ano, hoje)
-  // Antes do 1º ano da base não há lançamento — como na RPC, o resumo vem vazio.
-  const lancAnterior = ano - 1 < ANO_MINIMO_FIXTURE ? [] : gerarLancamentos(ano - 1, hoje)
+  const { hoje, estado, anoComFalha } = args
+  const anos = [...args.anos].sort((a, b) => a - b)
 
   return {
-    ano,
+    anos,
     anosDisponiveis: anosDaFixture(hoje),
     hoje,
-    resumo: { ok: true, dados: resumoDe(ano, lancAtual, hoje) },
-    resumoAnterior: { ok: true, dados: resumoDe(ano - 1, lancAnterior, hoje) },
-    fornecedores: estado === 'erro'
-      ? { ok: false }
-      : { ok: true, dados: { ano, porMesFornecedor: cuboFornecedores(ano, lancAtual) } },
-    lancamentos: { ok: true, dados: lancAtual },
+    porAno: anos.map((ano): LeituraAno => {
+      // Antes do 1º ano da base não há lançamento — como na RPC, o resumo vem vazio.
+      const lancamentos = estado === 'vazio' || ano < ANO_MINIMO_FIXTURE ? [] : gerarLancamentos(ano, hoje)
+      return {
+        ano,
+        resumo: estado === 'erro-resumo-ano' && ano === anoComFalha
+          ? { ok: false }
+          : { ok: true, dados: resumoDe(ano, lancamentos, hoje) },
+        fornecedores: estado === 'erro'
+          ? { ok: false }
+          : { ok: true, dados: { ano, porMesFornecedor: cuboFornecedores(ano, lancamentos) } },
+      }
+    }),
   }
 }

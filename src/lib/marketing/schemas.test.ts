@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { montarDadosFixture } from './fixture'
+import { gerarLancamentos, montarDadosFixture } from './fixture'
 import {
   fornecedoresMarketingSchema,
   lancamentosMarketingSchema,
@@ -10,17 +10,22 @@ import {
 // `src/lib/rpc-contrato.test.ts`; aqui, o que dá para provar sem banco: o formato que a fixture
 // (que espelha o contrato de `tipos.ts`) produz passa, e o formato que o Postgres de fato
 // serializa — timestamptz com offset, chaves com `null`, arrays vazios — também.
+//
+// A página só LÊ `resumo` e `fornecedores` (um par por ano selecionado); o schema de lançamentos
+// segue coberto porque `rpc-contrato.test.ts` o usa contra a RPC viva.
 
 const HOJE = '2026-10-08'
 
 describe('schemas das RPCs de Gastos de Marketing', () => {
-  const d = montarDadosFixture({ ano: 2026, hoje: HOJE, estado: null })
+  const d = montarDadosFixture({ anos: [2025, 2026], hoje: HOJE, estado: null })
 
   it('o payload da fixture (mesmo contrato de tipos.ts) passa nos três schemas', () => {
-    if (!d.resumo.ok || !d.fornecedores.ok || !d.lancamentos.ok) throw new Error('fixture deveria carregar tudo')
-    expect(resumoMarketingSchema.safeParse(d.resumo.dados).success).toBe(true)
-    expect(fornecedoresMarketingSchema.safeParse(d.fornecedores.dados).success).toBe(true)
-    expect(lancamentosMarketingSchema.safeParse(d.lancamentos.dados).success).toBe(true)
+    for (const leitura of d.porAno) {
+      if (!leitura.resumo.ok || !leitura.fornecedores.ok) throw new Error('fixture deveria carregar tudo')
+      expect(resumoMarketingSchema.safeParse(leitura.resumo.dados).success).toBe(true)
+      expect(fornecedoresMarketingSchema.safeParse(leitura.fornecedores.dados).success).toBe(true)
+    }
+    expect(lancamentosMarketingSchema.safeParse(gerarLancamentos(2026, HOJE)).success).toBe(true)
   })
 
   it('resumo: ultimaCarga aceita ISO COM offset; ano vazio traz cobertura null e arrays []', () => {
@@ -36,9 +41,10 @@ describe('schemas das RPCs de Gastos de Marketing', () => {
   })
 
   it('resumo: chave AUSENTE reprova (drift), em vez de passar como undefined', () => {
-    if (!d.resumo.ok) throw new Error('fixture deveria carregar')
+    const resumo = d.porAno[1].resumo
+    if (!resumo.ok) throw new Error('fixture deveria carregar')
     for (const chave of ['ultimaDataCartao', 'anosDisponiveis', 'cobertura', 'ultimaCarga']) {
-      const copia: Record<string, unknown> = { ...d.resumo.dados }
+      const copia: Record<string, unknown> = { ...resumo.dados }
       delete copia[chave]
       expect(resumoMarketingSchema.safeParse(copia).success, `sem ${chave}`).toBe(false)
     }
