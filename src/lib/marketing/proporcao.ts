@@ -10,8 +10,8 @@
 //   PÁGINA TODA: o gráfico "Despesas mensais" (`SerieMensal`) colore pelos mesmos selecionados
 //   (`coresPorAno`), então a cor de um ano não muda conforme QUAL leitura/card falhou — nos dois
 //   gráficos o mesmo ano tem sempre a mesma cor.
-// • ANO PARCIAL: "2026*" + "N meses" (como a grade da DRE: `2026*` no eixo, "2026 · 10 meses" no
-//   tooltip). Só o ano corrente é parcial; ano fechado não leva sufixo.
+// • ANO PARCIAL: o eixo mostra só "2026*" e o tooltip mantém o detalhe ("2026 · 10 meses", como a
+//   grade da DRE); o "?" do card explica o `*`. Só o ano corrente é parcial; ano fechado não leva sufixo.
 // • `pct` null → sem barra e "—" (travessão cheio; o `fmtAv(null)` da DRE devolve en-dash, que aqui
 //   não serve — a especificação pede "—"). Zero é um valor real e NUNCA vira "—".
 // • LEITURA que falhou → fora das barras e listada em `anosFalha` (o card avisa, a página não cai).
@@ -30,7 +30,7 @@ export interface LeituraProporcao {
 
 interface BarraProporcao {
   ano: number
-  /** Texto do eixo X: "2025" · "2026* · 10 meses" · "2024 · —" (sem ponto). */
+  /** Texto do eixo X: "2025" · "2026*" · "2024 · —" (sem ponto). */
   rotuloEixo: string
   /** Texto do tooltip: "2025" · "2026 · 10 meses" (sem asterisco). */
   rotuloTooltip: string
@@ -75,7 +75,7 @@ export function barrasProporcao(
     const semPonto = pct === null
     barras.push({
       ano,
-      rotuloEixo: semPonto ? `${base} · —` : parcial ? `${base} · ${rotuloMeses(mesesCobertos)}` : base,
+      rotuloEixo: semPonto ? `${base} · —` : base,
       rotuloTooltip: parcial ? `${ano} · ${rotuloMeses(mesesCobertos)}` : String(ano),
       cor: cores[i],
       pct,

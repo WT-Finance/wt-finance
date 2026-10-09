@@ -72,9 +72,9 @@ export function rotuloPeriodoAnos(anos: readonly number[], hoje: string): string
 }
 
 // ── Ano PARCIAL (recorte menor que jan–dez) ─────────────────────────────────────────────────────
-// Mesma convenção do card de proporção (`proporcao.ts`): o ano em curso leva `*` no rótulo e uma
-// nota diz até onde vai. Só o ano corrente é parcial na prática, mas tudo aqui deriva do RECORTE —
-// nada supõe qual ano é.
+// Mesma convenção do card de proporção (`proporcao.ts`): o ano em curso leva `*` no rótulo (sem
+// nota ao lado — o tooltip e a ajuda do card dizem até onde vai). Só o ano corrente é parcial na
+// prática, mas tudo aqui deriva do RECORTE — nada supõe qual ano é.
 
 /** O recorte não cobre o ano civil inteiro. */
 export function recorteParcial(r: Recorte): boolean {
@@ -91,21 +91,6 @@ export function rotuloRecorte(r: Recorte): string {
 /** "2026*" quando o recorte do ano é parcial; "2025" num ano inteiro. */
 export function rotuloAnoNoTotal(ano: number, r: Recorte): string {
   return recorteParcial(r) ? `${ano}*` : String(ano)
-}
-
-/**
- * A nota que explica o `*`: "* jan–out". `null` quando nenhum ano é parcial. Se mais de um ano
- * parcial tiver recortes DIFERENTES, a nota nomeia cada um ("* 2025: jan–set · 2026: jan–out") —
- * senão o mesmo asterisco diria duas coisas.
- */
-export function notaRecortesParciais(
-  itens: readonly { ano: number; recorte: Recorte }[],
-): string | null {
-  const parciais = itens.filter(i => recorteParcial(i.recorte)).sort((a, b) => a.ano - b.ano)
-  if (parciais.length === 0) return null
-  const rotulos = new Set(parciais.map(i => rotuloRecorte(i.recorte)))
-  if (rotulos.size === 1) return `* ${[...rotulos][0]}`
-  return `* ${parciais.map(i => `${i.ano}: ${rotuloRecorte(i.recorte)}`).join(' · ')}`
 }
 
 /** Soma `dias` a uma data 'YYYY-MM-DD' por componentes UTC (calendário puro, sem fuso). */

@@ -17,7 +17,7 @@
 //   get_marketing_gastos_resumo(p_ano)       → ResumoMarketing    (por mês × categoria + metadados)
 //   get_marketing_gastos_fornecedores(p_ano) → FornecedoresMarketing (por mês × fornecedor)
 //   get_marketing_gastos_lancamentos(p_ano)  → LancamentoMkt[]    (o ano inteiro; sem paginação)
-// As RPCs são POR ANO. A página lê `resumo` e `fornecedores` de CADA ano selecionado (1 a 3, em
+// As RPCs são POR ANO. A página lê `resumo` e `fornecedores` de CADA ano selecionado (sem teto, em
 // paralelo); a de lançamentos deixou de ter uso na tela (a seção "Lançamentos" saiu) — o schema e
 // o tipo `LancamentoMkt` ficam por causa de `src/lib/rpc-contrato.test.ts` e da fixture.
 // O contrato de completude (Σ lançamentos ≡ Σ resumo ≡ Σ fornecedores ≡ linha da DRE) é provado
@@ -95,7 +95,7 @@ export interface LeituraAno {
 
 /** O que a página recebe do servidor. Array (não Map/Set): atravessa a fronteira RSC → client. */
 export interface DadosGastosMarketing {
-  /** Anos selecionados (1 a 3), em ordem CRESCENTE — o gráfico desenha do mais antigo ao mais recente. */
+  /** Anos selecionados (ao menos 1), em ordem CRESCENTE — o gráfico desenha do mais antigo ao mais recente. */
   anos: number[]
   /** Anos com pill, em ordem crescente. */
   anosDisponiveis: number[]

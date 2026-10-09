@@ -16,7 +16,7 @@ import TabelaCategorias from './tabela-categorias'
 // Container client da página "Despesas de Marketing" (v6.3.0). O servidor entrega o dado de CADA
 // ano selecionado (cada leitura pode falhar sozinha — `Carregado`); aqui mora só a navegação:
 //
-//  • ANOS    → URL (`?anos=2025,2026`, seleção múltipla de 1 a 3): cada ano é uma ida às RPCs, então
+//  • ANOS    → URL (`?anos=2025,2026`, seleção múltipla, sem teto): cada ano é uma ida às RPCs, então
 //              a seleção é navegação (`startTransition` + `scroll: false` — filtro no LUGAR, sem
 //              salto ao topo, com o conteúdo esmaecido enquanto o servidor responde). Não há estado
 //              local: tudo o que os cards mostram deriva de `dados`.

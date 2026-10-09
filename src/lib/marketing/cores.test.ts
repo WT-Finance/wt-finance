@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest'
-import { MAX_ANOS } from './anos'
 import { TONS_DO_ANO, coresDosAnos, coresPorAno } from './cores'
 
 describe('coresDosAnos — o mais recente na cor principal, os anteriores em cinzas mais claros', () => {
@@ -21,11 +20,20 @@ describe('coresDosAnos — o mais recente na cor principal, os anteriores em cin
     expect(coresDosAnos([2024, 2026])).toEqual(['var(--action-soft-border)', 'var(--action-primary)'])
   })
 
-  it('só tokens (nunca hex) e, com o teto de anos, nenhuma cor se repete', () => {
+  it('só tokens (nunca hex) e, com até 3 anos, nenhuma cor se repete', () => {
     expect(TONS_DO_ANO.every(c => /^var\(--[a-z-]+\)$/.test(c))).toBe(true)
-    expect(TONS_DO_ANO.length).toBeGreaterThanOrEqual(MAX_ANOS)
-    const cores = coresDosAnos([2024, 2025, 2026].slice(-MAX_ANOS))
+    expect(TONS_DO_ANO.length).toBe(3)
+    const cores = coresDosAnos([2024, 2025, 2026])
     expect(new Set(cores).size).toBe(cores.length)
+  })
+
+  it('SEM teto de anos: com mais de 3, os mais antigos REPETEM o tom mais claro (--text-subtle)', () => {
+    expect(coresDosAnos([2022, 2023, 2024, 2025, 2026])).toEqual([
+      'var(--text-subtle)', 'var(--text-subtle)', 'var(--text-subtle)',
+      'var(--action-soft-border)', 'var(--action-primary)',
+    ])
+    // Os três mais recentes mantêm a escada de sempre.
+    expect(coresDosAnos([2023, 2024, 2025, 2026]).slice(-3)).toEqual(coresDosAnos([2024, 2025, 2026]))
   })
 
   it('o tom mais claro NÃO é a banda (#E8E6E1 sumia como barra): fica em --text-subtle', () => {

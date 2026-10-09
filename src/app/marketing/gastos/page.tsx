@@ -15,8 +15,8 @@ import type { Carregado, DadosGastosMarketing, LeituraAno } from '@/lib/marketin
 //
 // Dado: 2 RPCs de leitura POR ANO (`get_marketing_gastos_resumo|fornecedores`), com o MESMO
 // predicado da DRE de caixa (bloco MKT, só realizado) — o total da página é a linha
-// "(-) Despesas Marketing" da DRE. A página lê as duas de CADA ano selecionado (1 a 3), todas em
-// paralelo. (`get_marketing_gastos_lancamentos` e o resumo do ano anterior deixaram de ser lidos:
+// "(-) Despesas Marketing" da DRE. A página lê as duas de CADA ano selecionado (sem teto de anos),
+// todas em paralelo. (`get_marketing_gastos_lancamentos` e o resumo do ano anterior deixaram de ser lidos:
 // a tela não tem mais tabela de lançamentos nem comparativo.) Junto vai a 3ª leitura por ano,
 // `get_marketing_proporcao_receita` (0293) — % de Marketing sobre a Receita Bruta por COMPETÊNCIA,
 // o mesmo número da grade da DRE — que alimenta o card "Proporção sobre a Receita Bruta".

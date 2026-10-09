@@ -9,10 +9,14 @@
 //   mais recente           → --action-primary      (#3F4144, Cool Gray escuro)
 //   1 posição para trás    → --action-soft-border  (#75777B, Cool Gray 9)
 //   2 posições para trás   → --text-subtle         (#ACA39A, Warm Gray 5 — o cinza neutro-quente canônico)
+//   3 ou mais para trás    → --text-subtle         (REPETE o tom mais claro: a escada tem 3 degraus)
 //
-// A cor segue a POSIÇÃO entre os selecionados (não a distância no calendário): com `2024 + 2026`
-// os dois anos recebem tons distintos e vizinhos, e três anos nunca colidem. O teto de
-// `MAX_ANOS` (3) é exatamente o número de tons.
+// A seleção de anos NÃO tem teto (todas as pills podem estar ligadas). Com até 3 anos nenhuma cor se
+// repete; com 4 ou mais, os anos mais antigos dividem o tom mais claro — a leitura continua sem
+// ambiguidade porque cada barra fica na ordem dos anos e a legenda/tooltip nomeiam o ano.
+//
+// A cor segue a POSIÇÃO entre os selecionados (não a distância no calendário): com `2024 + 2026` os
+// dois anos recebem tons distintos e vizinhos.
 //
 // QUEM ESCOLHE A COR: sempre estas funções, com a lista dos anos SELECIONADOS (não só dos que
 // carregaram) — a cor de um ano não pode mudar porque o resumo de outro ano falhou. Legenda,
@@ -25,7 +29,7 @@ export const TONS_DO_ANO = [
 ] as const
 
 /** Uma cor por ano, na ordem recebida (crescente): o último é a cor principal; os anteriores,
- *  tons mais claros. Mais anos que tons repete o mais claro (não acontece com `MAX_ANOS`). */
+ *  tons mais claros. Com mais anos que tons, os mais antigos repetem o mais claro. */
 export function coresDosAnos(anosCrescentes: readonly number[]): string[] {
   const n = anosCrescentes.length
   return anosCrescentes.map((_, i) => TONS_DO_ANO[Math.min(n - 1 - i, TONS_DO_ANO.length - 1)])

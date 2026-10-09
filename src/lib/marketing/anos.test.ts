@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  ANO_PISO, MAX_ANOS, alternarAno, anoBloqueado, anosDaUrl, anosDasPills, resolverAnos, serializarAnos,
+  ANO_PISO, alternarAno, anosDaUrl, anosDasPills, resolverAnos, serializarAnos,
 } from './anos'
 
 const CORRENTE = 2026
@@ -53,9 +53,9 @@ describe('anosDaUrl — parse do `?anos=` / `?ano=`', () => {
     expect(anosDaUrl({ anos: 'lixo', ano: '2025' }, CORRENTE)).toEqual([2025])
   })
 
-  it(`no máximo ${MAX_ANOS} anos: com mais, ficam os mais recentes`, () => {
-    expect(anosDaUrl({ anos: '2023,2024,2025,2026' }, CORRENTE)).toEqual([2024, 2025, 2026])
-    expect(anosDaUrl({ anos: '2020,2021,2022,2023' }, CORRENTE)).toEqual([2021, 2022, 2023])
+  it('SEM teto de anos: 4 ou mais passam inteiros, em ordem crescente', () => {
+    expect(anosDaUrl({ anos: '2023,2024,2025,2026' }, CORRENTE)).toEqual([2023, 2024, 2025, 2026])
+    expect(anosDaUrl({ anos: '2026,2022,2021,2023,2020' }, CORRENTE)).toEqual([2020, 2021, 2022, 2023, 2026])
   })
 })
 
@@ -119,8 +119,13 @@ describe('alternarAno — clique numa pill', () => {
     expect(alternarAno([2026], 2026)).toEqual([2026])
   })
 
-  it(`com ${MAX_ANOS} selecionados, um ano novo não entra`, () => {
-    expect(alternarAno([2024, 2025, 2026], 2023)).toEqual([2024, 2025, 2026])
+  it('SEM teto: com 3 ou mais selecionados, um ano novo entra (todas as pills podem estar ligadas)', () => {
+    expect(alternarAno([2024, 2025, 2026], 2023)).toEqual([2023, 2024, 2025, 2026])
+    expect(alternarAno([2021, 2022, 2024, 2026], 2023)).toEqual([2021, 2022, 2023, 2024, 2026])
+  })
+
+  it('com muitos anos, desligar um deles continua funcionando', () => {
+    expect(alternarAno([2022, 2023, 2024, 2025, 2026], 2024)).toEqual([2022, 2023, 2025, 2026])
   })
 
   it('não muta a entrada', () => {
@@ -130,13 +135,7 @@ describe('alternarAno — clique numa pill', () => {
   })
 })
 
-describe('anoBloqueado / serializarAnos', () => {
-  it('bloqueia a pill não selecionada só quando o teto foi atingido', () => {
-    expect(anoBloqueado([2025, 2026], 2024)).toBe(false)
-    expect(anoBloqueado([2024, 2025, 2026], 2023)).toBe(true)
-    expect(anoBloqueado([2024, 2025, 2026], 2025)).toBe(false) // a selecionada continua clicável
-  })
-
+describe('serializarAnos', () => {
   it('serializa em ordem crescente e sem repetição; ida e volta com o parse', () => {
     expect(serializarAnos([2026, 2025])).toBe('2025,2026')
     expect(serializarAnos([2025, 2025])).toBe('2025')

@@ -23,7 +23,8 @@ import CabecalhoCard from './cabecalho-card'
 // RPC; aqui só se desenha (montagem das barras e da escala: `@/lib/marketing/proporcao`).
 //
 // Regime DIFERENTE do resto da página: o total, os gráficos e as tabelas são pagos (caixa); esta
-// proporção é competência. O subtítulo diz isso para ninguém somar um com o outro.
+// proporção é competência. Não há subtítulo: quem diz isso (e o que significa o `*`) é o "?" ao lado
+// do título (`AJUDA`), para ninguém somar um com o outro.
 //
 // Sinal: o da DRE (despesa NEGATIVA) → as barras descem a partir da linha do zero, como o resto da
 // página, e o rótulo é o `fmtAv` da DRE (1 casa, negativo entre parênteses). O eixo NÃO é invertido
@@ -37,10 +38,11 @@ import CabecalhoCard from './cabecalho-card'
 const ALTURA = 190
 
 const AJUDA =
-  'Quanto o Marketing consumiu da Receita Bruta em cada ano, no regime de competência — o mesmo ' +
-  'número do grupo Marketing no gráfico "Proporção sobre a Receita Bruta" da DRE. O percentual é ' +
-  'negativo, como na coluna AV do demonstrativo (despesa), e a barra desce a partir do zero. O ano ' +
-  'corrente conta só os meses já cobertos pela base (marcado com * e o número de meses). ' +
+  'Quanto o Marketing consumiu da Receita Bruta em cada ano. Este card é por regime de competência, ' +
+  'igual ao gráfico "Proporção sobre a Receita Bruta" da DRE — o mesmo número do grupo Marketing ' +
+  'ali. O percentual é negativo, como na coluna AV do demonstrativo (despesa), e a barra desce a ' +
+  'partir do zero. O * marca o ano em andamento: conta só os meses já cobertos pela base (o ' +
+  'tooltip mostra quantos). ' +
   'Atenção: o restante desta página é pago (caixa); esta proporção é por competência, então não ' +
   'se soma nem se confronta diretamente com os totais ao lado.'
 
@@ -71,12 +73,10 @@ export default function ProporcaoReceita({ anos, leituras }: Props) {
     <Card className="h-full sm:col-span-2">
       <CabecalhoCard
         titulo="Proporção sobre a Receita Bruta"
-        subtitulo="Regime de competência · igual ao gráfico da DRE"
-        acao={(
+        ajuda={(
           <GatilhoAjuda
             rotulo="Proporção sobre a Receita Bruta"
             texto={AJUDA}
-            ancoraDireita
             classNameBalao="z-30 w-72 !whitespace-normal font-normal normal-case tracking-normal leading-snug"
           />
         )}

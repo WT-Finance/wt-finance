@@ -54,19 +54,20 @@ describe('barrasProporcao — ordem, cor e rótulo', () => {
     expect(barras[0]).toMatchObject({ rotuloEixo: '2025', rotuloTooltip: '2025', parcial: false })
   })
 
-  it('ano parcial: "2026*" e a indicação de meses (eixo com asterisco, tooltip sem)', () => {
+  it('ano parcial: o eixo é só "2026*" (sem "· 10 meses"); o tooltip mantém os meses, sem asterisco', () => {
     const { barras } = barrasProporcao([2026], [REAIS[2]])
     expect(barras[0]).toMatchObject({
-      rotuloEixo: '2026* · 10 meses',
+      rotuloEixo: '2026*',
       rotuloTooltip: '2026 · 10 meses',
       parcial: true,
       mesesCobertos: 10,
     })
   })
 
-  it('um mês só: singular', () => {
+  it('um mês só: singular no tooltip; o eixo segue "2026*"', () => {
     const { barras } = barrasProporcao([2026], [ok(2026, -3.1, { parcial: true, mesesCobertos: 1 })])
-    expect(barras[0].rotuloEixo).toBe('2026* · 1 mês')
+    expect(barras[0].rotuloEixo).toBe('2026*')
+    expect(barras[0].rotuloTooltip).toBe('2026 · 1 mês')
   })
 })
 

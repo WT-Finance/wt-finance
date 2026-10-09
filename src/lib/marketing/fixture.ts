@@ -171,7 +171,7 @@ function resumoDe(ano: number, lancamentos: LancamentoMkt[], hoje: string): Resu
 
 /** Monta o payload completo da página a partir da fixture: uma leitura por ano selecionado. */
 export function montarDadosFixture(args: {
-  /** Anos selecionados (1 a 3); o payload os devolve em ordem crescente, como a página. */
+  /** Anos selecionados (ao menos 1); o payload os devolve em ordem crescente, como a página. */
   anos: readonly number[]
   hoje: string
   /** `vazio`: nenhum ano selecionado tem lançamento. `erro`: o ranking por fornecedor falha em

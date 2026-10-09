@@ -17,7 +17,7 @@ import {
 import { TONS_DO_ANO, coresPorAno } from '@/lib/marketing/cores'
 import { escalaSerie } from '@/lib/marketing/escala'
 import {
-  MESES_ABREV, notaRecortesParciais, recorteParcial, rotuloAnoNoTotal, rotuloAnos, rotuloRecorte,
+  MESES_ABREV, recorteParcial, rotuloAnoNoTotal, rotuloAnos, rotuloRecorte,
 } from '@/lib/marketing/periodo'
 import type { LinhaMesCategoria } from '@/lib/marketing/tipos'
 import CabecalhoCard from './cabecalho-card'
@@ -36,9 +36,21 @@ import CabecalhoCard from './cabecalho-card'
 // de outro falhou, e é a mesma nos dois gráficos. A legenda, o tooltip e o painel Total usam as
 // mesmas cores por ano. Esta é uma tela de plataforma — sem `--brand`.
 //
-// Ano PARCIAL no painel Total: "2026*" e a nota "* jan–out", derivados do recorte de cada ano
-// (`@/lib/marketing/periodo`) — a mesma convenção do card de proporção. Sem isso a barra do ano
-// corrente (10 meses) pareceria comparável às dos anos inteiros.
+// Ano PARCIAL no painel Total: o rótulo "2026*" (derivado do recorte de cada ano, em
+// `@/lib/marketing/periodo`) e o tooltip, que diz o recorte ("2026 · jan–out") — a mesma convenção
+// do card de proporção. Sem nota escrita embaixo do painel: o asterisco + o tooltip bastam.
+//
+// ⚠️ ORDEM DAS BARRAS DENTRO DE CADA MÊS — a armadilha que NÃO dá erro. O Recharts 3 dá a posição de
+// cada `<Bar>` pela ordem em que ele foi REGISTRADO no store do gráfico (um `push` quando o Bar
+// monta), e NÃO pela ordem do JSX. A página navega no mesmo pathname (filtro de ano), então o
+// gráfico continua montado: ao ligar uma pill de ano mais antigo, o `<Bar key=2025>` novo monta
+// DEPOIS do 2026 que já existia e entra no fim do registro — e a barra mais antiga aparecia à
+// DIREITA do mais recente (2026, 2025, 2024) sempre que a seleção crescia a partir do default.
+// Recarregar a URL já com todos os anos desenhava certo, por isso o bug parecia intermitente. A
+// cura é REMONTAR o gráfico quando o CONJUNTO de anos muda (`key` do BarChart = os anos): todos os
+// Bars montam de novo, na ordem do JSX — do mais antigo ao mais recente. A legenda e o painel Total
+// não têm o problema (a legenda é HTML na ordem de `serie.anos`; o Total é um único `<Bar>` com um
+// `<Cell>` por ano, posicionado pelo índice do dado, e `totaisPorAno` é crescente).
 //
 // VALORES NEGATIVOS — a armadilha que não dá erro: o domínio default do Recharts ancora em zero e
 // CORTA os negativos. O domínio e os ticks de CADA gráfico saem de `escalaSerie` (passo redondo), o
@@ -98,13 +110,11 @@ export default function SerieMensal({ periodo, anos, fatias, anosFalha }: Props)
     () => new Map(dadosTotal.map(d => [d.label, d.rotuloTooltip])),
     [dadosTotal],
   )
-  const notaParcial = useMemo(() => notaRecortesParciais(fatias), [fatias])
 
   const escalaMeses = useMemo(() => escalaSerie(serie.pontos.flatMap(p => p.valores)), [serie])
   const escalaTotal = useMemo(() => escalaSerie(totais.map(t => t.valor)), [totais])
 
   const titulo = 'Despesas mensais'
-  const subtitulo = `${periodo} · uma barra por ano, lado a lado`
 
   // O aviso dos anos ausentes — o MESMO em todos os ramos que tenham ao menos um ano carregado.
   const avisoFalha = anosFalha.length > 0 ? (
@@ -135,7 +145,7 @@ export default function SerieMensal({ periodo, anos, fatias, anosFalha }: Props)
       : `Sem lançamentos pagos em ${periodo}.`
     return (
       <Card>
-        <CabecalhoCard titulo={titulo} subtitulo={subtitulo} />
+        <CabecalhoCard titulo={titulo} />
         <EmptyState icon={ChartColumn} message={mensagemVazio} />
         {avisoFalha}
       </Card>
@@ -143,17 +153,20 @@ export default function SerieMensal({ periodo, anos, fatias, anosFalha }: Props)
   }
 
   const anosDoGrafico = rotuloAnos(serie.anos)
+  // Chave do gráfico mensal: muda quando o CONJUNTO de anos muda → remonta os `<Bar>` na ordem do JSX
+  // (ver o aviso sobre a ordem das barras no topo do arquivo).
+  const chaveDosAnos = serie.anos.join('-')
 
   return (
     <Card>
-      <CabecalhoCard titulo={titulo} subtitulo={subtitulo} />
+      <CabecalhoCard titulo={titulo} />
 
       <div className="flex flex-col gap-6 lg:flex-row">
         <div className="min-w-0 flex-1">
           {/* `height` fixo no pai — `min-height` faz o ResponsiveContainer medir 0 e o gráfico some. */}
           <div role="img" aria-label={`Despesas mensais de marketing, janeiro a dezembro, por ano: ${anosDoGrafico}`}>
             <ResponsiveContainer width="100%" height={ALTURA}>
-              <BarChart data={dadosMensais} margin={chartMargins.default} barGap={2} barCategoryGap="16%">
+              <BarChart key={chaveDosAnos} data={dadosMensais} margin={chartMargins.default} barGap={2} barCategoryGap="16%">
                 {ChartGrid()}
                 {ChartXAxisCategoria('label', { interval: 0 })}
                 {ChartYAxisBRL({ abs: false, width: 76, domain: escalaMeses.domain, ticks: escalaMeses.ticks })}
@@ -170,7 +183,8 @@ export default function SerieMensal({ periodo, anos, fatias, anosFalha }: Props)
                   )}
                   cursor={{ fill: 'var(--surface-soft)' }}
                 />
-                {/* A ordem dos <Bar> é a ordem visual: do mais antigo ao mais recente. */}
+                {/* Do mais antigo ao mais recente — vale como ordem visual SÓ porque o BarChart
+                    (`key={chaveDosAnos}`) remonta quando o conjunto de anos muda. */}
                 {serie.anos.map((ano, i) => (
                   <Bar
                     key={ano}
@@ -221,9 +235,7 @@ export default function SerieMensal({ periodo, anos, fatias, anosFalha }: Props)
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <p className="mt-2 text-center text-xs text-[var(--text-muted)]">
-            Total por ano{notaParcial ? ` · ${notaParcial}` : ''}
-          </p>
+          <p className="mt-2 text-center text-xs text-[var(--text-muted)]">Total por ano</p>
         </div>
       </div>
 

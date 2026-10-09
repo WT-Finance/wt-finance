@@ -14,3 +14,16 @@ function umaCasa(v: number): number {
 export function fmtPct(v: number | null): string {
   return v === null ? '—' : fmtAxisPct(umaCasa(v), 1)
 }
+
+const nfModulo = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+
+/** Variação percentual COM sinal, no molde do Δ% da DRE: "+16,3%" / "−34,5%" / "0,0%". O sinal é
+ *  escrito aqui (o "−" é o menos TIPOGRÁFICO, U+2212 — não depende do locale do `Intl`, que em
+ *  pt-BR pode usar o hífen) sobre o módulo formatado; zero fica sem sinal e "−0,0%" nunca aparece.
+ *  `null` → travessão. */
+export function fmtDeltaPct(v: number | null): string {
+  if (v === null) return '—'
+  const r = umaCasa(v)
+  const sinal = r > 0 ? '+' : r < 0 ? '−' : ''
+  return `${sinal}${nfModulo.format(Math.abs(r))}%`
+}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  anoDaData, mesDaData, mesLimite, mesNoRecorte, mesesDoRecorte, notaRecortesParciais,
+  anoDaData, mesDaData, mesLimite, mesNoRecorte, mesesDoRecorte,
   recortePadrao, recorteParcial, rotuloAnoNoTotal, rotuloAnos, rotuloPeriodoAnos, rotuloRecorte,
   somarDias,
 } from './periodo'
@@ -66,9 +66,7 @@ describe('período multi-ano: rótulo e meses de cada ano', () => {
   })
 })
 
-describe('ano parcial no painel Total: rótulo "2026*" e a nota "* jan–out"', () => {
-  const fatia = (ano: number) => ({ ano, recorte: recortePadrao(ano, HOJE) })
-
+describe('ano parcial no painel Total: rótulo "2026*" (o recorte vai no tooltip)', () => {
   it('o recorte menor que jan–dez é parcial; o ano inteiro não', () => {
     expect(recorteParcial(recortePadrao(2026, HOJE))).toBe(true)
     expect(recorteParcial(recortePadrao(2025, HOJE))).toBe(false)
@@ -85,22 +83,9 @@ describe('ano parcial no painel Total: rótulo "2026*" e a nota "* jan–out"', 
     expect(rotuloRecorte({ mesIni: 1, mesFim: 1 })).toBe('jan')
   })
 
-  it('nota derivada do recorte do ano (acompanha o mês de hoje), igual ao "(até out)" do subtítulo', () => {
-    expect(notaRecortesParciais([fatia(2025), fatia(2026)])).toBe('* jan–out')
-    expect(notaRecortesParciais([fatia(2026)])).toBe('* jan–out')
-    expect(notaRecortesParciais([{ ano: 2026, recorte: recortePadrao(2026, '2026-03-31') }])).toBe('* jan–mar')
-  })
-
-  it('sem ano parcial: nenhuma nota (nem asterisco a explicar)', () => {
-    expect(notaRecortesParciais([fatia(2024), fatia(2025)])).toBeNull()
-    expect(notaRecortesParciais([])).toBeNull()
-  })
-
-  it('parciais com recortes DIFERENTES: a nota nomeia cada ano', () => {
-    expect(notaRecortesParciais([
-      { ano: 2026, recorte: { mesIni: 1, mesFim: 10 } },
-      { ano: 2025, recorte: { mesIni: 1, mesFim: 9 } },
-    ])).toBe('* 2025: jan–set · 2026: jan–out')
+  it('o recorte acompanha o mês de hoje (o tooltip do painel Total diz "2026 · jan–out")', () => {
+    expect(rotuloRecorte(recortePadrao(2026, HOJE))).toBe('jan–out')
+    expect(rotuloRecorte(recortePadrao(2026, '2026-03-31'))).toBe('jan–mar')
   })
 })
 
