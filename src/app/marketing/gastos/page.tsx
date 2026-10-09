@@ -25,10 +25,10 @@ import type { Carregado, DadosGastosMarketing, LeituraAno } from '@/lib/marketin
 // `{ ok: false }` e só o card que depende dele mostra o erro — a página fica de pé. O retorno de
 // `.rpc()` é thenable (sem `.catch`): o tratamento de falha é o `status` de cada item.
 //
-// Anos: `?anos=2025,2026` (ou o antigo `?ano=2026`); default = só o ano corrente em São Paulo.
+// Anos: `?anos=2025,2026` (ou o antigo `?ano=2026`); default = os três anos até o corrente em São Paulo (2024, 2025, 2026 — `anosPadrao`), filtrados pela base.
 // A faixa [2001, ano corrente] filtra ANTES de ler; a lista de anos com dado (`anosDisponiveis`)
 // só se conhece DEPOIS de ler um resumo, então o filtro por ela vem em seguida — e, se ele trocar
-// o pedido pelo default (ano corrente) que ainda não foi lido, uma segunda leitura o busca.
+// o pedido pelo fallback (ano corrente) que ainda não foi lido, uma segunda leitura o busca.
 export const dynamic = 'force-dynamic'
 
 /** Quantos anos a pill oferece (além dos pedidos) quando nenhum resumo carregou e `anosDisponiveis` não veio. */

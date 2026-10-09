@@ -4,8 +4,10 @@
 // `?anos=2025,2026`. O antigo `?ano=2026` (um ano só, da primeira versão da página) continua
 // aceito. Regras, todas aqui para serem testáveis (a `page.tsx` é um Server Component):
 //
-//  • SEMPRE ao menos um ano — sem parâmetro válido, o default é o ano corrente em São Paulo
-//    (`anoCorrente` é parâmetro, calculado no servidor; nunca relógio próprio aqui);
+//  • SEMPRE ao menos um ano — sem parâmetro válido, o default são os ÚLTIMOS TRÊS anos até o
+//    corrente em São Paulo (decisão do Yan, 09/10: a página abre com 2024, 2025 e 2026), filtrados
+//    depois pelos anos que existem na base (`resolverAnos`); `anoCorrente` é parâmetro, calculado no
+//    servidor — nunca relógio próprio aqui;
 //  • valor que não é um inteiro de 4 dígitos, fora de [ANO_PISO, anoCorrente] ou fora de
 //    `anosDisponiveis` (a lista das pills) é IGNORADO, nunca vira erro;
 //  • SEM teto de anos: as pills são os anos presentes na base e podem ser todas selecionadas (a
@@ -40,10 +42,20 @@ function inteirosDe(v: ParamBruto): number[] {
 const unicosCrescentes = (anos: readonly number[]): number[] =>
   [...new Set(anos)].sort((a, b) => a - b)
 
+/** Quantos anos a página abre selecionados quando a URL não diz: o corrente e os dois anteriores. */
+export const ANOS_PADRAO = 3
+
+/** A seleção padrão: os `ANOS_PADRAO` anos até o corrente (ex.: 2024, 2025, 2026). Os que não têm
+ *  lançamento na base são descartados depois por `resolverAnos`. */
+export function anosPadrao(anoCorrente: number): number[] {
+  return Array.from({ length: ANOS_PADRAO }, (_, i) => anoCorrente - (ANOS_PADRAO - 1) + i)
+    .filter(a => a >= ANO_PISO)
+}
+
 /**
  * Anos pedidos na URL, já filtrados pela FAIXA [ANO_PISO, anoCorrente] — a lista de anos com dado
  * (`anosDisponiveis`) só é conhecida depois de ler o resumo, então o filtro por ela é
- * `resolverAnos`. Sem nenhum ano válido: `[anoCorrente]`.
+ * `resolverAnos`. Sem nenhum ano válido: `anosPadrao(anoCorrente)`.
  */
 export function anosDaUrl(params: ParamsAnos, anoCorrente: number): number[] {
   const naFaixa = (n: number) => n >= ANO_PISO && n <= anoCorrente
@@ -51,7 +63,7 @@ export function anosDaUrl(params: ParamsAnos, anoCorrente: number): number[] {
   if (doAnos.length > 0) return doAnos
   // Formato antigo: um ano só — o primeiro VÁLIDO.
   const doAno = inteirosDe(params.ano).filter(naFaixa).slice(0, 1)
-  return doAno.length > 0 ? doAno : [anoCorrente]
+  return doAno.length > 0 ? doAno : anosPadrao(anoCorrente)
 }
 
 /**

@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import {
-  ANO_PISO, alternarAno, anosDaUrl, anosDasPills, resolverAnos, serializarAnos,
+  ANO_PISO, alternarAno, anosDaUrl, anosDasPills, anosPadrao, resolverAnos, serializarAnos,
 } from './anos'
 
 const CORRENTE = 2026
 
 describe('anosDaUrl — parse do `?anos=` / `?ano=`', () => {
   it('sem parâmetro: só o ano corrente', () => {
-    expect(anosDaUrl({}, CORRENTE)).toEqual([2026])
+    expect(anosDaUrl({}, CORRENTE)).toEqual([2024, 2025, 2026])
   })
 
   it('lista separada por vírgula, devolvida em ordem crescente e sem repetição', () => {
@@ -32,20 +32,20 @@ describe('anosDaUrl — parse do `?anos=` / `?ano=`', () => {
   })
 
   it('"2025abc" NÃO é lido como 2025 (a forma inteira tem de ser um ano de 4 dígitos)', () => {
-    expect(anosDaUrl({ anos: '2025abc' }, CORRENTE)).toEqual([2026]) // nada válido → default
+    expect(anosDaUrl({ anos: '2025abc' }, CORRENTE)).toEqual([2024, 2025, 2026]) // nada válido → default
   })
 
   it('nada válido (ou lista vazia) cai no default — nunca devolve lista vazia', () => {
-    expect(anosDaUrl({ anos: '' }, CORRENTE)).toEqual([2026])
-    expect(anosDaUrl({ anos: 'x,y' }, CORRENTE)).toEqual([2026])
-    expect(anosDaUrl({ anos: '1900,2999' }, CORRENTE)).toEqual([2026])
+    expect(anosDaUrl({ anos: '' }, CORRENTE)).toEqual([2024, 2025, 2026])
+    expect(anosDaUrl({ anos: 'x,y' }, CORRENTE)).toEqual([2024, 2025, 2026])
+    expect(anosDaUrl({ anos: '1900,2999' }, CORRENTE)).toEqual([2024, 2025, 2026])
   })
 
   it('compat com o antigo `?ano=`: vale como um ano só', () => {
     expect(anosDaUrl({ ano: '2025' }, CORRENTE)).toEqual([2025])
     expect(anosDaUrl({ ano: ['2024', '2025'] }, CORRENTE)).toEqual([2024]) // o primeiro, como antes
-    expect(anosDaUrl({ ano: '2099' }, CORRENTE)).toEqual([2026])
-    expect(anosDaUrl({ ano: 'abc' }, CORRENTE)).toEqual([2026])
+    expect(anosDaUrl({ ano: '2099' }, CORRENTE)).toEqual([2024, 2025, 2026])
+    expect(anosDaUrl({ ano: 'abc' }, CORRENTE)).toEqual([2024, 2025, 2026])
   })
 
   it('`?anos=` válido vence o `?ano=`; `?anos=` sem nenhum válido deixa o `?ano=` valer', () => {
@@ -140,5 +140,17 @@ describe('serializarAnos', () => {
     expect(serializarAnos([2026, 2025])).toBe('2025,2026')
     expect(serializarAnos([2025, 2025])).toBe('2025')
     expect(anosDaUrl({ anos: serializarAnos([2026, 2024]) }, CORRENTE)).toEqual([2024, 2026])
+  })
+})
+
+describe('anosPadrao — a página abre com o corrente e os dois anos anteriores (decisão do Yan, 09/10)', () => {
+  it('2026 → 2024, 2025, 2026', () => {
+    expect(anosPadrao(2026)).toEqual([2024, 2025, 2026])
+  })
+  it('anos sem lançamento na base saem depois, em resolverAnos (ex.: base começando em 2025)', () => {
+    expect(resolverAnos(anosPadrao(2026), [2025, 2026], 2026)).toEqual([2025, 2026])
+  })
+  it('com a base inteira (2024–2026), a seleção padrão são os três', () => {
+    expect(resolverAnos(anosDaUrl({}, 2026), [2024, 2025, 2026], 2026)).toEqual([2024, 2025, 2026])
   })
 })
