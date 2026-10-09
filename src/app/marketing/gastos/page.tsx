@@ -4,8 +4,11 @@ import { hojeSP } from '@/lib/fmt'
 import { type RpcLike } from '@/lib/rpc'
 import { parseRpc } from '@/lib/schemas-rpc'
 import { anosDaUrl, resolverAnos, type ParamsAnos } from '@/lib/marketing/anos'
+import type { LeituraProporcao } from '@/lib/marketing/proporcao'
 import { fornecedoresMarketingSchema, resumoMarketingSchema } from '@/lib/marketing/schemas'
+import { proporcaoReceitaMarketingSchema } from '@/lib/marketing/schemas-proporcao'
 import GastosContent from '@/components/marketing/gastos/gastos-content'
+import ProporcaoReceita from '@/components/marketing/gastos/proporcao-receita'
 import type { Carregado, DadosGastosMarketing, LeituraAno } from '@/lib/marketing/tipos'
 
 // Marketing · Despesas de Marketing (v6.3.0). Área própria 'marketing/gastos' (migration 0292).
@@ -14,7 +17,9 @@ import type { Carregado, DadosGastosMarketing, LeituraAno } from '@/lib/marketin
 // predicado da DRE de caixa (bloco MKT, só realizado) — o total da página é a linha
 // "(-) Despesas Marketing" da DRE. A página lê as duas de CADA ano selecionado (1 a 3), todas em
 // paralelo. (`get_marketing_gastos_lancamentos` e o resumo do ano anterior deixaram de ser lidos:
-// a tela não tem mais tabela de lançamentos nem comparativo.)
+// a tela não tem mais tabela de lançamentos nem comparativo.) Junto vai a 3ª leitura por ano,
+// `get_marketing_proporcao_receita` (0293) — % de Marketing sobre a Receita Bruta por COMPETÊNCIA,
+// o mesmo número da grade da DRE — que alimenta o card "Proporção sobre a Receita Bruta".
 //
 // Cada leitura falha SOZINHA: `Promise.allSettled` + `parseRpc` por chamada; o que cair vira
 // `{ ok: false }` e só o card que depende dele mostra o erro — a página fica de pé. O retorno de
@@ -59,6 +64,26 @@ async function lerAno(db: Db, ano: number): Promise<LeituraAno> {
   }
 }
 
+/** A leitura da proporção de UM ano (`get_marketing_proporcao_receita`, 0293) — competência, a
+ *  mesma conta da DRE. Fica fora de `LeituraAno`: é regime diferente (o resto da página é pago) e o
+ *  card que a consome degrada sozinho. Nunca rejeita (mesma proteção de `lerAno`). */
+async function lerProporcao(db: Db, ano: number): Promise<LeituraProporcao> {
+  const [r] = await Promise.allSettled([db.rpc('get_marketing_proporcao_receita', { p_ano: ano })])
+  const res: RpcLike = r.status === 'fulfilled'
+    ? r.value
+    : { data: null, error: { message: `chamada rejeitada: ${String(r.reason)}` } }
+  return {
+    ano,
+    proporcao: carregado(parseRpc(proporcaoReceitaMarketingSchema, res, `get_marketing_proporcao_receita(${ano})`)),
+  }
+}
+
+/** Tudo o que se lê de UM ano: as duas leituras do resumo/fornecedores e a proporção, em paralelo. */
+async function lerAnoCompleto(db: Db, ano: number): Promise<{ leitura: LeituraAno; proporcao: LeituraProporcao }> {
+  const [leitura, proporcao] = await Promise.all([lerAno(db, ano), lerProporcao(db, ano)])
+  return { leitura, proporcao }
+}
+
 export default async function GastosMarketingPage({
   searchParams,
 }: {
@@ -77,7 +102,12 @@ export default async function GastosMarketingPage({
 
   // Leituras já feitas, por ano. Round 1: os anos pedidos, todos em paralelo.
   const lidos = new Map<number, LeituraAno>()
-  for (const l of await Promise.all(pedidos.map(a => lerAno(db, a)))) lidos.set(l.ano, l)
+  const proporcoes = new Map<number, LeituraProporcao>()
+  const guardar = (l: { leitura: LeituraAno; proporcao: LeituraProporcao }) => {
+    lidos.set(l.leitura.ano, l.leitura)
+    proporcoes.set(l.proporcao.ano, l.proporcao)
+  }
+  for (const l of await Promise.all(pedidos.map(a => lerAnoCompleto(db, a)))) guardar(l)
 
   // Pills de ano. Fonte: `anosDisponiveis` (anos com lançamento na base), que é GLOBAL — qualquer
   // resumo carregado traz a mesma lista. Só se NENHUM carregou cai para os `JANELA_FALLBACK` anos
@@ -93,7 +123,7 @@ export default async function GastosMarketingPage({
 
   // Round 2 (raro): o filtro trocou o pedido pelo ano corrente e ele ainda não foi lido.
   const faltam = anos.filter(a => !lidos.has(a))
-  for (const l of await Promise.all(faltam.map(a => lerAno(db, a)))) lidos.set(l.ano, l)
+  for (const l of await Promise.all(faltam.map(a => lerAnoCompleto(db, a)))) guardar(l)
 
   const dados: DadosGastosMarketing = {
     anos,
@@ -105,6 +135,9 @@ export default async function GastosMarketingPage({
     }),
   }
 
-  // `proporcao` (card "Proporção sobre a Receita Bruta") é um slot reservado: outra missão o monta.
-  return <GastosContent dados={dados} />
+  // Card "Proporção sobre a Receita Bruta": uma leitura por ano selecionado. Um ano sem leitura
+  // (não deveria ocorrer) entra como falha — o card o nomeia no aviso em vez de omiti-lo.
+  const leiturasProporcao = anos.map((a): LeituraProporcao => proporcoes.get(a) ?? { ano: a, proporcao: { ok: false } })
+
+  return <GastosContent dados={dados} proporcao={<ProporcaoReceita anos={anos} leituras={leiturasProporcao} />} />
 }

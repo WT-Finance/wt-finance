@@ -28,8 +28,8 @@ import TabelaCategorias from './tabela-categorias'
 // se algum ano selecionado não carregou — somar só os que chegaram daria um total menor sob o mesmo
 // rótulo; o gráfico desenha os anos que chegaram e avisa dos ausentes.
 //
-// `proporcao` é o SLOT do card "Proporção sobre a Receita Bruta" (outra missão): o que vier aqui
-// aparece ao lado do total; ausente, nada é renderizado.
+// `proporcao` é o SLOT do card "Proporção sobre a Receita Bruta" (`proporcao-receita.tsx`, montado
+// pela página com a leitura própria de cada ano): aparece ao lado do total; ausente, nada é renderizado.
 
 interface Props {
   dados: DadosGastosMarketing

@@ -9,10 +9,10 @@ import { totalDoPeriodo, type FatiaAno } from '@/lib/marketing/agregacao'
 import { rotuloAnos } from '@/lib/marketing/periodo'
 import type { LinhaMesCategoria } from '@/lib/marketing/tipos'
 
-// Componente B — indicadores. Hoje UM card: "Total de despesas no período" (a soma dos anos
-// selecionados, cada um no seu recorte). Ao lado dele há um SLOT (`proporcao`) para o card
-// "Proporção sobre a Receita Bruta", que outra missão monta: ausente, nada é renderizado e o total
-// ocupa só a sua coluna.
+// Componente B — indicadores: o card "Total de despesas no período" (a soma dos anos selecionados,
+// cada um no seu recorte) e, ao lado, o SLOT `proporcao` com o card "Proporção sobre a Receita
+// Bruta" (`proporcao-receita.tsx`, 2 das 3 colunas): ausente, nada é renderizado e o total ocupa só
+// a sua coluna. Os dois degradam de forma independente (leituras diferentes, regimes diferentes).
 //
 // Tile local, no molde do `Tile` do inventário, e não `KpiCard`: o `KpiCard` exige `KpiMetrica`
 // do domínio de Performance e desenha seta ↑/↓ — que aqui reforçaria a leitura errada de uma
@@ -63,27 +63,35 @@ interface Props {
 export default function IndicadoresGastos({ periodo, fatias, anosFalha, proporcao }: Props) {
   const total = useMemo(() => totalDoPeriodo(fatias), [fatias])
 
+  // Grade de três colunas: a 1ª célula é o total (ou o erro / o vazio dele) e o slot `proporcao`
+  // ocupa as outras duas. A grade é SEMPRE montada: a proporção é por competência e tem leitura
+  // própria — um total que falhou (ou sem lançamento pago) não pode escondê-la, nem o contrário.
+  let primeira: ReactNode
   if (anosFalha.length > 0) {
-    return (
-      <ErroCarregamento
-        mensagem={`Não foi possível carregar os indicadores de ${rotuloAnos(anosFalha)} — recarregue a página.`}
-      />
+    primeira = (
+      <div className="flex h-full items-center rounded-xl bg-white px-5 py-4 shadow-sm">
+        <ErroCarregamento
+          mensagem={`Não foi possível carregar os indicadores de ${rotuloAnos(anosFalha)} — recarregue a página.`}
+        />
+      </div>
     )
-  }
-  if (total.qtd === 0) {
-    return (
+  } else if (total.qtd === 0) {
+    primeira = (
       <div className="rounded-xl bg-white shadow-sm">
         <EmptyState icon={WalletMinimal} message={`Sem lançamentos pagos em ${periodo}.`} />
       </div>
     )
-  }
-
-  // Mesma grade de três colunas de antes: um card ocupa 1/3, dois ocupam 2/3 (total + proporção).
-  return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+  } else {
+    primeira = (
       <Tile rotulo={`Total de despesas no período · ${periodo}`} valor={fmtBRL2(total.valor)}>
         <p>{plural(total.qtd)}</p>
       </Tile>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {primeira}
       {proporcao}
     </div>
   )
