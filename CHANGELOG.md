@@ -25,7 +25,8 @@ aplicadas). ADR-0182. Medição da M0: `docs/auditoria/v6-3-0-m0-marketing.md`.
   competência); gráfico "Despesas mensais" (jan–dez, uma barra por ano selecionado, os anteriores à
   esquerda em cinzas progressivos, painel "Total por ano" com escala própria); tabela "Por categoria" com
   uma coluna por ano, expansível nos meses daquele ano (como o "Previsto" da DRE de caixa), com o
-  cabeçalho de altura fixa (expandir não desloca a tabela); ranking de fornecedores somando os anos selecionados. Despesa com o **sinal da DRE** (negativa). Cada
+  cabeçalho de altura fixa (expandir não desloca a tabela) e a coluna "Total" do ano destacada em tom
+  próprio e presa à borda direita enquanto se rola pelos meses do ano; ranking de fornecedores somando os anos selecionados. Despesa com o **sinal da DRE** (negativa). Cada
   card degrada sozinho.
 - **RPCs** `get_marketing_gastos_resumo|fornecedores|lancamentos(p_ano)` (0292) com o predicado do
   Realizado de `get_dre_mensal` (bloco `MKT` do `dre_categoria_map` vivo) — o total da página **é** a

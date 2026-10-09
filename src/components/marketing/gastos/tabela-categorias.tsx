@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { ChevronsLeft, ChevronsRight, Tags } from 'lucide-react'
 import EmptyState from '@/components/shared/empty-state'
 import ErroCarregamento from '@/components/shared/erro-carregamento'
@@ -11,10 +11,11 @@ import { Card } from '@/components/ui/card'
 import type { FatiaAno } from '@/lib/marketing/agregacao'
 import { MESES_ABREV, rotuloAnos } from '@/lib/marketing/periodo'
 import {
-  alternarAnoAberto, colunasDoAno, podarAnosAbertos, tabelaCategoriasPorAno, type ColunaAno,
+  alternarAnoAberto, podarAnosAbertos, tabelaCategoriasPorAno, type ColunaAno,
 } from '@/lib/marketing/tabela-por-ano'
 import type { LinhaMesCategoria } from '@/lib/marketing/tipos'
 import CabecalhoCard from './cabecalho-card'
+import { useTotalPreso } from './use-total-preso'
 
 // Componente D — categoria × ANO, cada ano expansível nos meses dele.
 //
@@ -43,6 +44,17 @@ import CabecalhoCard from './cabecalho-card'
 // régua de base dela é aplicada direto na célula, e as demais usam o seletor de "última linha"
 // (ver skill `tabela-densa`, cabeçalho de duas linhas).
 //
+// COLUNA "TOTAL" DO ANO EXPANDIDO PRESA À DIREITA: enquanto a borda direita da área visível está
+// dentro de um grupo de ano expandido, a coluna "Total" DAQUELE ano (rótulo+chevron e "Total" no
+// cabeçalho, corpo e rodapé) fica presa nessa borda, por cima dos meses; ao chegar à posição natural
+// ela solta. `sticky right` não serve (o sticky de célula é limitado pela tabela, não pelo grupo):
+// `useTotalPreso` mede a rolagem e escreve `translateX` nas células marcadas `data-total-ano`, sem
+// estado nem re-render por pixel (matemática pura em `lib/marketing/total-preso`). Por isso o
+// cabeçalho de cima de um ano expandido são DUAS células — uma vazia sobre os meses e o rótulo sobre
+// o "Total" —, para o rótulo acompanhar a coluna. A coluna de total tem fundo OPACO próprio (`--band`
+// no cabeçalho e rodapé, `--band-soft` no corpo): é o que a destaca dos meses e impede que eles
+// vazem por baixo quando ela flutua.
+//
 // Valor = `<ValorContabil>`, no sinal da DRE (sem `Math.abs`). Célula "—" = ausência (a categoria
 // não teve lançamento naquele mês/ano), distinta de "R$ 0,00" (houve lançamento e somou zero).
 
@@ -61,6 +73,12 @@ const TD_FOOT = 'px-3 py-2 text-xs font-semibold text-zinc-800'
 const TH_GRUPO = 'whitespace-nowrap px-3 py-1.5 text-right text-xs font-semibold text-text-secondary'
 /** Régua mais forte na 1ª coluna de cada grupo de ano. */
 const SEP = 'border-l-2 border-l-wt-border-strong'
+/** Fundo OPACO da coluna de total do ano (recolhida ou "Total" do expandido). Cabeçalho e rodapé
+ *  precisam do `!`: `[&_th]:bg-zinc-50` / `[&_td]:bg-zinc-50` dos seus containers são mais
+ *  específicos que uma classe de célula. O rodapé mantém a hierarquia (mais escuro que o corpo). */
+const BG_TOTAL_TH = '!bg-band'
+const BG_TOTAL_TD = 'bg-band-soft'
+const BG_TOTAL_FOOT = '!bg-band'
 
 /** Larguras das colunas de um ano — a ÚNICA fonte do <colgroup> e da largura mínima da tabela
  *  (as duas saem da mesma lista, então não divergem). */
@@ -97,6 +115,15 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
     setAbertos(prev => podarAnosAbertos(prev, anosSelecionados))
   }
 
+  // Coluna de total presa à direita (ver bloco de comentário no topo). O hook fica ANTES dos early
+  // returns; `chave` muda com a estrutura (tabela visível, nº de linhas, anos abertos) e remede.
+  const tabelaRef = useRef<HTMLTableElement | null>(null)
+  const mostrandoTabela = anosFalha.length === 0 && tabela.qtd > 0
+  const chaveEstrutura = `${mostrandoTabela}|${tabela.linhas.length}|${tabela.anos
+    .map(a => `${a.ano}:${abertos.includes(a.ano) ? a.meses.length : 0}`)
+    .join(',')}`
+  const aoRolar = useTotalPreso(tabelaRef, chaveEstrutura, LARG_CATEGORIA)
+
   if (anosFalha.length > 0) {
     return (
       <Card>
@@ -125,8 +152,19 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
       {/* Gutter externo `pb-1.5` + interno `pb-3.5`: o thumb horizontal flutua em overlay e não
           pode pousar em cima da linha de total. */}
       <div className="pb-1.5">
-        <ScrollAutoHide eixo="x" className="pb-3.5">
+        {/* `clip-path` arredonda os 4 cantos da ÁREA VISÍVEL da tabela (raio de `rounded-lg`, o mesmo
+            das células de canto; o `0.875rem` de baixo é o `pb-3.5` do gutter, fora da tabela). Só o
+            `rounded-*` nas células sticky de canto não basta com a tabela rolada: a "Categoria" fica
+            parada e os meses que passam por baixo mostram seus cantos QUADRADOS nos recortes do raio —
+            o lado esquerdo parecia reto. O recorte vale para o que estiver embaixo, e também dá canto
+            redondo à coluna de total presa na borda direita. */}
+        <ScrollAutoHide
+          eixo="x"
+          className="pb-3.5 [clip-path:inset(0_0_0.875rem_0_round_0.5rem)]"
+          onScroll={aoRolar}
+        >
           <table
+            ref={tabelaRef}
             className="w-full table-fixed border-separate border-spacing-0"
             style={{ minWidth: larguraMin }}
           >
@@ -142,16 +180,21 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
             <thead className="[&_th]:bg-zinc-50 [&_tr:first-child_th]:border-b [&_tr:first-child_th]:border-zinc-100 [&_tr:last-child_th]:border-b [&_tr:last-child_th]:border-zinc-200">
               <tr>
                 <th rowSpan={2} className={`${TH} ${ALTURA_TH} sticky left-0 z-20 rounded-tl-lg border-b !border-zinc-200 text-left align-bottom`}>Categoria</th>
-                {tabela.anos.map(a => {
+                {tabela.anos.flatMap(a => {
                   const aberto = estaAberto(a.ano)
                   const titulo = a.recorte ? `${a.ano}: ${a.recorte}` : undefined
                   const rotuloAcao = aberto ? `Recolher ${a.ano}` : `Expandir ${a.ano} por mês`
-                  return (
+                  const comMeses = aberto && a.meses.length > 0
+                  const canto = a.ano === ultimoAno ? 'rounded-tr-lg' : ''
+                  // Rótulo do ano + chevron: fica sobre a coluna de total (a única de um ano recolhido;
+                  // a última de um expandido) — por isso, expandido, é uma célula PRÓPRIA, que acompanha
+                  // o total quando ele prende; sobre os meses fica uma célula vazia.
+                  const rotulo = (
                     <th
-                      key={a.ano}
-                      colSpan={colunasDoAno(a, aberto)}
+                      key={`${a.ano}-rotulo`}
                       title={titulo}
-                      className={`${TH_GRUPO} ${ALTURA_TH} ${SEP} ${a.ano === ultimoAno ? 'rounded-tr-lg' : ''}`}
+                      data-total-ano={aberto ? a.ano : undefined}
+                      className={`${TH_GRUPO} ${ALTURA_TH} ${BG_TOTAL_TH} ${comMeses ? '' : SEP} ${canto}`}
                     >
                       <span className="inline-flex items-center justify-end gap-1">
                         {a.rotulo}
@@ -168,19 +211,31 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
                       </span>
                     </th>
                   )
+                  return comMeses
+                    ? [<th key={`${a.ano}-meses`} colSpan={a.meses.length} aria-hidden="true" className={`${TH_GRUPO} ${ALTURA_TH} ${SEP}`} />, rotulo]
+                    : [rotulo]
                 })}
               </tr>
               <tr>
                 {tabela.anos.flatMap(a => {
                   // Ano recolhido: UMA célula vazia (sem rowSpan) — a linha existe e tem altura.
                   if (!estaAberto(a.ano)) {
-                    return [<th key={a.ano} aria-hidden="true" className={`${TH} ${ALTURA_TH} ${SEP}`} />]
+                    return [<th key={a.ano} aria-hidden="true" className={`${TH} ${ALTURA_TH} ${SEP} ${BG_TOTAL_TH}`} />]
                   }
                   return [
                     ...a.meses.map((m, i) => (
-                      <th key={`${a.ano}-${m}`} className={`${TH} ${ALTURA_TH} text-right ${i === 0 ? SEP : ''}`}>{MESES_ABREV[m - 1]}</th>
+                      <th
+                        key={`${a.ano}-${m}`}
+                        data-grupo-ano={i === 0 ? a.ano : undefined}
+                        className={`${TH} ${ALTURA_TH} text-right ${i === 0 ? SEP : ''}`}
+                      >{MESES_ABREV[m - 1]}</th>
                     )),
-                    <th key={`${a.ano}-total`} className={`${TH} ${ALTURA_TH} text-right`}>Total</th>,
+                    <th
+                      key={`${a.ano}-total`}
+                      data-total-ano={a.ano}
+                      data-total-ref=""
+                      className={`${TH} ${ALTURA_TH} text-right ${BG_TOTAL_TH} ${a.meses.length === 0 ? SEP : ''}`}
+                    >Total</th>,
                   ]
                 })}
               </tr>
@@ -194,13 +249,17 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
                   {tabela.anos.flatMap((a, i) => {
                     const c = l.anos[i]
                     if (!estaAberto(a.ano)) {
-                      return [<td key={a.ano} className={`${TD} ${SEP} font-medium text-zinc-800`}><Valor v={c.total} /></td>]
+                      return [<td key={a.ano} className={`${TD} ${SEP} ${BG_TOTAL_TD} font-medium text-zinc-800`}><Valor v={c.total} /></td>]
                     }
                     return [
                       ...a.meses.map((m, j) => (
                         <td key={`${a.ano}-${m}`} className={`${TD} text-zinc-700 ${j === 0 ? SEP : ''}`}><Valor v={c.porMes[j]} /></td>
                       )),
-                      <td key={`${a.ano}-total`} className={`${TD} font-medium text-zinc-800`}><Valor v={c.total} /></td>,
+                      <td
+                        key={`${a.ano}-total`}
+                        data-total-ano={a.ano}
+                        className={`${TD} ${BG_TOTAL_TD} font-medium text-zinc-800 ${a.meses.length === 0 ? SEP : ''}`}
+                      ><Valor v={c.total} /></td>,
                     ]
                   })}
                 </tr>
@@ -213,13 +272,17 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
                   // O último <td> da última coluna de ano fecha o canto inferior direito do card.
                   const cantoFinal = a.ano === ultimoAno ? 'rounded-br-lg' : ''
                   if (!estaAberto(a.ano)) {
-                    return [<td key={a.ano} className={`${TD_FOOT} ${SEP} ${cantoFinal}`}><Valor v={a.total} /></td>]
+                    return [<td key={a.ano} className={`${TD_FOOT} ${SEP} ${BG_TOTAL_FOOT} ${cantoFinal}`}><Valor v={a.total} /></td>]
                   }
                   return [
                     ...a.meses.map((m, j) => (
                       <td key={`${a.ano}-${m}`} className={`${TD_FOOT} ${j === 0 ? SEP : ''}`}><Valor v={a.totalPorMes[j]} /></td>
                     )),
-                    <td key={`${a.ano}-total`} className={`${TD_FOOT} ${cantoFinal}`}><Valor v={a.total} /></td>,
+                    <td
+                      key={`${a.ano}-total`}
+                      data-total-ano={a.ano}
+                      className={`${TD_FOOT} ${BG_TOTAL_FOOT} ${a.meses.length === 0 ? SEP : ''} ${cantoFinal}`}
+                    ><Valor v={a.total} /></td>,
                   ]
                 })}
               </tr>

@@ -149,6 +149,23 @@ Pedidos e o que virou:
   - O cabeçalho de grupo não usa caixa alta, que a skill `tabela-densa` proíbe no cabeçalho, embora a DRE
     use.
 
+### 5ª rodada (09/10) — coluna de total do ano
+
+- **Total do ano preso na rolagem.** Com um ano expandido, a coluna "Total" dele fica presa à borda
+  direita enquanto se rola pelos meses daquele ano. Ao chegar ao fim do grupo, depois de Dez, ela solta,
+  e quem prende é o total do grupo seguinte. Há no máximo uma presa por vez, e o efeito é contínuo, sem
+  salto.
+  - O CSS `sticky` não serve aqui: ele é limitado pela tabela, não pelo grupo do ano. A matemática fica
+    num módulo puro (`total-preso.ts`, com varredura de continuidade no teste). Um hook escreve
+    `transform` e sombra direto nas células, sem re-render por pixel.
+  - O `ScrollAutoHide` não expõe o elemento de rolagem, então o hook o encontra subindo pelo DOM a partir
+    da tabela. Follow-up sugerido: uma prop `viewportRef` no componente.
+- **Tom da coluna de total:** `--band` no cabeçalho e no rodapé e `--band-soft` no corpo, opacos (é a
+  mesma célula que flutua).
+- **Cantos esquerdos.** As classes de arredondamento já existiam. O canto parecia reto com a tabela
+  rolada, porque as células dos meses passam por baixo da "Categoria" fixa. A correção é um `clip-path`
+  arredondado no viewport de rolagem. A barra de rolagem é um elemento irmão e não é cortada.
+
 ### Técnicas (orquestrador)
 
 - **Correções ao briefing:**
