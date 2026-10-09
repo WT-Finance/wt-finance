@@ -137,7 +137,13 @@ Pedidos e o que virou:
   - **Cada ano é um grupo de colunas.** Recolhido, é uma coluna com o total do ano (`2026*` no
     parcial). Expandido pelo chevron, mostra os meses daquele ano (o corrente só até o mês atual) e o
     total do ano, no comportamento do grupo "Previsto" da DRE de caixa.
-  - Botões "Expandir tudo" e "Recolher tudo"; no fim, "Acumulado" e "% do total".
+  - Num 1º corte havia os botões "Expandir tudo"/"Recolher tudo" e as colunas "Acumulado" e "% do
+    total". **Saíram a pedido do Yan.** No mesmo pedido ele apontou um defeito: a tabela "pulava" ao
+    expandir um ano, porque o cabeçalho crescia de uma para duas linhas. A correção deixa as 2 linhas do
+    cabeçalho sempre reservadas, com altura fixa (`h-9`): o ano fica na linha de cima e o ano recolhido
+    ocupa uma célula vazia embaixo. O rótulo do ano fica à direita, com a seta depois dele ("2026* «").
+    O grupo rótulo + seta encosta na borda direita, então o texto fica uma seta à esquerda do eixo dos
+    números.
   - A montagem está no módulo puro `tabela-por-ano.ts`, testado em centavos: soma dos meses = total do
     ano, soma dos anos = acumulado = total do card, soma das categorias = rodapé.
   - O cabeçalho de grupo não usa caixa alta, que a skill `tabela-densa` proíbe no cabeçalho, embora a DRE

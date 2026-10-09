@@ -16,6 +16,9 @@ const fatia = (ano: number, linhas: LinhaMesCategoria[]): FatiaAno<LinhaMesCateg
 const F25 = fatia(2025, [l(1, 'Anúncios', -100.1), l(11, 'Anúncios', -50.2), l(3, 'Eventos', -300), l(6, 'Zerada', 0)])
 const F26 = fatia(2026, [l(1, 'Anúncios', -200), l(10, 'Anúncios', -10.05), l(12, 'Anúncios', -999), l(2, 'Software', -40)])
 
+/** Soma em centavos ignorando as células "—" (null). */
+const soma = (vs: (number | null)[]) => somar(vs.filter((v): v is number => v !== null))
+
 describe('tabelaCategoriasPorAno — anos e meses', () => {
   it('anos em ordem CRESCENTE, qualquer que seja a ordem de entrada', () => {
     expect(tabelaCategoriasPorAno([F26, F25]).anos.map(a => a.ano)).toEqual([2025, 2026])
@@ -42,11 +45,11 @@ describe('tabelaCategoriasPorAno — anos e meses', () => {
     expect(anuncios.anos[1].total).toBe(-210.05)
   })
 
-  it('um ano só mantém o mesmo formato: o acumulado repete o total do ano', () => {
+  it('um ano só mantém o mesmo formato: um grupo de ano, com o total do ano', () => {
     const t = tabelaCategoriasPorAno([F25])
     expect(t.anos).toHaveLength(1)
-    expect(t.acumulado).toBe(t.anos[0].total)
-    for (const lin of t.linhas) expect(lin.acumulado).toBe(lin.anos[0].total)
+    expect(t.anos[0].total).toBe(somar([-150.3, -300, 0]))
+    for (const lin of t.linhas) expect(lin.anos).toHaveLength(1)
   })
 })
 
@@ -57,7 +60,6 @@ describe('tabelaCategoriasPorAno — ausência × zero', () => {
     expect(eventos.anos[0].total).toBe(-300)
     expect(eventos.anos[1].total).toBeNull()
     expect(eventos.anos[1].porMes).toEqual(Array(10).fill(null))
-    expect(eventos.acumulado).toBe(-300)
     const software = t.linhas.find(x => x.categoria === 'Software')!
     expect(software.anos[0].total).toBeNull()
     expect(software.anos[0].porMes).toEqual(Array(12).fill(null))
@@ -77,13 +79,12 @@ describe('tabelaCategoriasPorAno — ausência × zero', () => {
     const t = tabelaCategoriasPorAno([F25, fatia(2026, [l(12, 'Anúncios', -5)])]) // só dez/2026, fora do recorte
     expect(t.anos[1].total).toBeNull()
     expect(t.anos[1].totalPorMes.every(v => v === null)).toBe(true)
-    expect(t.acumulado).toBe(somar([-150.3, -300, 0]))
+    expect(soma(t.anos.map(a => a.total))).toBe(somar([-150.3, -300, 0]))
   })
 })
 
 describe('tabelaCategoriasPorAno — completude (toBe exato, em centavos)', () => {
   const t = tabelaCategoriasPorAno([F25, F26])
-  const soma = (vs: (number | null)[]) => somar(vs.filter((v): v is number => v !== null))
 
   it('Σ dos meses de um ano ≡ total do ano (linha de cada categoria e linha de total)', () => {
     t.anos.forEach((a, i) => {
@@ -95,15 +96,14 @@ describe('tabelaCategoriasPorAno — completude (toBe exato, em centavos)', () =
     })
   })
 
-  it('Σ dos anos ≡ acumulado (e ≡ totalDoPeriodo, o card "Total de despesas no período")', () => {
-    expect(soma(t.anos.map(a => a.total))).toBe(t.acumulado)
-    expect(t.acumulado).toBe(totalDoPeriodo([F25, F26]).valor)
+  it('Σ dos totais dos anos ≡ totalDoPeriodo (o card "Total de despesas no período")', () => {
+    expect(soma(t.anos.map(a => a.total))).toBe(totalDoPeriodo([F25, F26]).valor)
     expect(t.qtd).toBe(totalDoPeriodo([F25, F26]).qtd)
-    for (const lin of t.linhas) expect(soma(lin.anos.map(c => c.total))).toBe(lin.acumulado)
   })
 
-  it('Σ das categorias ≡ linha de total — por mês, por ano e no acumulado', () => {
-    expect(somar(t.linhas.map(x => x.acumulado))).toBe(t.acumulado)
+  it('Σ das categorias ≡ linha de total — por mês e por ano (e, somando os anos, o total do período)', () => {
+    const porLinha = t.linhas.map(x => soma(x.anos.map(c => c.total)))
+    expect(somar(porLinha)).toBe(totalDoPeriodo([F25, F26]).valor)
     t.anos.forEach((a, i) => {
       expect(soma(t.linhas.map(x => x.anos[i].total))).toBe(a.total)
       a.meses.forEach((_, j) => {
@@ -112,23 +112,13 @@ describe('tabelaCategoriasPorAno — completude (toBe exato, em centavos)', () =
     })
   })
 
-  it('o acumulado e as linhas batem com a tabela de período já existente (mesma soma por outro caminho)', () => {
+  it('Σ dos anos de cada linha e o total do período batem com a tabela de período já existente (mesma soma por outro caminho)', () => {
     const antiga = tabelaPorCategoriaPeriodo([F25, F26])
-    expect(t.acumulado).toBe(antiga.total)
+    expect(soma(t.anos.map(a => a.total))).toBe(antiga.total)
     for (const lin of antiga.linhas) {
-      expect(t.linhas.find(x => x.categoria === lin.categoria)!.acumulado).toBe(lin.total)
+      const nossa = t.linhas.find(x => x.categoria === lin.categoria)!
+      expect(soma(nossa.anos.map(c => c.total))).toBe(lin.total)
     }
-  })
-
-  it('% do total: denominador único, as linhas somam 100% e as razões são positivas', () => {
-    expect(t.linhas.reduce((s, x) => s + (x.pct ?? 0), 0)).toBeCloseTo(100, 9)
-    for (const lin of t.linhas) expect(lin.pct!).toBeGreaterThanOrEqual(0)
-  })
-
-  it('acumulado total zero → pct null (travessão), nunca NaN/Infinity', () => {
-    const z = tabelaCategoriasPorAno([fatia(2025, [l(1, 'A', -10), l(2, 'B', 10)])])
-    expect(z.acumulado).toBe(0)
-    expect(z.linhas.every(x => x.pct === null)).toBe(true)
   })
 })
 
