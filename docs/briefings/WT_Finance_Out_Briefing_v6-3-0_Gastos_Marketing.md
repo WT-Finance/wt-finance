@@ -190,6 +190,28 @@ Pedidos e o que virou:
   dividida por igual.
 - Coluna "Categoria" com o mesmo tom da coluna de total (`--band`/`--band-soft`).
 
+### 7ª rodada (09–13/10) — acabamento das duas tabelas
+
+- **"Por categoria":**
+  - régua bege na borda direita da "Categoria", fixa junto com ela; o 1º ano perde a régua própria;
+  - divisória à esquerda do "Total" do ano expandido, só no corpo e no rodapé;
+  - linha "Total de marketing" inteira no tom `--band`;
+  - a tabela ocupa o card: a coluna "Total" de cada ano, sem largura declarada, absorve a sobra.
+- **"Por fornecedor"** refeita no mesmo padrão visual da "Por categoria":
+  - **um bloco por ano selecionado**, cada um com "Valor" e "% do ano" (participação no total de
+    marketing daquele ano); a % por ano foi escolha do orquestrador, já que o "% do total" não foi
+    pedido para sair;
+  - sem barras e sem "Lanç.";
+  - ordem pela soma dos anos;
+  - rodapé com o total do ano;
+  - cabeçalho no estilo da DRE e a 1ª coluna presa;
+  - os estilos comuns foram extraídos para `tabela-estilos.ts` e `celula-valor.tsx`.
+
+  O rodapé fica **sticky** sob a rolagem vertical (~100 fornecedores). Isso não existe em outra tabela do
+  projeto, então conferir no visual.
+
+  A completude está no teste: por ano, Σ fornecedores ≡ total do ano ≡ total da tabela "Por categoria".
+
 ### Técnicas (orquestrador)
 
 - **Correções ao briefing:**

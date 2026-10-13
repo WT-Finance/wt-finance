@@ -1,31 +1,59 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Users } from 'lucide-react'
 import EmptyState from '@/components/shared/empty-state'
 import ErroCarregamento from '@/components/shared/erro-carregamento'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
-import { ValorContabil } from '@/components/shared/valor-contabil'
 import { Card } from '@/components/ui/card'
-import { rankingFornecedoresPeriodo, type FatiaAno } from '@/lib/marketing/agregacao'
+import type { FatiaAno } from '@/lib/marketing/agregacao'
 import { fmtPct } from '@/lib/marketing/formatar'
 import { rotuloAnos } from '@/lib/marketing/periodo'
+import { tabelaFornecedoresPorAno } from '@/lib/marketing/tabela-fornecedores-por-ano'
 import type { LinhaMesFornecedor } from '@/lib/marketing/tipos'
 import CabecalhoCard from './cabecalho-card'
+import Valor from './celula-valor'
+import {
+  BG_TOTAL_FOOT, BG_TOTAL_TD, LARG_PRIMEIRA, LARG_TOTAL, SEP, SEP_CATEGORIA, TD, TD_FOOT, TH, TH_GRUPO,
+} from './tabela-estilos'
 
-// Componente E — ranking por fornecedor do período: valor, % do total e nº de lançamentos.
-// Soma os anos selecionados (cada um no seu recorte). É só leitura: não há mais tabela de
-// lançamentos, então a linha NÃO é clicável e não há estado de seleção. O fornecedor vazio aparece
-// como "(sem fornecedor)" e nunca some do ranking.
+// Componente E — "Por fornecedor": um BLOCO por ano selecionado, cada um com "Valor" (a despesa do
+// fornecedor no ano, no recorte DO ANO, no sinal da DRE) e "% do ano" (participação dele no total de
+// marketing daquele ano; denominador = total do ano). Linhas ordenadas pela soma dos anos (a maior
+// despesa primeiro), "(sem fornecedor)" incluído sob a mesma regra; rodapé "Total de marketing" com o
+// total de cada ano e 100,0%. Célula "—" = o fornecedor não teve lançamento naquele ano (≠ R$ 0,00).
+// É só leitura: a linha NÃO é clicável e não há estado de seleção.
+//
+// A estrutura completa (fornecedores × anos, totais, %) vem pronta de `tabelaFornecedoresPorAno`
+// (módulo puro, com teste de completude contra a "Por categoria"); aqui só se desenha.
 //
 // Falha isolada: se a leitura do ranking cai em algum ano selecionado, este card é OMITIDO com um
-// aviso discreto (`ErroCarregamento`, sem alarme) — somar só os anos que chegaram daria um ranking
-// que não fecha com o total — e o resto da página segue de pé (invariante 14).
+// aviso discreto (`ErroCarregamento`, sem alarme) — somar só os anos que chegaram daria uma tabela
+// cujo total não fecha — e o resto da página segue de pé (invariante 14).
 //
-// O valor segue o sinal da DRE; a barra usa o módulo SÓ como comprimento (geometria), nunca como
-// número exibido.
+// VISUAL = o da "Por categoria" (`tabela-categorias.tsx`), com as constantes em `tabela-estilos.ts`:
+// cabeçalho no padrão da DRE (duas linhas, `--band` contínuo, caixa alta 10px), "Fornecedor" embaixo à
+// esquerda (`rowSpan=2`), rótulo do ano em cima à direita do bloco, 1ª coluna presa à esquerda com
+// largura FIXA e tom `--band-soft`, régua bege na borda direita dela e à esquerda de cada bloco de ano
+// a partir do 2º, `<ValorContabil>`, "—" na ausência, cantos arredondados (inclusive `clip-path`).
+//
+// DIFERENÇA para a "Por categoria" — são ~100 fornecedores, então a tabela ROLA TAMBÉM NA VERTICAL
+// (skill `tabela-densa`, receita de tabela longa): `ScrollAutoHide eixo="both"`, `border-separate`,
+// `<thead>` sticky com o fundo nas células, régua de base aplicada DIRETO nas células (a "Fornecedor"
+// tem `rowSpan`; seletor de "última linha" não a alcança) e sombra sob o cabeçalho só quando rolado.
+// O total fica num `<tfoot>` sticky (sempre visível); o offset `bottom-3.5` é o gutter `pb-3.5` do
+// thumb horizontal (o `sticky` ignora o padding do viewport, então `bottom-0` pousaria em cima dele).
+//
+// LARGURA: igual à da "Categoria" (224px — os dois cards alinham); a "Fornecedor" nunca estica. A coluna
+// "% do ano" tem largura fixa e a "Valor" fica SEM largura declarada: a sobra do card vai para as
+// colunas de valor, por igual. `minWidth` = soma das declaradas; abaixo disso a tabela rola na
+// horizontal com a 1ª coluna presa.
 
-const COR_BARRA = 'var(--action-soft-border)'
+/** "% do ano": cabe "-100,0%" com folga. */
+const LARG_PCT = 84
+
+/** Sombra sob o cabeçalho quando rolado (a mesma da DRE). */
+const SOMBRA_ROLADO = 'shadow-[0_4px_6px_-4px_rgba(45,42,38,0.12)]'
 
 interface Props {
   /** Rótulo do período ("2025 + 2026 (até out)"). */
@@ -37,7 +65,8 @@ interface Props {
 }
 
 export default function RankingFornecedores({ periodo, fatias, anosFalha }: Props) {
-  const ranking = useMemo(() => rankingFornecedoresPeriodo(fatias), [fatias])
+  const tabela = useMemo(() => tabelaFornecedoresPorAno(fatias), [fatias])
+  const [rolado, setRolado] = useState(false)
 
   if (anosFalha.length > 0) {
     return (
@@ -48,7 +77,7 @@ export default function RankingFornecedores({ periodo, fatias, anosFalha }: Prop
     )
   }
 
-  if (ranking.qtd === 0) {
+  if (tabela.qtd === 0) {
     return (
       <Card>
         <CabecalhoCard titulo="Por fornecedor" subtitulo={periodo} />
@@ -57,50 +86,102 @@ export default function RankingFornecedores({ periodo, fatias, anosFalha }: Prop
     )
   }
 
-  // Só geometria (comprimento da barra): o piso evita 0/0 quando o período soma zero.
-  const maior = Math.max(0.01, ...ranking.linhas.map(l => Math.abs(l.valor)))
+  const larguraMin = LARG_PRIMEIRA + tabela.anos.length * (LARG_TOTAL + LARG_PCT)
+  const ultimo = tabela.anos.length - 1
+  /** Régua de início de bloco — o 1º ano não leva (a borda da "Fornecedor" já faz esse papel). */
+  const sep = (i: number) => (i === 0 ? '' : SEP)
+  const sombra = rolado ? SOMBRA_ROLADO : ''
+  const nForn = tabela.linhas.length
 
   return (
     <Card>
       <CabecalhoCard
         titulo="Por fornecedor"
-        subtitulo={`${periodo} · ${ranking.linhas.length} ${ranking.linhas.length === 1 ? 'fornecedor' : 'fornecedores'}`}
+        subtitulo={`${periodo} · ${nForn} ${nForn === 1 ? 'fornecedor' : 'fornecedores'}`}
       />
-
-      {/* Cabeçalho das colunas (some em tela estreita, onde a linha vira nome + % + valor). */}
-      <div className="hidden items-center gap-3 px-3 pb-1 text-2xs font-medium text-[var(--text-muted)] sm:flex">
-        <span className="w-56 shrink-0">Fornecedor</span>
-        <span className="min-w-0 flex-1" />
-        <span className="w-14 shrink-0 text-right">% do total</span>
-        <span className="w-16 shrink-0 text-right">Lanç.</span>
-        <span className="w-36 shrink-0 text-right">Valor</span>
-      </div>
-
-      <div className="pr-1.5">
-        <ScrollAutoHide className="max-h-[360px] pr-3.5">
-          <ul className="space-y-0.5">
-            {ranking.linhas.map(l => (
-              <li key={l.chave === '' ? '__sem__' : l.chave}>
-                <div className="flex w-full items-center gap-3 rounded-lg px-3 py-1.5 transition-colors hover:bg-[var(--surface-soft)]">
-                  <span
-                    className={`min-w-0 flex-1 truncate text-xs sm:w-56 sm:flex-none sm:shrink-0 ${l.chave === '' ? 'italic text-[var(--text-muted)]' : 'text-zinc-700'}`}
-                    title={l.rotulo}
+      {/* Gutters como na "Por categoria": interno `pr-3.5 pb-3.5` (o thumb flutua em overlay, fora da
+          tabela); externo `-mr-3.5 pb-1.5` — o `-mr` devolve ao card os 14px do gutter direito, então a
+          borda da tabela fica alinhada à da tabela de cima, e o thumb vertical pousa no padding do card. */}
+      <div className="-mr-3.5 pb-1.5">
+        {/* `clip-path` arredonda os 4 cantos da ÁREA VISÍVEL da tabela (raio de `rounded-lg`; os
+            `0.875rem` de baixo e da direita são os gutters, fora da tabela) — com a tabela rolada, o que
+            passa por baixo da coluna presa mostraria cantos QUADRADOS (ver a "Por categoria"). */}
+        <ScrollAutoHide
+          eixo="both"
+          className="max-h-[440px] pb-3.5 pr-3.5 [clip-path:inset(0_0.875rem_0.875rem_0_round_0.5rem)]"
+          onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}
+        >
+          <table
+            className="w-full table-fixed border-separate border-spacing-0"
+            style={{ minWidth: larguraMin }}
+          >
+            <colgroup>
+              <col style={{ width: LARG_PRIMEIRA }} />
+              {tabela.anos.flatMap(a => [
+                // "Valor" sem largura: recebe a sobra do card (como o "Total" da "Por categoria").
+                <col key={`${a.ano}-valor`} />,
+                <col key={`${a.ano}-pct`} style={{ width: LARG_PCT }} />,
+              ])}
+            </colgroup>
+            <thead className="sticky top-0 z-20 [&_th]:bg-band">
+              <tr>
+                {/* Como "Conta" na DRE: rowSpan 2, embaixo à esquerda, régua de base DIRETO na célula. */}
+                <th
+                  rowSpan={2}
+                  className={`sticky left-0 z-30 rounded-tl-lg ${SEP_CATEGORIA} border-b-[1.5px] border-b-wt-border-strong pb-[7px] pl-3 pr-3 text-left align-bottom text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary ${sombra}`}
+                >
+                  Fornecedor
+                </th>
+                {tabela.anos.map((a, i) => (
+                  <th
+                    key={a.ano}
+                    colSpan={2}
+                    title={a.recorte ? `${a.ano}: ${a.recorte}` : undefined}
+                    className={`${TH_GRUPO} ${sep(i)} ${i === ultimo ? 'rounded-tr-lg' : ''}`}
                   >
-                    {l.rotulo}
-                  </span>
-                  <span className="hidden min-w-0 flex-1 sm:block" aria-hidden>
-                    <span
-                      className="block h-2 rounded-full"
-                      style={{ width: `${Math.max(2, (Math.abs(l.valor) / maior) * 100)}%`, background: COR_BARRA }}
-                    />
-                  </span>
-                  <span className="w-14 shrink-0 text-right text-2xs tabular-nums text-[var(--text-muted)]">{fmtPct(l.pct)}</span>
-                  <span className="hidden w-16 shrink-0 text-right text-2xs tabular-nums text-[var(--text-muted)] sm:block">{l.qtd}</span>
-                  <span className="w-36 shrink-0 text-xs text-zinc-800"><ValorContabil valor={l.valor} /></span>
-                </div>
-              </li>
-            ))}
-          </ul>
+                    {a.rotulo}
+                  </th>
+                ))}
+              </tr>
+              <tr>
+                {tabela.anos.flatMap((a, i) => [
+                  <th key={`${a.ano}-valor`} className={`${TH} ${sep(i)} ${sombra}`}>Valor</th>,
+                  <th key={`${a.ano}-pct`} className={`${TH} ${sombra}`}>% do ano</th>,
+                ])}
+              </tr>
+            </thead>
+            <tbody>
+              {tabela.linhas.map(l => (
+                <tr key={l.chave === '' ? '__sem__' : l.chave}>
+                  <td className={`${TD} sticky left-0 z-10 ${SEP_CATEGORIA} ${BG_TOTAL_TD} ${l.chave === '' ? 'italic text-[var(--text-muted)]' : 'text-zinc-700'}`}>
+                    <span className="block truncate" title={l.rotulo}>{l.rotulo}</span>
+                  </td>
+                  {l.anos.flatMap((c, i) => [
+                    <td key={`${tabela.anos[i].ano}-valor`} className={`${TD} ${sep(i)} text-zinc-800`}>
+                      <Valor v={c.valor} />
+                    </td>,
+                    <td key={`${tabela.anos[i].ano}-pct`} className={`${TD} text-right tabular-nums text-zinc-700`}>
+                      {fmtPct(c.pct)}
+                    </td>,
+                  ])}
+                </tr>
+              ))}
+            </tbody>
+            <tfoot className="sticky bottom-3.5 z-20 [&_td]:bg-band">
+              <tr>
+                <td className={`${TD_FOOT} sticky left-0 z-10 ${SEP_CATEGORIA} ${BG_TOTAL_FOOT} rounded-bl-lg`}>Total de marketing</td>
+                {tabela.anos.flatMap((a, i) => [
+                  <td key={`${a.ano}-valor`} className={`${TD_FOOT} ${sep(i)}`}>
+                    <Valor v={a.total} />
+                  </td>,
+                  // O último <td> da última coluna fecha o canto inferior direito do card.
+                  <td key={`${a.ano}-pct`} className={`${TD_FOOT} text-right tabular-nums ${i === ultimo ? 'rounded-br-lg' : ''}`}>
+                    {fmtPct(a.pctTotal)}
+                  </td>,
+                ])}
+              </tr>
+            </tfoot>
+          </table>
         </ScrollAutoHide>
       </div>
     </Card>

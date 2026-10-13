@@ -5,7 +5,6 @@ import { ChevronsLeft, ChevronsRight, Tags } from 'lucide-react'
 import EmptyState from '@/components/shared/empty-state'
 import ErroCarregamento from '@/components/shared/erro-carregamento'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
-import { ValorContabil } from '@/components/shared/valor-contabil'
 import { Card } from '@/components/ui/card'
 import type { FatiaAno } from '@/lib/marketing/agregacao'
 import { MESES_ABREV, rotuloAnos } from '@/lib/marketing/periodo'
@@ -14,6 +13,10 @@ import {
 } from '@/lib/marketing/tabela-por-ano'
 import type { LinhaMesCategoria } from '@/lib/marketing/tipos'
 import CabecalhoCard from './cabecalho-card'
+import Valor from './celula-valor'
+import {
+  BG_TOTAL_FOOT, BG_TOTAL_TD, LARG_PRIMEIRA, LARG_TOTAL, SEP, SEP_CATEGORIA, TD, TD_FOOT, TH, TH_GRUPO,
+} from './tabela-estilos'
 import { useScrollAoAlternar } from './use-scroll-ao-alternar'
 import { useTotalPreso } from './use-total-preso'
 
@@ -69,49 +72,15 @@ import { useTotalPreso } from './use-total-preso'
 // Valor = `<ValorContabil>`, no sinal da DRE (sem `Math.abs`). Célula "—" = ausência (a categoria
 // não teve lançamento naquele mês/ano), distinta de "R$ 0,00" (houve lançamento e somou zero).
 
-const LARG_CATEGORIA = 224
+// As constantes de estilo (cabeçalho no padrão da DRE, réguas, tons) vivem em `tabela-estilos.ts`,
+// compartilhadas com a tabela "Por fornecedor"; `CelulaValor` (o "—" de ausência) idem.
+const LARG_CATEGORIA = LARG_PRIMEIRA
 const LARG_MES = 116
-const LARG_TOTAL = 132
-
-// CABEÇALHO NO PADRÃO DA DRE (`tabela-dre.tsx`): rótulos em CAIXA ALTA, 10px, `font-semibold`,
-// `tracking-[0.09em]`, `text-text-secondary`; fundo `--band` contínuo; alturas `h-[27px]` (linha do
-// grupo) e `h-[25px]` (linha das colunas). A skill `tabela-densa` manda cabeçalho em caixa normal e
-// sem negrito — a instrução do dono do produto (coerência com a DRE) prevalece nesta tabela.
-/** Linha de BAIXO do cabeçalho (rótulos das colunas — meses e "Total"). A régua de base é aplicada
- *  direto em cada célula, não por seletor de "última linha" (a "Categoria" tem `rowSpan`). Padding
- *  horizontal igual ao do corpo (`px-3`) para o rótulo alinhar com os dígitos. */
-const TH = 'h-[25px] whitespace-nowrap px-3 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary border-b-[1.5px] border-b-wt-border-strong'
-const TD = 'py-2 px-3 text-xs border-b border-zinc-50'
-const TD_FOOT = 'px-3 py-2 text-xs font-semibold text-zinc-800'
-/** Linha de CIMA do cabeçalho (rótulo do grupo/ano). Altura FIXA (`h-[27px]`, a faixa da linha de grupo
- *  da DRE), sem padding vertical para o chevron (17px) caber sem esticar a linha — vale também para a
- *  célula vazia sobre os meses, que de outro modo colapsaria e faria o cabeçalho crescer ao expandir.
- *  A régua fina (`border-b`) separa a linha de grupo da de colunas SÓ sobre os grupos (a "Categoria",
- *  com `rowSpan`, não a tem). Rótulo à direita, como os números da coluna. */
-const TH_GRUPO = 'h-[27px] whitespace-nowrap px-3 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary border-b border-b-wt-border'
-/** Régua mais forte na 1ª coluna de cada grupo de ano (atravessa as duas linhas do cabeçalho). */
-const SEP = 'border-l-2 border-l-wt-border-strong'
-/** A mesma régua, na BORDA DIREITA da "Categoria" (sticky): rola junto com ela, então a linha bege
- *  fica sempre ao lado da coluna fixa (pedido do Yan, 09/10). Por isso o 1º ano NÃO leva `SEP` — seria
- *  uma linha dupla com a tabela parada. */
-const SEP_CATEGORIA = 'border-r-2 border-r-wt-border-strong'
-/** Fundo OPACO da coluna de total do ano no corpo (recolhida ou "Total" do expandido) e no rodapé:
- *  impede os meses de vazarem por baixo quando ela flutua. No cabeçalho o fundo é `--band` contínuo
- *  (como na DRE), então a coluna de total ali se distingue pela régua e pela sombra de quando prende.
- *  O rodapé precisa do `!`: `[&_td]:bg-zinc-50` do container é mais específico que a classe da célula. */
-const BG_TOTAL_TD = 'bg-band-soft'
-const BG_TOTAL_FOOT = '!bg-band'
 
 /** Larguras das colunas de um ano — a ÚNICA fonte do <colgroup> e da largura mínima da tabela
  *  (as duas saem da mesma lista, então não divergem). */
 function largurasDoAno(a: ColunaAno, aberto: boolean): number[] {
   return aberto ? [...a.meses.map(() => LARG_MES), LARG_TOTAL] : [LARG_TOTAL]
-}
-
-function Valor({ v }: { v: number | null }) {
-  return v === null
-    ? <span className="block text-right text-[var(--text-subtle)]">—</span>
-    : <ValorContabil valor={v} />
 }
 
 interface Props {
