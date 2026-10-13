@@ -237,7 +237,7 @@ guards e as RPCs não mudam. O `AREA_INFO` no código já espelha o novo rótulo
 - Ensaio em transação revertida: o guard passou, o rótulo virou "Despesas", as concessões ficaram
   intactas e o ROLLBACK restaurou "Gastos". As concessões da área estavam em **4**; a 0292 criou 3, e a
   4ª é provavelmente a role da gestora, criada pelo Yan.
-- ⚠️ Enquanto a 0294 estiver pendente, **nenhum `db:migrate --aditiva` deve rodar a partir desta
+- **Aplicada pelo Yan em 13/10** (TTY). Conferido: `rbac_areas.rotulo` = "Despesas", e a 0294 aparece como remota no `migration list`. O baseline foi regenerado (diff só em `ultima_migration`) e o teste de drift passa. Antes da aplicação, a regra era: enquanto a 0294 estivesse pendente, **nenhum `db:migrate --aditiva` devia rodar a partir desta
   branch**: o push leva tudo o que está pendente.
 
 ### Técnicas (orquestrador)

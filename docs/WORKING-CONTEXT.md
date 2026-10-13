@@ -20,8 +20,8 @@ Financeiro, Máquina · verificação). Despesas **pagas** do bloco MKT da DRE d
 total da página **é** a linha "(-) Despesas Marketing" (ADR-0182; paridade provada e coberta em
 `rpc-contrato.test.ts`). Card "Proporção sobre a Receita Bruta" = o % de Marketing da grade da DRE
 (**competência**), via `get_marketing_proporcao_receita` (só o %, nunca a receita absoluta).
-**Migrations 0292 (08/10) e 0293 (09/10) APLICADAS** (aditivas, backup-gate verde) — banco na **0293**,
-livre **0294**; ADR livre **0183**. Out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-3-0_Gastos_Marketing.md`;
+**Migrations 0292 (08/10) e 0293 (09/10) APLICADAS** (aditivas, backup-gate verde) e **0294 (13/10, destrutiva — só o rótulo "Despesas", aplicada pelo Yan em TTY)** — banco na **0294**,
+livre **0295**; ADR livre **0183**. Out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-3-0_Gastos_Marketing.md`;
 medição `docs/auditoria/v6-3-0-m0-marketing.md`.
 
 > Decidido pelo Yan (08–09/10, não re-propor): despesa **negativa** como na DRE; sem filtro de setor; sem
@@ -296,7 +296,7 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 | | |
 |---|---|
 | Produção | **v6.1.0** (PR #283, mergeado 29/09 às 14:41) · banco na **0288** |
-| Última migration aplicada | **0293** (v6.3.0 — proporção de Marketing sobre a Receita Bruta para a área `marketing/gastos`) · próxima livre: **0294** |
+| Última migration aplicada | **0294** (v6.3.0 — rótulo da área `marketing/gastos` → "Despesas", destrutiva aplicada pelo Yan em 13/10) · próxima livre: **0295** |
 | Último ADR | **0182** (v6.3.0 — recorte de marketing derivado da DRE de caixa) · próximo livre: **0183** |
 | Suíte | **1.804 verdes + 6 skipped**, 104 arquivos; 1 falha por fixture ausente (`oraculo-demonstrativo`, B-38) — fechamento da v6.1.0, 29/09 |
 
