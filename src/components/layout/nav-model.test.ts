@@ -185,11 +185,53 @@ describe('filtro por permissão — a seção nova não vaza nem apaga o que já
   const TODAS = [...AREAS] as string[]
   const rotulos = (permissoes: string[]) => itensVisiveis(permissoes).map(i => i.label)
 
-  it('com todas as permissões, a ordem da sidebar é a da v5.6.1 (Gestão de Pessoas abaixo de Financeiro)', () => {
+  it('com todas as permissões, a ordem da sidebar é a da v6.3.0 (Marketing logo abaixo de Gestão de Pessoas)', () => {
     expect(rotulos(TODAS)).toEqual([
-      'Executiva', 'Performance', 'Metas', 'Financeiro', 'Gestão de Pessoas',
+      'Executiva', 'Performance', 'Metas', 'Financeiro', 'Gestão de Pessoas', 'Marketing',
       'Solicitações', 'Ingestão de Dados', 'API Externa', 'Usuários e Acessos', 'Design System',
     ])
+  })
+
+  // ── v6.3.0 — seção "Marketing" ──────────────────────────────────────────────────────────
+  // Área própria 'marketing/gastos' (migration 0292). Enquanto o mockup (GATE 1) ficou sob
+  // 'admin/design-system', estes casos citavam a área provisória de propósito, para reprovar no
+  // flip e lembrar que as quatro pontas (AREAS/AREA_INFO, areasDaRota, requireArea da page e a
+  // `area` da subaba) viram juntas. Precedente: v5.6.0, Inventário de Ativos.
+  it('v6.3.0: "Marketing" é um grupo com a subaba Despesas, sem página própria na raiz', () => {
+    const subs = NAV_GROUPS['/marketing']
+    expect(subs.map(s => [s.label, s.href, s.area])).toEqual([
+      ['Despesas', '/marketing/gastos', 'marketing/gastos'],
+    ])
+    expect(ROTAS).toContain('/marketing/gastos')
+    // O item-pai só agrupa (como /gestao-pessoas): não existe app/marketing/page.tsx.
+    expect(ROTAS).not.toContain('/marketing')
+    const ordem = NAV_ITEMS.map(i => i.label)
+    expect(ordem.indexOf('Marketing')).toBe(ordem.indexOf('Gestão de Pessoas') + 1)
+  })
+
+  it('v6.3.0: quem tem SÓ marketing/gastos vê só a seção Marketing — e nada mais', () => {
+    expect(rotulos(['marketing/gastos'])).toEqual(['Marketing'])
+    const subs = NAV_GROUPS['/marketing'].filter(s => subVisivel(s, ['marketing/gastos']))
+    expect(subs.map(s => s.href)).toEqual(['/marketing/gastos'])
+  })
+
+  it('v6.3.0: SEM marketing/gastos, "Marketing" não aparece — e nada mais muda (Design System segue)', () => {
+    const semNenhuma = TODAS.filter(a => a !== 'marketing/gastos')
+    expect(rotulos(semNenhuma)).toEqual(rotulos(TODAS).filter(l => l !== 'Marketing'))
+    expect(rotulos(semNenhuma)).toContain('Design System')
+  })
+
+  it('v6.3.0: a seção Marketing NÃO é liberada por áreas vizinhas (inclusive a admin/design-system do mockup)', () => {
+    for (const vizinha of ['admin/design-system', 'admin/acessos', 'admin/uploads', 'api-externa', 'gestao-pessoas/inventario', 'financeiro/dre']) {
+      expect(rotulos([vizinha])).not.toContain('Marketing')
+    }
+  })
+
+  it('v6.3.0: em /marketing/gastos acende só a subaba Despesas; rota de outra seção não acende nada', () => {
+    const subs = NAV_GROUPS['/marketing']
+    expect(hrefAtivoDoGrupo(subs, '/marketing/gastos')).toBe('/marketing/gastos')
+    expect(hrefAtivoDoGrupo(subs, '/gestao-pessoas/inventario')).toBeNull()
+    expect(hrefAtivoDoGrupo(NAV_GROUPS['/gestao-pessoas'], '/marketing/gastos')).toBeNull()
   })
 
   it('v6.1.1/M3: "API Externa" é um grupo com Configuração ANTES da Documentação, logo depois de Ingestão de Dados', () => {

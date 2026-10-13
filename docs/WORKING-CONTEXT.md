@@ -9,7 +9,7 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-08 (fechamento da v6.3.1; v6.2.3 em produção desde 11:34).
+Última atualização: 2026-10-13 (v6.3.1 atualizada sobre o main com a v6.3.0; v6.3.0 em produção desde 11:08).
 
 ---
 
@@ -17,15 +17,45 @@
 
 Botão "Exportar" na página de Solicitações (gestão, área `solicitacoes`) → `GET /api/solicitacoes/exportar`
 devolve `.xlsx` com TODAS as solicitações (abas Todas / uma por tipo / Anexos / Sobre). Sem migration, sem RPC
-nova. Out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-3-1_Exportar_Solicitacoes.md`.
+nova. Out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-3-1_Exportar_Solicitacoes.md`. Em 13/10 a branch
+recebeu o `main` com a v6.3.0 (conflito só em versão, CHANGELOGs e neste arquivo — resolvido; versão 6.3.1).
 
-> 🔴 **Yan:** mergear o PR; conferência visual + download autenticado (roteiro no out-briefing §5).
-> ⚠️ **Paralela à v6.3.0 (PR #299)**: as duas partiram do mesmo `main` → conflito esperado SÓ em versão
-> (`package*.json`), CHANGELOGs e neste arquivo. Versão final 6.3.1; as duas entradas nos CHANGELOGs.
-> ⚠️ Até o #299 entrar, `npm test` no `main` acusa 3 falhas de drift (`rpc-contrato` áreas/verificador e
-> `schema-baseline`): a 0292 da v6.3.0 já está aplicada em produção. Não é regressão.
+> 🔴 **Yan:** mergear o PR; conferência visual + download autenticado (roteiro no out-briefing §5); depois `/pos-merge`.
 
----
+## Em produção — v6.3.0 "Despesas de Marketing" (PR #299, mergeado 13/10 às 11:08)
+
+Seção nova **Marketing** na sidebar → `/marketing/gastos`, área própria `marketing/gastos` (Administrador,
+Financeiro, Máquina · verificação). Despesas **pagas** do bloco MKT da DRE de caixa, lido do mapa vivo — o
+total da página **é** a linha "(-) Despesas Marketing" (ADR-0182; paridade provada e coberta em
+`rpc-contrato.test.ts`). Card "Proporção sobre a Receita Bruta" = o % de Marketing da grade da DRE
+(**competência**), via `get_marketing_proporcao_receita` (só o %, nunca a receita absoluta).
+**Migrations 0292 (08/10) e 0293 (09/10) APLICADAS** (aditivas, backup-gate verde) e **0294 (13/10, destrutiva — só o rótulo "Despesas", aplicada pelo Yan em TTY)** — banco na **0294**,
+livre **0295**; ADR livre **0183**. Out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-3-0_Gastos_Marketing.md`;
+medição `docs/auditoria/v6-3-0-m0-marketing.md`.
+
+> Decidido pelo Yan (08–09/10, não re-propor): despesa **negativa** como na DRE; sem filtro de setor; sem
+> conta bancária; carimbo vigente sem "· parcial"; mapa vivo sem exceção (Endomarketing/Feiras fora);
+> texto "Despesas" (rota/área/RPCs mantêm `gastos`; o rótulo da área no editor de roles virou "Despesas"
+> na 0294); sem "Dados de…", sem aviso de cartão, sem seleção de mês; subtítulo "Detalhamento das despesas
+> de marketing"; pills de ano com seleção múltipla (sem limite — os anos da base; abre com os 3 anos até o
+> corrente); card total com uma linha por ano + Acumulado (Δ% vs o ano de baixo no mesmo recorte); card
+> de proporção (igual à DRE, competência, visível a todos com a área — o % permite estimar a receita,
+> aceito); "Despesas mensais" jan–dez com barra por ano + painel Total; tabela "Por categoria" com anos
+> expansíveis por mês (Total + % do ano presos na rolagem) e "Por fornecedor" com um bloco por ano
+> (Valor + %); seção "Lançamentos" e Exportar **removidos**.
+> 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.3.0** (a sessão não alcança o checkout
+> compartilhado, protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-3-0`,
+> que mora na mesma worktree). Nada gitignorado a salvar: as fixtures do oráculo são cópias de
+> `~/projects/arquivo-worktrees-janus/fixtures-ingestao/`. Da raiz (`/home/yan-wt/projects/wt-finance`):
+> ```bash
+> git pull --ff-only
+> git worktree remove .claude/worktrees/feat-v6-3-0-gastos-marketing --force
+> git worktree prune
+> git branch -D feat/v6-3-0-gastos-marketing docs/pos-merge-v6-3-0
+> ```
+> 🔴 **Yan — produto:** decidir o sentido do eixo do card de proporção (hoje as barras descem do zero; na
+> DRE o eixo é invertido); criar a role/usuário da gestora (só `marketing/gastos`) se ainda não criou;
+> conferir no ar e mostrar à gestora (anotar o que ela pedir — insumo da próxima versão da seção).
 
 ## Em produção — v6.2.3 "Vendas por Produto: venda sem Setor deixa de derrubar a carga" (PR #297, mergeado 08/10 às 11:34)
 
@@ -287,8 +317,8 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 | | |
 |---|---|
 | Produção | **v6.1.0** (PR #283, mergeado 29/09 às 14:41) · banco na **0288** |
-| Última migration aplicada | **0288** (v6.1.0 — o "antes" do diff de Operação dentro da promoção) · próxima livre: **0289** |
-| Último ADR | **0179** (v6.1.0 — cliente de entrega das RPAs e operações puladas) · próximo livre: **0180** |
+| Última migration aplicada | **0294** (v6.3.0 — rótulo da área `marketing/gastos` → "Despesas", destrutiva aplicada pelo Yan em 13/10) · próxima livre: **0295** |
+| Último ADR | **0182** (v6.3.0 — recorte de marketing derivado da DRE de caixa) · próximo livre: **0183** |
 | Suíte | **1.804 verdes + 6 skipped**, 104 arquivos; 1 falha por fixture ausente (`oraculo-demonstrativo`, B-38) — fechamento da v6.1.0, 29/09 |
 
 A v5 está encerrada: auditada, triada e limpa. O que ficou para a v6 está em `docs/backlog-v6.md` (30 itens); como o sistema funciona, em `docs/estado-do-projeto.md`.

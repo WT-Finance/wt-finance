@@ -36,7 +36,7 @@ export interface ChangelogEntrada {
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
     versao: '6.3.1',
-    data: '2026-10-08T14:38', // horário real de autoria; reconciliar ao merge no /pos-merge
+    data: '2026-10-13T11:21', // horário real da resolução do conflito com a v6.3.0; reconciliar ao merge no /pos-merge
     itens: [
       {
         tipo: 'novidade',
@@ -45,6 +45,21 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
           'clique no botão "Exportar" da página de Solicitações. A planilha traz uma aba com a lista geral, ' +
           'uma aba para cada tipo de solicitação com as respostas do formulário em colunas (valores e datas ' +
           'prontos para somar e filtrar) e a lista de arquivos anexados.',
+      },
+    ],
+  },
+  {
+    versao: '6.3.0',
+    data: '2026-10-13T11:08', // horário real do merge (PR #299), reconciliado no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'A gestão de marketing passa a acompanhar no Janus as despesas pagas da área, com o mesmo número da ' +
+          'linha de Marketing da DRE: total do período com a variação de um ano para o outro, mês a mês, por categoria e por fornecedor, ' +
+          'comparando os anos lado a lado, e quanto o marketing consumiu da receita bruta em cada ano (o mesmo ' +
+          'percentual do gráfico da DRE). A seção "Marketing" tem acesso próprio — a gestora não precisa de ' +
+          'acesso ao Financeiro.',
       },
     ],
   },

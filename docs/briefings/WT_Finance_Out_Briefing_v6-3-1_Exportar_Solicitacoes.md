@@ -59,10 +59,13 @@ Movimentações não entram (decisão do Yan).
 - `npm test`: **1.919 verdes, 3 falhas + 4 arquivos sem rodar — nenhuma da v6.3.1**:
   - `rpc-contrato` (catálogo de áreas; áreas do verificador) e `schema-baseline`: o banco de produção já tem a
     área `marketing/gastos`, as RPCs `get_marketing_gastos_*` e a allowlist delas — **migration 0292 da v6.3.0,
-    aplicada, PR #299 ainda não mergeado**. O `main` não tem. Somem quando o #299 entrar.
+    aplicada, PR #299 ainda não mergeado** em 08/10. Com o `main` da v6.3.0 mesclado em 13/10, ver a reexecução abaixo.
   - 4 oráculos de ingestão: fixtures git-ignoradas não vêm na worktree. Copiadas de
     `~/projects/arquivo-worktrees-janus/fixtures-ingestao/`: **3 passam (68 testes)**; o do Demonstrativo segue
     sem `demonstrativo-cru.xlsx` (fixture perdida, B-38 — pré-existente).
+- **Reexecução em 13/10, com o `main` da v6.3.0 mesclado:** `build` ✅ · `tsc` ✅ · `lint` ✅ · `npm test`
+  **2.252 verdes, 0 falha de teste** — as 3 falhas de drift sumiram, como previsto. Só o arquivo do oráculo do
+  Demonstrativo não roda (fixture perdida, B-38).
 - **Prova com dado real (somente leitura):** o JSON de `app.solic_json` de todas as linhas de produção passou
   no `solicitacoesListaSchema` e, pelo módulo, bateu **ao centavo** com uma extração independente feita antes por
   script (joins próprios): 166 solicitações; linhas×colunas por tipo 56×17, 37×18, 33×11, 21×18, 11×10, 8×11;
@@ -85,10 +88,11 @@ Movimentações não entram (decisão do Yan).
 ## 6. Pendências — o que só o Yan tem
 
 - 🔴 Mergear o PR e fazer a conferência do §5.
-- 🔴 **Conflito esperado com o PR #299 (v6.3.0)** em `package.json`/`package-lock.json` (versão),
-  `CHANGELOG.md`, `src/data/changelog-diretoria.ts` e `docs/WORKING-CONTEXT.md` — os dois partiram do mesmo
-  `main`. Quem mergear por segundo resolve: versão final **6.3.1**, as duas entradas nos CHANGELOGs (6.3.1 em
-  cima). Nenhum arquivo de código em comum.
+- ✅ **Conflito com o PR #299 (v6.3.0) — resolvido em 13/10**, depois do merge da v6.3.0: a branch recebeu o
+  `main` (merge, sem rebase/force-push). Conflito só em `package.json`/`package-lock.json` (versão → **6.3.1**),
+  `CHANGELOG.md` e `src/data/changelog-diretoria.ts` (as duas entradas, 6.3.1 em cima; a data da diretoria passou
+  ao horário real da resolução, 13/10 11:21, para manter a ordem até o `/pos-merge`) e `docs/WORKING-CONTEXT.md`.
+  Nenhum arquivo de código em comum. Gates refeitos sobre o resultado (§4).
 - Dado a corrigir na origem (visto no export): a **#1894** ("Registro de prejuízos", rejeitada) tem valor
   "695194" sem vírgula — R$ 695.194,00 na planilha; foi reaberta como #1895 (R$ 6.951,94). Somas por tipo
   precisam filtrar o status.
