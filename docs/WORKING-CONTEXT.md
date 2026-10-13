@@ -9,11 +9,11 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-09 (v6.3.0 — 2ª rodada de ajustes do Yan no PR #299, aguardando merge).
+Última atualização: 2026-10-13 (pós-merge da v6.3.0, em produção desde 11:08).
 
 ---
 
-## Em voo — v6.3.0 "Despesas de Marketing" (branch `feat/v6-3-0-gastos-marketing`, **PR #299**)
+## Em produção — v6.3.0 "Despesas de Marketing" (PR #299, mergeado 13/10 às 11:08)
 
 Seção nova **Marketing** na sidebar → `/marketing/gastos`, área própria `marketing/gastos` (Administrador,
 Financeiro, Máquina · verificação). Despesas **pagas** do bloco MKT da DRE de caixa, lido do mapa vivo — o
@@ -26,15 +26,29 @@ medição `docs/auditoria/v6-3-0-m0-marketing.md`.
 
 > Decidido pelo Yan (08–09/10, não re-propor): despesa **negativa** como na DRE; sem filtro de setor; sem
 > conta bancária; carimbo vigente sem "· parcial"; mapa vivo sem exceção (Endomarketing/Feiras fora);
-> texto "Despesas" (rota/área/RPCs mantêm `gastos`; rótulo da área no editor de roles segue "Gastos" —
-> trocar = UPDATE destrutivo, opcional); sem "Dados de…", sem aviso de cartão, sem seleção de mês;
-> subtítulo "Detalhamento das despesas de marketing"; pills de ano com seleção múltipla (sem limite — os anos da base); card
-> único de total + card de proporção (igual à DRE, competência, visível a todos com a área — o % permite
-> estimar a receita, aceito); "Despesas mensais" jan–dez com barra por ano + painel Total ao lado;
-> tabela/ranking somam os anos; seção "Lançamentos" e Exportar **removidos**.
-> 🔴 **Yan:** mergear o PR; criar a role/usuário da gestora (só `marketing/gastos`) pelo editor; conferir no
-> ar (só-Marketing entra direto; um mês × DRE de caixa; proporção × gráfico da DRE; 2025+2026 juntos;
-> contraste do cinza mais claro; celular); mostrar à gestora e anotar o que ela pedir.
+> texto "Despesas" (rota/área/RPCs mantêm `gastos`; o rótulo da área no editor de roles virou "Despesas"
+> na 0294); sem "Dados de…", sem aviso de cartão, sem seleção de mês; subtítulo "Detalhamento das despesas
+> de marketing"; pills de ano com seleção múltipla (sem limite — os anos da base; abre com os 3 anos até o
+> corrente); card total com uma linha por ano + Acumulado (Δ% vs o ano de baixo no mesmo recorte); card
+> de proporção (igual à DRE, competência, visível a todos com a área — o % permite estimar a receita,
+> aceito); "Despesas mensais" jan–dez com barra por ano + painel Total; tabela "Por categoria" com anos
+> expansíveis por mês (Total + % do ano presos na rolagem) e "Por fornecedor" com um bloco por ano
+> (Valor + %); seção "Lançamentos" e Exportar **removidos**.
+> 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.3.0** (a sessão não alcança o checkout
+> compartilhado, protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-3-0`,
+> que mora na mesma worktree). Nada gitignorado a salvar: as fixtures do oráculo são cópias de
+> `~/projects/arquivo-worktrees-janus/fixtures-ingestao/`. Da raiz (`/home/yan-wt/projects/wt-finance`):
+> ```bash
+> git pull --ff-only
+> git worktree remove .claude/worktrees/feat-v6-3-0-gastos-marketing --force
+> git worktree prune
+> git branch -D feat/v6-3-0-gastos-marketing docs/pos-merge-v6-3-0
+> ```
+> 🔴 **Yan — produto:** decidir o sentido do eixo do card de proporção (hoje as barras descem do zero; na
+> DRE o eixo é invertido); criar a role/usuário da gestora (só `marketing/gastos`) se ainda não criou;
+> conferir no ar e mostrar à gestora (anotar o que ela pedir — insumo da próxima versão da seção).
+> 🔴 **PR #300 (v6.3.1)** ainda aberto: ao mergeá-lo, vai conflitar com a v6.3.0 em `package.json`
+> (versão) e nos CHANGELOGs — ajuste trivial (a v6.3.1 passa a vir DEPOIS da 6.3.0).
 
 ## Em produção — v6.2.3 "Vendas por Produto: venda sem Setor deixa de derrubar a carga" (PR #297, mergeado 08/10 às 11:34)
 
