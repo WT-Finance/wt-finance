@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { totalPreso, type GrupoAno } from './total-preso'
 
-// Layout de referência: Categoria 224 · cada ano expandido = 12 meses × 116 + Total 132 = 1524.
-//   2025: [224, 1748]   (Total natural em [1616, 1748])
-//   2026: [1748, 3272]  (Total natural em [3140, 3272])
+// Layout de referência (largura de bloco genérica de 132): Categoria 224 · cada ano expandido =
+// 12 meses × 116 + bloco 132 = 1524.
+//   2025: [224, 1748]   (bloco natural em [1616, 1748])
+//   2026: [1748, 3272]  (bloco natural em [3140, 3272])
+// O bloco real é "Total" 132 + "%" 84 = 216 — coberto no `describe` do fim do arquivo.
 const CAT = 224
 const G25: GrupoAno = { ano: 2025, inicio: 224, fim: 1748, larguraTotal: 132 }
 const G26: GrupoAno = { ano: 2026, inicio: 1748, fim: 3272, larguraTotal: 132 }
@@ -96,5 +98,42 @@ describe('totalPreso', () => {
     // Área útil de 50px: o total (132) é mais largo que ela — ainda desloca até a borda; a cobertura
     // pela "Categoria" é do z-index, não da matemática.
     expect(preso(500, [G25], CAT + 50)).toEqual({ ano: 2025, deslocamento: (500 + CAT + 50 - 132) - 1616 })
+  })
+})
+
+describe('totalPreso — bloco "Total + %" (largura = Total 132 + % 84 = 216)', () => {
+  const BLOCO = 132 + 84
+  // 12 meses × 116 = 1392 + bloco 216 = 1608.  2025: [224, 1832] · 2026: [1832, 3440].
+  const B25: GrupoAno = { ano: 2025, inicio: 224, fim: 224 + 1392 + BLOCO, larguraTotal: BLOCO }
+  const B26: GrupoAno = { ano: 2026, inicio: B25.fim, fim: B25.fim + 1392 + BLOCO, larguraTotal: BLOCO }
+
+  it('o bloco inteiro (Total + %) termina exatamente na borda direita visível', () => {
+    const r = preso(300, [B25])! // R = 1300
+    const esquerdaNatural = B25.fim - BLOCO
+    expect(esquerdaNatural).toBe(1616)
+    expect(esquerdaNatural + r.deslocamento + BLOCO).toBe(300 + VIS)
+  })
+
+  it('a "%" (última coluna do bloco) acompanha o "Total": mesmo deslocamento, a "%" fica na borda', () => {
+    const r = preso(300, [B25])!
+    // Total natural [1616, 1748], "%" natural [1748, 1832]; ambos recebem o MESMO deslocamento.
+    expect(1748 + r.deslocamento + 84).toBe(300 + VIS)
+    expect(1616 + r.deslocamento + 132).toBe(1748 + r.deslocamento) // continuam colados
+  })
+
+  it('solta exatamente no fim do grupo (R = 1832): sem salto, nada preso depois', () => {
+    expect(preso(1832 - VIS, [B25])).toBeNull()
+    expect(preso(1832 - VIS - 1, [B25])).toEqual({ ano: 2025, deslocamento: -1 })
+    expect(preso(1100, [B25])).toBeNull()
+  })
+
+  it('troca de ano: o bloco de 2026 entra fora da área visível (esquerda presa = início do grupo)', () => {
+    const r = preso(1832 - VIS + 1, [B25, B26])! // R = 1833
+    expect(r.ano).toBe(2026)
+    expect(B26.fim - BLOCO + r.deslocamento).toBe(B26.inicio)
+    // Já com folga dentro do próprio grupo, o bloco encosta na borda direita.
+    const r2 = preso(1200, [B25, B26])! // R = 2200 ≥ 1832 + 216 = 2048
+    expect(r2.ano).toBe(2026)
+    expect(B26.fim - BLOCO + r2.deslocamento + BLOCO).toBe(2200)
   })
 })

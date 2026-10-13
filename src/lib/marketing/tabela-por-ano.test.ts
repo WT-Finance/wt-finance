@@ -122,6 +122,51 @@ describe('tabelaCategoriasPorAno — completude (toBe exato, em centavos)', () =
   })
 })
 
+describe('tabelaCategoriasPorAno — "%" (análise vertical: categoria ÷ total do ano)', () => {
+  const t = tabelaCategoriasPorAno([F25, F26])
+  const linha = (nome: string) => t.linhas.find(x => x.categoria === nome)!
+
+  it('é a participação no total DO ANO (razão de dois negativos = positiva)', () => {
+    // 2025: total −450,30 → Anúncios −150,30 ; Eventos −300.
+    expect(linha('Anúncios').anos[0].pct).toBeCloseTo((150.3 / 450.3) * 100, 9)
+    expect(linha('Eventos').anos[0].pct).toBeCloseTo((300 / 450.3) * 100, 9)
+    // 2026 (denominador próprio, no recorte jan–out): total −250,05 → Anúncios −210,05.
+    expect(linha('Anúncios').anos[1].pct).toBeCloseTo((210.05 / 250.05) * 100, 9)
+    expect(linha('Anúncios').anos[0].pct!).toBeGreaterThan(0)
+  })
+
+  it('Σ "%" de cada ano = 100 (dentro do arredondamento) e o rodapé do ano é 100', () => {
+    t.anos.forEach((a, i) => {
+      const pcts = t.linhas.map(x => x.anos[i].pct).filter((p): p is number => p !== null)
+      expect(pcts.reduce((s, p) => s + p, 0)).toBeCloseTo(100, 6)
+      expect(a.pctTotal).toBe(100)
+    })
+  })
+
+  it('ausência = null (travessão): categoria que não existe no ano', () => {
+    expect(linha('Eventos').anos[1].pct).toBeNull()
+    expect(linha('Software').anos[0].pct).toBeNull()
+  })
+
+  it('categoria que somou ZERO num ano com total ≠ 0 é 0% (não null)', () => {
+    expect(linha('Zerada').anos[0].pct).toBeCloseTo(0, 9)
+    expect(linha('Zerada').anos[0].pct).not.toBeNull()
+  })
+
+  it('total do ano zero contábil → null em toda a coluna (e no rodapé), nunca Infinity/NaN', () => {
+    const z = tabelaCategoriasPorAno([fatia(2025, [l(1, 'A', -10), l(2, 'B', 10)])])
+    expect(z.anos[0].total).toBe(0)
+    expect(z.anos[0].pctTotal).toBeNull()
+    for (const lin of z.linhas) expect(lin.anos[0].pct).toBeNull()
+  })
+
+  it('ano sem lançamento algum no recorte: rodapé e células null', () => {
+    const semLanc = tabelaCategoriasPorAno([F25, fatia(2026, [l(12, 'Anúncios', -5)])]) // só dez/2026, fora do recorte
+    expect(semLanc.anos[1].pctTotal).toBeNull()
+    for (const lin of semLanc.linhas) expect(lin.anos[1].pct).toBeNull()
+  })
+})
+
 describe('tabelaCategoriasPorAno — ordem das linhas', () => {
   it('pelo acumulado (a mais negativa primeiro), desempate por nome', () => {
     const t = tabelaCategoriasPorAno([F25, F26])

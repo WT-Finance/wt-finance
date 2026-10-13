@@ -26,3 +26,24 @@ describe('useTotalPreso — limpeza do deslocamento antes de remedir', () => {
     expect(coleta).toBeGreaterThan(limpeza)
   })
 })
+
+// O BLOCO "Total + %" prende junto: a "%" (cabeçalho de baixo, corpo e rodapé) tem de levar
+// `data-total-ano` (para receber o transform) E `data-total-pct` (para NÃO receber a sombra à esquerda,
+// que é do bloco), e o hook mede a largura do bloco até a borda direita da "%".
+const tabela = readFileSync(
+  path.join(process.cwd(), 'src/components/marketing/gastos/tabela-categorias.tsx'),
+  'utf8',
+)
+
+describe('useTotalPreso — bloco Total + % (a "%" move junto, sem sombra própria)', () => {
+  it('as células da "%" (th, td do corpo, td do rodapé) levam data-total-ano e data-total-pct', () => {
+    const marcadas = tabela.match(/data-total-ano=\{a\.ano\} data-total-pct=""/g) ?? []
+    expect(marcadas).toHaveLength(3)
+  })
+
+  it('o hook mede a borda direita da "%" e só exclui a sombra dela', () => {
+    expect(fonte).toMatch(/\[data-total-pct\]/)
+    expect(fonte).toMatch(/fim - total\.offsetLeft/)
+    expect(fonte).toMatch(/dataset\.totalPct !== undefined/)
+  })
+})

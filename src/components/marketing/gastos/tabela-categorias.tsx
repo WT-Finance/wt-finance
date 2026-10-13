@@ -7,6 +7,7 @@ import ErroCarregamento from '@/components/shared/erro-carregamento'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { Card } from '@/components/ui/card'
 import type { FatiaAno } from '@/lib/marketing/agregacao'
+import { fmtPct } from '@/lib/marketing/formatar'
 import { MESES_ABREV, rotuloAnos } from '@/lib/marketing/periodo'
 import {
   alternarAnoAberto, podarAnosAbertos, tabelaCategoriasPorAno, type ColunaAno,
@@ -15,7 +16,7 @@ import type { LinhaMesCategoria } from '@/lib/marketing/tipos'
 import CabecalhoCard from './cabecalho-card'
 import Valor from './celula-valor'
 import {
-  BG_TOTAL_FOOT, BG_TOTAL_TD, LARG_PRIMEIRA, LARG_TOTAL, SEP, SEP_CATEGORIA, TD, TD_FOOT, TH, TH_GRUPO,
+  BG_TOTAL_FOOT, BG_TOTAL_TD, LARG_PCT, LARG_PRIMEIRA, LARG_TOTAL, SEP, SEP_CATEGORIA, TD, TD_FOOT, TH, TH_GRUPO,
 } from './tabela-estilos'
 import { useScrollAoAlternar } from './use-scroll-ao-alternar'
 import { useTotalPreso } from './use-total-preso'
@@ -40,15 +41,16 @@ import { useTotalPreso } from './use-total-preso'
 // largura declarada — no layout fixo, a sobra do card vai só para as colunas sem largura, então os
 // totais dos anos a dividem por igual e a "Categoria" nunca estica (decisão do Yan, 09/10: com todos os
 // anos recolhidos a tabela ficava curta no canto do card). Todo ano tem uma coluna de total, então
-// sempre há quem absorva a sobra; na largura mínima, cada total fica com LARG_TOTAL. Esta é a EXCEÇÃO
+// sempre há quem absorva a sobra; na largura mínima, cada total fica com LARG_TOTAL (e a "%" ao lado,
+// com LARG_PCT fixa, que nunca estica). Esta é a EXCEÇÃO
 // de `min-w` prevista na skill: 12 meses por ano não cabem em tela estreita, então a tabela rola num
 // `ScrollAutoHide eixo="x"` — a 1ª coluna (categoria) fica presa à esquerda. Cada grupo de ano abre com
 // uma borda mais forte (`border-l-2`), como a DRE separa os grupos.
 //
 // CABEÇALHO NO PADRÃO DA DRE, DE ALTURA FIXA (o bug do "pulo"): são SEMPRE duas linhas, com altura
 // fixa em toda `<th>` (`h-[27px]` em cima, `h-[25px]` embaixo), esteja algum ano expandido ou não. Na
-// de cima fica o rótulo do ano (à direita, com o chevron depois dele); na de baixo, o ano recolhido tem
-// uma célula "Total" (sem `rowSpan`) e o expandido tem os meses + "Total". Assim expandir/recolher não
+// de cima fica o rótulo do ano (à direita do bloco Total + %, com o chevron depois dele); na de baixo, o
+// ano recolhido tem "Total" + "%" (sem `rowSpan`) e o expandido tem os meses + "Total" + "%". Assim expandir/recolher não
 // muda a altura do cabeçalho nem empurra o corpo. Só a "Categoria" usa `rowSpan={2}` (existe sempre) —
 // a régua de base é aplicada direto em TODA célula da linha de baixo e na "Categoria" (ver skill
 // `tabela-densa`, cabeçalho de duas linhas; aqui sem seletor de "última linha").
@@ -56,14 +58,20 @@ import { useTotalPreso } from './use-total-preso'
 // ANIMAÇÃO = a da DRE: rolagem suave ao expandir/recolher um ano (`use-scroll-ao-alternar`); a DRE não
 // anima largura de coluna.
 //
-// COLUNA "TOTAL" DO ANO EXPANDIDO PRESA À DIREITA: enquanto a borda direita da área visível está
-// dentro de um grupo de ano expandido, a coluna "Total" DAQUELE ano (rótulo+chevron e "Total" no
-// cabeçalho, corpo e rodapé) fica presa nessa borda, por cima dos meses; ao chegar à posição natural
-// ela solta. `sticky right` não serve (o sticky de célula é limitado pela tabela, não pelo grupo):
-// `useTotalPreso` mede a rolagem e escreve `translateX` nas células marcadas `data-total-ano`, sem
-// estado nem re-render por pixel (matemática pura em `lib/marketing/total-preso`). Por isso o
-// cabeçalho de cima de um ano expandido são DUAS células — uma vazia sobre os meses e o rótulo sobre
-// o "Total" —, para o rótulo acompanhar a coluna. A coluna de total tem fundo OPACO próprio (`--band`
+// ANÁLISE VERTICAL ("%"): todo ano termina num BLOCO de duas colunas — "Total" + "%" (a participação da
+// categoria no total DAQUELE ano; denominador = total do ano; rodapé 100,0%; "—" = ausente ou total do
+// ano zero). A "%" tem largura fixa (`LARG_PCT`); a sobra do card continua indo para o "Total".
+//
+// BLOCO "TOTAL + %" DO ANO EXPANDIDO PRESO À DIREITA: enquanto a borda direita da área visível está
+// dentro de um grupo de ano expandido, o BLOCO daquele ano (rótulo+chevron, "Total" e "%" no
+// cabeçalho, corpo e rodapé) fica preso nessa borda, por cima dos meses, as duas colunas como uma
+// unidade; ao chegar à posição natural ele solta. `sticky right` não serve (o sticky de célula é
+// limitado pela tabela, não pelo grupo): `useTotalPreso` mede a rolagem e escreve `translateX` nas
+// células marcadas `data-total-ano` (as da "%" também levam `data-total-pct`: só elas NÃO recebem a
+// sombra à esquerda, que é do bloco), sem estado nem re-render por pixel (matemática pura em
+// `lib/marketing/total-preso`, que recebe a largura do BLOCO). Por isso o cabeçalho de cima de um
+// ano expandido são DUAS células — uma vazia sobre os meses e o rótulo (colSpan 2) sobre o bloco —,
+// para o rótulo acompanhar as colunas. O bloco tem fundo OPACO próprio (`--band`
 // no rodapé, `--band-soft` no corpo; no cabeçalho, `--band` contínuo como na DRE): é o que a destaca
 // dos meses e impede que eles vazem por baixo quando ela flutua. A coluna "Categoria" (sticky à
 // esquerda) usa os MESMOS tons (pedido do Yan, 09/10 — coerência visual entre as colunas fixas/de
@@ -78,9 +86,10 @@ const LARG_CATEGORIA = LARG_PRIMEIRA
 const LARG_MES = 116
 
 /** Larguras das colunas de um ano — a ÚNICA fonte do <colgroup> e da largura mínima da tabela
- *  (as duas saem da mesma lista, então não divergem). */
+ *  (as duas saem da mesma lista, então não divergem). O ano termina SEMPRE no bloco "Total" + "%":
+ *  a penúltima coluna (o "Total") recebe a sobra do card; a última (a "%") tem largura fixa. */
 function largurasDoAno(a: ColunaAno, aberto: boolean): number[] {
-  return aberto ? [...a.meses.map(() => LARG_MES), LARG_TOTAL] : [LARG_TOTAL]
+  return aberto ? [...a.meses.map(() => LARG_MES), LARG_TOTAL, LARG_PCT] : [LARG_TOTAL, LARG_PCT]
 }
 
 interface Props {
@@ -168,8 +177,9 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
               <col style={{ width: LARG_CATEGORIA }} />
               {tabela.anos.flatMap(a =>
                 largurasDoAno(a, estaAberto(a.ano)).map((w, i, todas) => (
-                  // A última coluna do ano é o "Total": sem largura, ela recebe a sobra do card.
-                  <col key={`${a.ano}-${i}`} style={i === todas.length - 1 ? undefined : { width: w }} />
+                  // A penúltima coluna do ano é o "Total": sem largura, ela recebe a sobra do card (a
+                  // última é a "%", de largura fixa).
+                  <col key={`${a.ano}-${i}`} style={i === todas.length - 2 ? undefined : { width: w }} />
                 )),
               )}
             </colgroup>
@@ -187,12 +197,13 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
                   const rotuloAcao = aberto ? `Recolher ${a.ano}` : `Expandir ${a.ano} por mês`
                   const comMeses = aberto && a.meses.length > 0
                   const canto = a.ano === ultimoAno ? 'rounded-tr-lg' : ''
-                  // Rótulo do ano + chevron: fica sobre a coluna de total (a única de um ano recolhido;
-                  // a última de um expandido) — por isso, expandido, é uma célula PRÓPRIA, que acompanha
-                  // o total quando ele prende; sobre os meses fica uma célula vazia.
+                  // Rótulo do ano + chevron: fica sobre o BLOCO "Total" + "%" (colSpan 2, alinhado à direita
+                  // dele) — por isso, expandido, é uma célula PRÓPRIA, que acompanha o bloco quando ele
+                  // prende; sobre os meses fica uma célula vazia.
                   const rotulo = (
                     <th
                       key={`${a.ano}-rotulo`}
+                      colSpan={2}
                       title={titulo}
                       data-total-ano={aberto ? a.ano : undefined}
                       className={`${TH_GRUPO} ${comMeses ? '' : sep(a.ano)} ${canto}`}
@@ -223,7 +234,10 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
                   // sob o `»`. `data-ano-recolhido` é o alvo da rolagem ao recolher (não entra no
                   // `useTotalPreso`, que só prende anos expandidos).
                   if (!estaAberto(a.ano)) {
-                    return [<th key={a.ano} data-ano-recolhido={a.ano} className={`${TH} ${sep(a.ano)}`}>Total</th>]
+                    return [
+                      <th key={a.ano} data-ano-recolhido={a.ano} className={`${TH} ${sep(a.ano)}`}>Total</th>,
+                      <th key={`${a.ano}-pct`} data-ano-recolhido-fim={a.ano} className={TH}>%</th>,
+                    ]
                   }
                   return [
                     ...a.meses.map((m, i) => (
@@ -239,6 +253,8 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
                       data-total-ref=""
                       className={`${TH} ${a.meses.length === 0 ? sep(a.ano) : ''}`}
                     >Total</th>,
+                    // `data-total-pct`: acompanha o bloco (transform) mas NÃO leva a sombra à esquerda.
+                    <th key={`${a.ano}-pct`} data-total-ano={a.ano} data-total-pct="" className={TH}>%</th>,
                   ]
                 })}
               </tr>
@@ -251,8 +267,14 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
                   </td>
                   {tabela.anos.flatMap((a, i) => {
                     const c = l.anos[i]
+                    // "%" = participação da categoria no total do ano ("—" = ausente ou total do ano zero);
+                    // mesmo fundo da coluna de total, formato igual ao "%" da "Por fornecedor".
+                    const classePct = `${TD} ${BG_TOTAL_TD} text-right tabular-nums text-zinc-700`
                     if (!estaAberto(a.ano)) {
-                      return [<td key={a.ano} className={`${TD} ${sep(a.ano)} ${BG_TOTAL_TD} font-medium text-zinc-800`}><Valor v={c.total} /></td>]
+                      return [
+                        <td key={a.ano} className={`${TD} ${sep(a.ano)} ${BG_TOTAL_TD} font-medium text-zinc-800`}><Valor v={c.total} /></td>,
+                        <td key={`${a.ano}-pct`} className={classePct}>{fmtPct(c.pct)}</td>,
+                      ]
                     }
                     return [
                       ...a.meses.map((m, j) => (
@@ -263,6 +285,7 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
                         data-total-ano={a.ano}
                         className={`${TD} ${BG_TOTAL_TD} font-medium text-zinc-800 ${a.meses.length === 0 ? sep(a.ano) : SEP}`}
                       ><Valor v={c.total} /></td>,
+                      <td key={`${a.ano}-pct`} data-total-ano={a.ano} data-total-pct="" className={classePct}>{fmtPct(c.pct)}</td>,
                     ]
                   })}
                 </tr>
@@ -270,12 +293,16 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
             </tbody>
             <tfoot className="[&_td]:bg-band">
               <tr>
-                <td className={`${TD_FOOT} sticky left-0 z-10 ${SEP_CATEGORIA} ${BG_TOTAL_FOOT} rounded-bl-lg`}>Total de marketing</td>
+                <td className={`${TD_FOOT} sticky left-0 z-10 ${SEP_CATEGORIA} ${BG_TOTAL_FOOT} rounded-bl-lg`}>Total</td>
                 {tabela.anos.flatMap(a => {
-                  // O último <td> da última coluna de ano fecha o canto inferior direito do card.
+                  // O último <td> da última coluna de ano (a "%") fecha o canto inferior direito do card.
                   const cantoFinal = a.ano === ultimoAno ? 'rounded-br-lg' : ''
+                  const classePct = `${TD_FOOT} ${BG_TOTAL_FOOT} text-right tabular-nums ${cantoFinal}`
                   if (!estaAberto(a.ano)) {
-                    return [<td key={a.ano} className={`${TD_FOOT} ${sep(a.ano)} ${BG_TOTAL_FOOT} ${cantoFinal}`}><Valor v={a.total} /></td>]
+                    return [
+                      <td key={a.ano} className={`${TD_FOOT} ${sep(a.ano)} ${BG_TOTAL_FOOT}`}><Valor v={a.total} /></td>,
+                      <td key={`${a.ano}-pct`} className={classePct}>{fmtPct(a.pctTotal)}</td>,
+                    ]
                   }
                   return [
                     ...a.meses.map((m, j) => (
@@ -284,8 +311,9 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
                     <td
                       key={`${a.ano}-total`}
                       data-total-ano={a.ano}
-                      className={`${TD_FOOT} ${BG_TOTAL_FOOT} ${a.meses.length === 0 ? sep(a.ano) : SEP} ${cantoFinal}`}
+                      className={`${TD_FOOT} ${BG_TOTAL_FOOT} ${a.meses.length === 0 ? sep(a.ano) : SEP}`}
                     ><Valor v={a.total} /></td>,
+                    <td key={`${a.ano}-pct`} data-total-ano={a.ano} data-total-pct="" className={classePct}>{fmtPct(a.pctTotal)}</td>,
                   ]
                 })}
               </tr>

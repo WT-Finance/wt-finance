@@ -212,6 +212,20 @@ Pedidos e o que virou:
 
   A completude está no teste: por ano, Σ fornecedores ≡ total do ano ≡ total da tabela "Por categoria".
 
+### 8ª rodada (13/10) — fresta sob o total, rótulos e AV
+
+- **BUG: linhas apareciam abaixo do total da "Por fornecedor".** O `sticky` mede o offset a partir da
+  caixa de conteúdo do viewport (já descontado o `pb-3.5`), e o `bottom-3.5` somava mais 14px. As linhas
+  rolavam por essa fresta. Agora é `sticky bottom-0`, sem padding inferior no viewport (o respiro foi
+  para o wrapper externo), com o recorte inferior do `clip-path` em 0. O thumb horizontal, quando
+  aparece, pousa sobre o total; ele é overlay e auto-oculto.
+- "Total de marketing" virou **"Total"** nas duas tabelas; saiu o subtítulo da "Por fornecedor"; "% do
+  ano" virou **"%"**.
+- **Análise vertical na "Por categoria":** cada ano termina em **Total + "%"** (a participação da
+  categoria no total do ano, com o rodapé em 100,0%). O rótulo do ano fica sobre o bloco, e a coluna
+  presa na rolagem passou a prender o **bloco Total + %** junto, com sombra só à esquerda do bloco.
+  Testes cobrem a lógica do % e a largura do bloco; uma sonda estática trava a marcação.
+
 ### Técnicas (orquestrador)
 
 - **Correções ao briefing:**

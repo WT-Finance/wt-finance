@@ -14,13 +14,13 @@ import type { LinhaMesFornecedor } from '@/lib/marketing/tipos'
 import CabecalhoCard from './cabecalho-card'
 import Valor from './celula-valor'
 import {
-  BG_TOTAL_FOOT, BG_TOTAL_TD, LARG_PRIMEIRA, LARG_TOTAL, SEP, SEP_CATEGORIA, TD, TD_FOOT, TH, TH_GRUPO,
+  BG_TOTAL_FOOT, BG_TOTAL_TD, LARG_PCT, LARG_PRIMEIRA, LARG_TOTAL, SEP, SEP_CATEGORIA, TD, TD_FOOT, TH, TH_GRUPO,
 } from './tabela-estilos'
 
 // Componente E — "Por fornecedor": um BLOCO por ano selecionado, cada um com "Valor" (a despesa do
-// fornecedor no ano, no recorte DO ANO, no sinal da DRE) e "% do ano" (participação dele no total de
+// fornecedor no ano, no recorte DO ANO, no sinal da DRE) e "%" (participação dele no total de
 // marketing daquele ano; denominador = total do ano). Linhas ordenadas pela soma dos anos (a maior
-// despesa primeiro), "(sem fornecedor)" incluído sob a mesma regra; rodapé "Total de marketing" com o
+// despesa primeiro), "(sem fornecedor)" incluído sob a mesma regra; rodapé "Total" com o
 // total de cada ano e 100,0%. Célula "—" = o fornecedor não teve lançamento naquele ano (≠ R$ 0,00).
 // É só leitura: a linha NÃO é clicável e não há estado de seleção.
 //
@@ -41,16 +41,21 @@ import {
 // (skill `tabela-densa`, receita de tabela longa): `ScrollAutoHide eixo="both"`, `border-separate`,
 // `<thead>` sticky com o fundo nas células, régua de base aplicada DIRETO nas células (a "Fornecedor"
 // tem `rowSpan`; seletor de "última linha" não a alcança) e sombra sob o cabeçalho só quando rolado.
-// O total fica num `<tfoot>` sticky (sempre visível); o offset `bottom-3.5` é o gutter `pb-3.5` do
-// thumb horizontal (o `sticky` ignora o padding do viewport, então `bottom-0` pousaria em cima dele).
+// O total fica num `<tfoot>` sticky `bottom-0` (sempre visível) e o viewport NÃO tem padding inferior.
+// ATENÇÃO (bug da fresta): o `sticky` mede o offset a partir da borda do CONTEÚDO do viewport (a caixa
+// de padding contraída pelo próprio padding): com `pb-3.5` no viewport, `bottom-0` já pousava 14px acima
+// da borda e o `bottom-3.5` antigo somava +14px — o total ficava a ~28px da base, e na fresta de 14px
+// abaixo dele (acima dos 14px finais que o `clip-path` recortava) as linhas do corpo rolavam à vista,
+// por baixo do total. Sem padding inferior não há zona por onde o corpo role abaixo do total: ele é a última
+// coisa visível, em qualquer posição de rolagem, e no fim da rolagem coincide com a posição natural (sem
+// salto). O thumb horizontal do `ScrollAutoHide` é overlay (`absolute bottom-1` contra a raiz do
+// componente, que termina onde o viewport termina) e por isso pousa sobre a linha de total quando
+// aparece — aceito (some sozinho; o espaço abaixo da tabela vem do wrapper externo, `pb-5`).
 //
 // LARGURA: igual à da "Categoria" (224px — os dois cards alinham); a "Fornecedor" nunca estica. A coluna
-// "% do ano" tem largura fixa e a "Valor" fica SEM largura declarada: a sobra do card vai para as
+// "%" tem largura fixa (`LARG_PCT`) e a "Valor" fica SEM largura declarada: a sobra do card vai para as
 // colunas de valor, por igual. `minWidth` = soma das declaradas; abaixo disso a tabela rola na
 // horizontal com a 1ª coluna presa.
-
-/** "% do ano": cabe "-100,0%" com folga. */
-const LARG_PCT = 84
 
 /** Sombra sob o cabeçalho quando rolado (a mesma da DRE). */
 const SOMBRA_ROLADO = 'shadow-[0_4px_6px_-4px_rgba(45,42,38,0.12)]'
@@ -80,7 +85,7 @@ export default function RankingFornecedores({ periodo, fatias, anosFalha }: Prop
   if (tabela.qtd === 0) {
     return (
       <Card>
-        <CabecalhoCard titulo="Por fornecedor" subtitulo={periodo} />
+        <CabecalhoCard titulo="Por fornecedor" />
         <EmptyState icon={Users} message={`Sem lançamentos pagos em ${periodo}.`} />
       </Card>
     )
@@ -91,24 +96,23 @@ export default function RankingFornecedores({ periodo, fatias, anosFalha }: Prop
   /** Régua de início de bloco — o 1º ano não leva (a borda da "Fornecedor" já faz esse papel). */
   const sep = (i: number) => (i === 0 ? '' : SEP)
   const sombra = rolado ? SOMBRA_ROLADO : ''
-  const nForn = tabela.linhas.length
 
   return (
     <Card>
-      <CabecalhoCard
-        titulo="Por fornecedor"
-        subtitulo={`${periodo} · ${nForn} ${nForn === 1 ? 'fornecedor' : 'fornecedores'}`}
-      />
-      {/* Gutters como na "Por categoria": interno `pr-3.5 pb-3.5` (o thumb flutua em overlay, fora da
-          tabela); externo `-mr-3.5 pb-1.5` — o `-mr` devolve ao card os 14px do gutter direito, então a
-          borda da tabela fica alinhada à da tabela de cima, e o thumb vertical pousa no padding do card. */}
-      <div className="-mr-3.5 pb-1.5">
+      <CabecalhoCard titulo="Por fornecedor" />
+      {/* Gutters: interno SÓ à direita (`pr-3.5`, o thumb vertical flutua em overlay, fora da tabela); o
+          externo `-mr-3.5` devolve ao card esses 14px, então a borda da tabela fica alinhada à da tabela
+          de cima, e o thumb vertical pousa no padding do card. Embaixo NÃO há gutter dentro do viewport
+          (ver a nota sobre o `<tfoot>` no topo): o respiro abaixo da tabela, igual ao da "Por categoria"
+          (`pb-1.5` + `pb-3.5`), vem do wrapper externo — `pb-5`. */}
+      <div className="-mr-3.5 pb-5">
         {/* `clip-path` arredonda os 4 cantos da ÁREA VISÍVEL da tabela (raio de `rounded-lg`; os
-            `0.875rem` de baixo e da direita são os gutters, fora da tabela) — com a tabela rolada, o que
-            passa por baixo da coluna presa mostraria cantos QUADRADOS (ver a "Por categoria"). */}
+            `0.875rem` da direita são o gutter, fora da tabela; embaixo o recorte é rente à tabela) — com a
+            tabela rolada, o que passa por baixo da coluna presa mostraria cantos QUADRADOS (ver a "Por
+            categoria"). */}
         <ScrollAutoHide
           eixo="both"
-          className="max-h-[440px] pb-3.5 pr-3.5 [clip-path:inset(0_0.875rem_0.875rem_0_round_0.5rem)]"
+          className="max-h-[440px] pr-3.5 [clip-path:inset(0_0.875rem_0_0_round_0.5rem)]"
           onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}
         >
           <table
@@ -146,7 +150,7 @@ export default function RankingFornecedores({ periodo, fatias, anosFalha }: Prop
               <tr>
                 {tabela.anos.flatMap((a, i) => [
                   <th key={`${a.ano}-valor`} className={`${TH} ${sep(i)} ${sombra}`}>Valor</th>,
-                  <th key={`${a.ano}-pct`} className={`${TH} ${sombra}`}>% do ano</th>,
+                  <th key={`${a.ano}-pct`} className={`${TH} ${sombra}`}>%</th>,
                 ])}
               </tr>
             </thead>
@@ -167,9 +171,9 @@ export default function RankingFornecedores({ periodo, fatias, anosFalha }: Prop
                 </tr>
               ))}
             </tbody>
-            <tfoot className="sticky bottom-3.5 z-20 [&_td]:bg-band">
+            <tfoot className="sticky bottom-0 z-20 [&_td]:bg-band">
               <tr>
-                <td className={`${TD_FOOT} sticky left-0 z-10 ${SEP_CATEGORIA} ${BG_TOTAL_FOOT} rounded-bl-lg`}>Total de marketing</td>
+                <td className={`${TD_FOOT} sticky left-0 z-10 ${SEP_CATEGORIA} ${BG_TOTAL_FOOT} rounded-bl-lg`}>Total</td>
                 {tabela.anos.flatMap((a, i) => [
                   <td key={`${a.ano}-valor`} className={`${TD_FOOT} ${sep(i)}`}>
                     <Valor v={a.total} />

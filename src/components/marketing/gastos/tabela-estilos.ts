@@ -12,6 +12,9 @@
 export const LARG_PRIMEIRA = 224
 /** Largura de uma coluna de VALOR (mês/total). */
 export const LARG_TOTAL = 132
+/** Largura (FIXA) da coluna "%" — participação no total do ano; cabe "-100,0%" com folga. Nas duas
+ *  tabelas a coluna "Valor"/"Total" fica sem largura e recebe a sobra do card; a "%" nunca estica. */
+export const LARG_PCT = 84
 
 /** Linha de BAIXO do cabeçalho (rótulos das colunas). A régua de base é aplicada direto em cada
  *  célula, não por seletor de "última linha" (a 1ª coluna tem `rowSpan`). Padding horizontal igual ao

@@ -8,6 +8,7 @@
 //   Σ meses de um ano  ≡  total do ano        (quando o ano tem lançamento)
 //   Σ totais dos anos  ≡  `totalDoPeriodo`    (o card "Total de despesas no período")
 //   Σ categorias       ≡  linha de total      (por mês e por ano)
+//   Σ "%" por ano      =  100%                (análise vertical; dentro do arredondamento de exibição)
 //
 // Cada ano é lido por `tabelaPorCategoria` no SEU recorte (ano fechado jan–dez; ano corrente jan até
 // o mês corrente — sem colunas de futuro) e as categorias são costuradas entre os anos.
@@ -16,9 +17,10 @@
 //
 // AUSÊNCIA × ZERO (a mesma convenção da tabela mensal): `null` = a categoria não teve lançamento
 // naquele mês/ano (célula "—"); `0` = houve lançamento e somou zero. Um ano sem NENHUM lançamento
-// no recorte tem total `null` ("—"), não zero.
+// no recorte tem total `null` ("—"), não zero. A "%" da categoria também é `null` quando ela não
+// aparece no ano OU quando o total do ano é zero contábil (razão sobre zero é indefinida).
 
-import { somar,tabelaPorCategoria, type FatiaAno } from './agregacao'
+import { pctDoTotal, somar, tabelaPorCategoria, type FatiaAno } from './agregacao'
 import { mesesDoRecorte, rotuloAnoNoTotal, rotuloRecorte, recorteParcial } from './periodo'
 import type { LinhaMesCategoria } from './tipos'
 
@@ -35,6 +37,8 @@ export interface ColunaAno {
   totalPorMes: (number | null)[]
   /** Total do ano no recorte; `null` = ano sem lançamento algum. */
   total: number | null
+  /** "%" do total do ano (a linha de rodapé): 100 quando há total não-zero; `null` caso contrário. */
+  pctTotal: number | null
   qtd: number
 }
 
@@ -44,6 +48,9 @@ interface CelulaAno {
   porMes: (number | null)[]
   /** Total da categoria no ano; `null` = a categoria não aparece nesse ano. */
   total: number | null
+  /** Análise vertical: % que o total da categoria é do total DO ANO (a razão de dois negativos é
+   *  positiva). `null` = a categoria não aparece nesse ano, ou o total do ano é zero contábil. */
+  pct: number | null
 }
 
 interface LinhaCategoriaAno {
@@ -65,15 +72,19 @@ export function tabelaCategoriasPorAno(fatias: readonly FatiaAno<LinhaMesCategor
   const ordenadas = [...fatias].sort((a, b) => a.ano - b.ano)
   const porAno = ordenadas.map(f => ({ fatia: f, tabela: tabelaPorCategoria(f.linhas, f.recorte) }))
 
-  const anos: ColunaAno[] = porAno.map(({ fatia, tabela }) => ({
-    ano: fatia.ano,
-    rotulo: rotuloAnoNoTotal(fatia.ano, fatia.recorte),
-    recorte: recorteParcial(fatia.recorte) ? rotuloRecorte(fatia.recorte) : null,
-    meses: mesesDoRecorte(fatia.recorte),
-    totalPorMes: tabela.totalPorMes,
-    total: tabela.qtd === 0 ? null : tabela.total,
-    qtd: tabela.qtd,
-  }))
+  const anos: ColunaAno[] = porAno.map(({ fatia, tabela }) => {
+    const total = tabela.qtd === 0 ? null : tabela.total
+    return {
+      ano: fatia.ano,
+      rotulo: rotuloAnoNoTotal(fatia.ano, fatia.recorte),
+      recorte: recorteParcial(fatia.recorte) ? rotuloRecorte(fatia.recorte) : null,
+      meses: mesesDoRecorte(fatia.recorte),
+      totalPorMes: tabela.totalPorMes,
+      total,
+      pctTotal: total === null ? null : pctDoTotal(total, total),
+      qtd: tabela.qtd,
+    }
+  })
 
   const categorias = new Set<string>()
   for (const { tabela } of porAno) for (const l of tabela.linhas) categorias.add(l.categoria)
@@ -83,9 +94,11 @@ export function tabelaCategoriasPorAno(fatias: readonly FatiaAno<LinhaMesCategor
   const linhasComChave = [...categorias].map(categoria => {
     const celulas: CelulaAno[] = porAno.map(({ fatia, tabela }) => {
       const l = tabela.linhas.find(x => x.categoria === categoria)
+      // `l.pct` já é `pctDoTotal(total da categoria, total do ano)` — o mesmo denominador de `anos[].total`
+      // (o `tabelaPorCategoria` do próprio ano); `null` quando o total do ano é zero contábil.
       return l
-        ? { porMes: l.porMes, total: l.total }
-        : { porMes: mesesDoRecorte(fatia.recorte).map(() => null), total: null }
+        ? { porMes: l.porMes, total: l.total, pct: l.pct }
+        : { porMes: mesesDoRecorte(fatia.recorte).map(() => null), total: null, pct: null }
     })
     const chave = somar(celulas.flatMap(c => (c.total === null ? [] : [c.total])))
     const qtd = porAno.reduce((s, { tabela }) => s + (tabela.linhas.find(x => x.categoria === categoria)?.qtd ?? 0), 0)

@@ -1,4 +1,8 @@
-// Coluna "Total" de cada ano EXPANDIDO presa à borda direita da área visível (v6.3.0).
+// BLOCO "Total + %" de cada ano EXPANDIDO preso à borda direita da área visível (v6.3.0).
+//
+// "larguraTotal" é a largura do BLOCO — a coluna "Total" e a "%" ao lado, que se movem como uma
+// unidade —, medida da borda esquerda do "Total" à borda direita da "%"; `fim` é a borda direita da
+// "%". A matemática não sabe de colunas: só de um bloco de largura L terminando em `fim`.
 //
 // `position: sticky; right: 0` não serve: o sticky de célula de tabela é limitado pela TABELA, não
 // pelo grupo do ano — todos os totais se empilhariam na borda. Em vez disso o componente mede a
@@ -22,8 +26,9 @@ export interface GrupoAno {
   ano: number
   /** x da borda esquerda do grupo (a 1ª coluna de mês). */
   inicio: number
-  /** x da borda direita do grupo = borda direita natural da coluna de total. */
+  /** x da borda direita do grupo = borda direita natural do bloco "Total + %" (a da "%"). */
   fim: number
+  /** Largura do BLOCO "Total + %" (não só da coluna "Total"). */
   larguraTotal: number
 }
 

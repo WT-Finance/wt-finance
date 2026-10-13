@@ -58,8 +58,10 @@ export function useScrollAoAlternar(
       // Ano que saiu da seleção (poda) não tem coluna recolhida: sem alvo, sem scroll.
       const alvo = tabela.querySelector<HTMLElement>(`th[data-ano-recolhido="${fechou[0]}"]`)
       if (!alvo) return
+      // O ano recolhido é o bloco "Total" + "%": a borda direita é a da "%" (`data-ano-recolhido-fim`).
+      const fim = tabela.querySelector<HTMLElement>(`th[data-ano-recolhido-fim="${fechou[0]}"]`) ?? alvo
       const esquerda = alvo.offsetLeft
-      const direita = esquerda + alvo.offsetWidth
+      const direita = fim.offsetLeft + fim.offsetWidth
       if (esquerda < atual + larguraEsquerda) destino = esquerda - larguraEsquerda
       else if (direita > atual + viewport.clientWidth) destino = direita - viewport.clientWidth
     }

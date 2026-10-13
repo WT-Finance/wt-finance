@@ -3,9 +3,13 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, type RefObject, type UIEvent } from 'react'
 import { totalPreso, type GrupoAno } from '@/lib/marketing/total-preso'
 
-// Prende a coluna "Total" do ano EXPANDIDO sob a borda direita da área visível (matemática em
-// `@/lib/marketing/total-preso`). TUDO imperativo, sem estado: a cada scroll escreve
-// `transform`/`box-shadow` direto nas células de total (marcadas `data-total-ano`) — como o próprio
+// Prende o BLOCO "Total + %" do ano EXPANDIDO sob a borda direita da área visível (matemática em
+// `@/lib/marketing/total-preso`). As duas colunas se movem como UMA unidade: a "Total" e a "%" têm o
+// mesmo `data-total-ano` e o mesmo `translateX`; a largura passada à matemática é a do BLOCO (da borda
+// esquerda do "Total" à borda direita da "%"). A sombra/fio à esquerda vai SÓ nas células do "Total"
+// (as da "%" levam `data-total-pct` e só recebem o `transform`) — senão apareceria uma costura no meio
+// do bloco. TUDO imperativo, sem estado: a cada scroll escreve
+// `transform`/`box-shadow` direto nas células do bloco (marcadas `data-total-ano`) — como o próprio
 // `ScrollAutoHide` faz com o thumb —, então não há re-render por pixel. As posições são MEDIDAS no DOM
 // (`offsetLeft`/`offsetWidth`, que ignoram transform), não recalculadas das constantes: com
 // `table-fixed` + `w-full` a tabela pode esticar e as colunas deixam de ter a largura declarada.
@@ -37,13 +41,14 @@ function escrever(g: GrupoMedido, desloc: number) {
   g.aplicado = desloc
   for (const c of g.celulas) {
     c.style.transform = desloc === 0 ? '' : `translateX(${desloc}px)`
-    c.style.boxShadow = desloc === 0 ? '' : SOMBRA_PRESA
+    // A "%" acompanha o "Total", mas a sombra à esquerda é do BLOCO (só a 1ª coluna dele a leva).
+    c.style.boxShadow = desloc === 0 || c.dataset.totalPct !== undefined ? '' : SOMBRA_PRESA
   }
 }
 
 /**
- * @param tabelaRef  a <table> (as células de total levam `data-total-ano` e a 1ª coluna de mês de cada
- *                   ano expandido leva `data-grupo-ano`).
+ * @param tabelaRef  a <table> (as células do bloco Total + % levam `data-total-ano` — as da "%" também
+ *                   `data-total-pct` — e a 1ª coluna de mês de cada ano expandido leva `data-grupo-ano`).
  * @param chave      muda sempre que a ESTRUTURA muda (anos abertos, linhas, tabela visível) — remede.
  * @param larguraEsquerda  largura da coluna "Categoria" (sticky à esquerda).
  * @returns `onScroll` para repassar ao `ScrollAutoHide`.
@@ -91,13 +96,18 @@ export function useTotalPreso(
     const medidos: GrupoMedido[] = []
     for (const ini of tabela.querySelectorAll<HTMLElement>('[data-grupo-ano]')) {
       const ano = Number(ini.dataset.grupoAno)
+      // O BLOCO = "Total" (data-total-ref) + "%" (data-total-pct) do cabeçalho de baixo: `fim` é a borda
+      // direita da "%" e `larguraTotal`, a largura dos DOIS juntos (`offsetLeft`/`offsetWidth` ignoram
+      // o transform, então a medida é a natural mesmo com o bloco deslocado).
       const total = tabela.querySelector<HTMLElement>(`th[data-total-ano="${ano}"][data-total-ref]`)
-      if (!total) continue
+      const pct = tabela.querySelector<HTMLElement>(`th[data-total-ano="${ano}"][data-total-pct]`)
+      if (!total || !pct) continue
+      const fim = pct.offsetLeft + pct.offsetWidth
       medidos.push({
         ano,
         inicio: ini.offsetLeft,
-        fim: total.offsetLeft + total.offsetWidth,
-        larguraTotal: total.offsetWidth,
+        fim,
+        larguraTotal: fim - total.offsetLeft,
         celulas: porAno.get(ano) ?? [],
         aplicado: Number.NaN,
       })
