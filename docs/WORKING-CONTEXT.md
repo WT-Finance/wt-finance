@@ -9,18 +9,28 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-13 (v6.3.1 atualizada sobre o main com a v6.3.0; v6.3.0 em produção desde 11:08).
+Última atualização: 2026-10-13 (pós-merge da v6.3.1, em produção desde 11:32).
 
 ---
 
-## Em voo — v6.3.1 "Solicitações: exportar todas para Excel" (PR #300, branch `feat/v6-3-1-exportar-solicitacoes`)
+## Em produção — v6.3.1 "Solicitações: exportar todas para Excel" (PR #300, mergeado 13/10 às 11:32)
 
 Botão "Exportar" na página de Solicitações (gestão, área `solicitacoes`) → `GET /api/solicitacoes/exportar`
 devolve `.xlsx` com TODAS as solicitações (abas Todas / uma por tipo / Anexos / Sobre). Sem migration, sem RPC
-nova. Out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-3-1_Exportar_Solicitacoes.md`. Em 13/10 a branch
-recebeu o `main` com a v6.3.0 (conflito só em versão, CHANGELOGs e neste arquivo — resolvido; versão 6.3.1).
+nova (banco segue na **0294**, livre **0295**; ADR livre **0183**). Out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v6-3-1_Exportar_Solicitacoes.md`.
 
-> 🔴 **Yan:** mergear o PR; conferência visual + download autenticado (roteiro no out-briefing §5); depois `/pos-merge`.
+> 🔴 **Yan — conferência no ar** (roteiro no out-briefing §5): com usuário de gestão em "Minha caixa", Exportar
+> traz TODAS as solicitações; sem gestão, o botão não aparece e `/api/solicitacoes/exportar` dá 403.
+> 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.3.1** (a sessão não alcança o checkout compartilhado,
+> protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-3-1`). Nada a salvar: a
+> branch não tem commit fora do main e as fixtures git-ignoradas da worktree são idênticas às do arquivo de resgate.
+> ```bash
+> cd ~/projects/wt-finance && git pull --ff-only
+> git worktree remove .claude/worktrees/feat-v6-3-1-exportar-solicitacoes --force
+> git worktree prune
+> git branch -D feat/v6-3-1-exportar-solicitacoes docs/pos-merge-v6-3-1
+> ```
 
 ## Em produção — v6.3.0 "Despesas de Marketing" (PR #299, mergeado 13/10 às 11:08)
 
@@ -43,16 +53,6 @@ medição `docs/auditoria/v6-3-0-m0-marketing.md`.
 > aceito); "Despesas mensais" jan–dez com barra por ano + painel Total; tabela "Por categoria" com anos
 > expansíveis por mês (Total + % do ano presos na rolagem) e "Por fornecedor" com um bloco por ano
 > (Valor + %); seção "Lançamentos" e Exportar **removidos**.
-> 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.3.0** (a sessão não alcança o checkout
-> compartilhado, protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-3-0`,
-> que mora na mesma worktree). Nada gitignorado a salvar: as fixtures do oráculo são cópias de
-> `~/projects/arquivo-worktrees-janus/fixtures-ingestao/`. Da raiz (`/home/yan-wt/projects/wt-finance`):
-> ```bash
-> git pull --ff-only
-> git worktree remove .claude/worktrees/feat-v6-3-0-gastos-marketing --force
-> git worktree prune
-> git branch -D feat/v6-3-0-gastos-marketing docs/pos-merge-v6-3-0
-> ```
 > 🔴 **Yan — produto:** decidir o sentido do eixo do card de proporção (hoje as barras descem do zero; na
 > DRE o eixo é invertido); criar a role/usuário da gestora (só `marketing/gastos`) se ainda não criou;
 > conferir no ar e mostrar à gestora (anotar o que ela pedir — insumo da próxima versão da seção).
