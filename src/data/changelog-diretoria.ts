@@ -35,6 +35,21 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '6.3.0',
+    data: '2026-10-08T13:25', // horário real de autoria; reconciliar ao merge no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'A gestão de marketing passa a acompanhar no Janus as despesas pagas da área, com o mesmo número da ' +
+          'linha de Marketing da DRE: total do período com a variação de um ano para o outro, mês a mês, por categoria e por fornecedor, ' +
+          'comparando os anos lado a lado, e quanto o marketing consumiu da receita bruta em cada ano (o mesmo ' +
+          'percentual do gráfico da DRE). A seção "Marketing" tem acesso próprio — a gestora não precisa de ' +
+          'acesso ao Financeiro.',
+      },
+    ],
+  },
+  {
     versao: '6.2.3',
     data: '2026-10-08T11:34', // horário real do merge (PR #297), reconciliado no /pos-merge
     itens: [
