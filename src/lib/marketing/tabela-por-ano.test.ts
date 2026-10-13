@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { somar, tabelaPorCategoriaPeriodo, totalDoPeriodo, type FatiaAno } from './agregacao'
 import { recortePadrao } from './periodo'
-import { alternarAnoAberto, colunasDoAno, podarAnosAbertos, tabelaCategoriasPorAno } from './tabela-por-ano'
+import { alternarAnoAberto, podarAnosAbertos, tabelaCategoriasPorAno } from './tabela-por-ano'
 import type { LinhaMesCategoria } from './tipos'
 
 const HOJE = '2026-10-08'
@@ -186,12 +186,5 @@ describe('estado de expansão por ano', () => {
   it('alternar: abre um ano fechado e fecha um aberto, sem mexer nos outros', () => {
     expect(alternarAnoAberto([2025], 2026)).toEqual([2025, 2026])
     expect(alternarAnoAberto([2025, 2026], 2025)).toEqual([2026])
-  })
-
-  it('colunas: recolhido = 1 (o total); aberto = meses + 1', () => {
-    const { anos } = tabelaCategoriasPorAno([F25, F26])
-    expect(colunasDoAno(anos[0], false)).toBe(1)
-    expect(colunasDoAno(anos[0], true)).toBe(13)
-    expect(colunasDoAno(anos[1], true)).toBe(11)
   })
 })

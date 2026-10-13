@@ -458,6 +458,38 @@ com o grant.
 | BAIXO — `limitar` antes do filtro de pills | Registrado; improvável com a base atual |
 | BAIXO — estados do total reimplementam o card | Registrado |
 
+### revisor (pré-merge, 13/10, delta 8c91fb8..HEAD — rodadas 3 a 9) — APROVADO COM RESSALVAS, pronto para merge
+
+**Corrigidos antes do merge:**
+
+| Achado | Correção |
+|---|---|
+| M1 — no card total, ano sem lançamento no recorte saía "R$ 0,00" com Δ "+100% favorável" inventado (as tabelas mostravam "—") | Ausência vira "—" e Δ sem número; o Acumulado soma só os anos com dado |
+| M2 — área de toque do chevron ~17px | Área clicável ≥24px por pseudo-elemento, sem mudar o visual. O mesmo defeito existe na DRE, fora do escopo |
+| M3 — leitor de tela não ligava os meses ao ano | `sr-only` com o ano no lugar do `aria-hidden`, `scope="col"` e nome acessível nas duas tabelas |
+| B1 — comentário contradizia o código | Corrigido |
+| B2 — `colunasDoAno` era código morto | Removido |
+| B3 — a coluna presa não remedia quando as categorias mudavam com a mesma contagem | Chave inclui as categorias |
+| B4 — classes da 1ª coluna duplicadas | `TH_PRIMEIRA` em `tabela-estilos.ts` |
+
+**Registrados, sem correção nesta versão:**
+
+- **M4.** `--text-subtle` (~2,5:1) carrega informação na referência "vs 2025 (jan–out)" e no "—" de
+  ausência. Mesma decisão de contraste pendente da v5.9.3.
+- **M5.** Divergências conscientes da skill `tabela-densa`: cabeçalho em caixa alta 10px semibold (padrão
+  da DRE, pedido do produto) e `w-full` + `minWidth` com 12 meses. A skill ainda diz "NUNCA uppercase",
+  embora a DRE, que ela cita, use caixa alta. **Candidato a atualização da skill** (régua de 5 destinos).
+- **B5.** As sondas estáticas por regex provam presença, não comportamento, e são frágeis a
+  reformatação. Não há ambiente DOM nos testes.
+- **B6.** A expansão de ano é estado local, não vai para a URL; decisão documentada.
+- **B7.** O `*` do ano parcial nas tabelas é explicado só por `title`.
+- **B8.** Com 4 ou mais anos, as barras repetem o tom mais claro, que fica abaixo de 3:1.
+- **B9.** Sem a lista de anos da base (todas as leituras falhando), `?anos=` aceita a faixa inteira e gera
+  muitas RPCs. Impacto baixo: só usuário autenticado com a área chega aí.
+- **B10.** A 0294 foi escrita em `supabase/migrations/` antes da aplicação, contra a skill `banco-e-rpc`
+  §1. Mitigado: nenhuma aditiva foi aplicada enquanto ela esteve pendente, e o Yan a aplicou logo em
+  seguida.
+
 ### Incidente: o computador reiniciou no meio da 2ª rodada (09/10)
 
 **O que aconteceu:**

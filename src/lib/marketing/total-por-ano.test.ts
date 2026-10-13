@@ -116,7 +116,8 @@ describe('linhasTotalPorAno — acumulado, um ano e falha', () => {
     const r = ok([F24, F25, F26])
     expect(r.acumulado).toEqual({ valor: -1650, qtd: 7 })
     expect(r.acumulado).toEqual(totalDoPeriodo([F24, F25, F26]))
-    expect(r.acumulado.valor).toBe(somar(r.linhas.map(l => l.valor)))
+    // Ano ausente (`valor: null`) não soma — aqui os três têm dado; o `?? 0` só satisfaz o tipo.
+    expect(r.acumulado.valor).toBe(somar(r.linhas.map(l => l.valor ?? 0)))
     // Σ de float sem centavos exatos daria 0,30000000000000004:
     const fl = ok([fatia(2024, [m(1, -0.1)]), fatia(2025, [m(1, -0.2)])])
     expect(fl.acumulado.valor).toBe(-0.3)
@@ -129,10 +130,11 @@ describe('linhasTotalPorAno — acumulado, um ano e falha', () => {
     expect(r.acumulado).toEqual({ valor: -450, qtd: 2 })
   })
 
-  it('nenhum lançamento: linhas zeradas e acumulado 0/0 (o card mostra o vazio)', () => {
+  it('nenhum lançamento: linhas AUSENTES (null), sem variação numérica, e acumulado 0/0 (o card mostra o vazio)', () => {
     const r = ok([fatia(2025, []), fatia(2026, [])])
     expect(r.acumulado).toEqual({ valor: 0, qtd: 0 })
-    expect(r.linhas.map(l => l.valor)).toEqual([0, 0])
+    expect(r.linhas.map(l => l.valor)).toEqual([null, null])
+    expect(r.linhas[0].variacao).toMatchObject({ pct: null, sentido: null })
   })
 
   it('FALHA de um ano: fail-closed — nenhuma linha, nenhum total, só os anos que faltam', () => {
@@ -141,6 +143,45 @@ describe('linhasTotalPorAno — acumulado, um ano e falha', () => {
     expect(r).toEqual({ ok: false, anosFalha: [2025] })
     expect('linhas' in r).toBe(false)
     expect('acumulado' in r).toBe(false)
+  })
+})
+
+describe('linhasTotalPorAno — ausência (sem lançamento) × zero', () => {
+  it('ano vazio no MEIO: a linha é null; a de cima (base ausente) e a dele (sem número) ficam sem Δ', () => {
+    // 2026 (−450) · 2025 vazio · 2024 (−400)
+    const { linhas, acumulado } = ok([F24, fatia(2025, []), F26])
+    expect(linhas.map(l => l.ano)).toEqual([2026, 2025, 2024])
+    expect(linhas.map(l => l.valor)).toEqual([-450, null, -400])
+    expect(linhas.map(l => l.qtd)).toEqual([2, 0, 2])
+    // 2026 × base 2025 ausente: nada de "+100% / −100% favorável" por falta de dado.
+    expect(linhas[0].variacao).toMatchObject({ contra: 2025, pct: null, sentido: null })
+    // 2025 (linha ausente) × 2024: também sem número.
+    expect(linhas[1].variacao).toMatchObject({ contra: 2024, pct: null, sentido: null })
+    // O acumulado soma só os anos com dado.
+    expect(acumulado).toEqual({ valor: -850, qtd: 4 })
+  })
+
+  it('ano vazio como linha de CIMA (o mais recente): null e Δ sem número, o de baixo intacto', () => {
+    const { linhas } = ok([F24, F25, fatia(2026, [])])
+    expect(linhas.map(l => l.valor)).toEqual([null, -800, -400])
+    expect(linhas[0].variacao).toMatchObject({ contra: 2025, pct: null, sentido: null })
+    // A linha de 2025 segue comparando com 2024 normalmente (−100%).
+    expect(linhas[1].variacao?.pct).toBe(-100)
+  })
+
+  it('ano vazio como BASE (o mais antigo): a linha de cima mostra o valor, mas sem Δ', () => {
+    const { linhas } = ok([fatia(2024, []), F25])
+    expect(linhas.map(l => l.valor)).toEqual([-800, null])
+    expect(linhas[0].variacao).toMatchObject({ contra: 2024, pct: null, sentido: null })
+    expect(linhas[1].variacao).toBeNull()
+  })
+
+  it('ZERO real (lançamentos que somam 0) NÃO é ausência: valor 0 e Δ calculado', () => {
+    const { linhas } = ok([fatia(2024, [m(1, -100), m(2, 100, 1)]), fatia(2025, [m(1, -50)])])
+    expect(linhas.map(l => l.valor)).toEqual([-50, 0])
+    expect(linhas[1].qtd).toBe(2)
+    // base zero contábil (|0| < 0,005): travessão pela `deltaYtd`, mas por ela — não por ausência.
+    expect(linhas[0].variacao).toMatchObject({ pct: null, sentido: null })
   })
 })
 

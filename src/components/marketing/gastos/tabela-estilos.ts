@@ -10,7 +10,8 @@
 
 /** Largura da 1ª coluna (fixa, presa à esquerda): "Categoria" / "Fornecedor". */
 export const LARG_PRIMEIRA = 224
-/** Largura de uma coluna de VALOR (mês/total). */
+/** Largura MÍNIMA da coluna de TOTAL/valor de um ano (ela não declara largura no `<col>`: recebe a sobra
+ *  do card; o mês da "Por categoria" tem a sua própria, `LARG_MES`, no componente). */
 export const LARG_TOTAL = 132
 /** Largura (FIXA) da coluna "%" — participação no total do ano; cabe "-100,0%" com folga. Nas duas
  *  tabelas a coluna "Valor"/"Total" fica sem largura e recebe a sobra do card; a "%" nunca estica. */
@@ -33,6 +34,10 @@ export const SEP = 'border-l-2 border-l-wt-border-strong'
  *  fica sempre ao lado da coluna fixa. Por isso o 1º ano NÃO leva `SEP` — seria uma linha dupla com a
  *  tabela parada. */
 export const SEP_CATEGORIA = 'border-r-2 border-r-wt-border-strong'
+/** `<th>` da 1ª coluna ("Categoria" / "Fornecedor"): `rowSpan={2}`, presa à esquerda, embaixo à
+ *  esquerda, régua de base aplicada DIRETO na célula. O `z-*` (20 na "Por categoria", 30 na "Por
+ *  fornecedor", cujo `<thead>` também é sticky) fica no call-site. */
+export const TH_PRIMEIRA = `sticky left-0 rounded-tl-lg ${SEP_CATEGORIA} border-b-[1.5px] border-b-wt-border-strong pb-[7px] pl-3 pr-3 text-left align-bottom text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary`
 /** Fundo OPACO da 1ª coluna no corpo e (a coluna de total do ano, na "Por categoria"): impede o que
  *  rola de vazar por baixo. No cabeçalho o fundo é `--band` contínuo (como na DRE). O rodapé precisa do
  *  `!`: `[&_td]:bg-band` do container é mais específico que a classe da célula. */

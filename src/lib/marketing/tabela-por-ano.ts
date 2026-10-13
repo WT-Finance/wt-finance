@@ -122,8 +122,3 @@ export function podarAnosAbertos(abertos: readonly number[], anosSelecionados: r
 export function alternarAnoAberto(abertos: readonly number[], ano: number): number[] {
   return abertos.includes(ano) ? abertos.filter(a => a !== ano) : [...abertos, ano]
 }
-
-/** Nº de colunas que um ano ocupa: recolhido = só o total; aberto = os meses + o total. */
-export function colunasDoAno(coluna: Pick<ColunaAno, 'meses'>, aberto: boolean): number {
-  return aberto ? coluna.meses.length + 1 : 1
-}

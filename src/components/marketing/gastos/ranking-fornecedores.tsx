@@ -15,6 +15,7 @@ import CabecalhoCard from './cabecalho-card'
 import Valor from './celula-valor'
 import {
   BG_TOTAL_FOOT, BG_TOTAL_TD, LARG_PCT, LARG_PRIMEIRA, LARG_TOTAL, SEP, SEP_CATEGORIA, TD, TD_FOOT, TH, TH_GRUPO,
+  TH_PRIMEIRA,
 } from './tabela-estilos'
 
 // Componente E — "Por fornecedor": um BLOCO por ano selecionado, cada um com "Valor" (a despesa do
@@ -57,7 +58,8 @@ import {
 // colunas de valor, por igual. `minWidth` = soma das declaradas; abaixo disso a tabela rola na
 // horizontal com a 1ª coluna presa.
 
-/** Sombra sob o cabeçalho quando rolado (a mesma da DRE). */
+/** Sombra sob o cabeçalho quando rolado — o `rgba(...)` é COPIADO da sombra de cabeçalho rolado da DRE
+ *  (`src/components/financeiro/dre/tabela-dre.tsx`); se aquela mudar, esta acompanha. */
 const SOMBRA_ROLADO = 'shadow-[0_4px_6px_-4px_rgba(45,42,38,0.12)]'
 
 interface Props {
@@ -116,6 +118,7 @@ export default function RankingFornecedores({ periodo, fatias, anosFalha }: Prop
           onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}
         >
           <table
+            aria-label="Despesas por fornecedor"
             className="w-full table-fixed border-separate border-spacing-0"
             style={{ minWidth: larguraMin }}
           >
@@ -132,7 +135,7 @@ export default function RankingFornecedores({ periodo, fatias, anosFalha }: Prop
                 {/* Como "Conta" na DRE: rowSpan 2, embaixo à esquerda, régua de base DIRETO na célula. */}
                 <th
                   rowSpan={2}
-                  className={`sticky left-0 z-30 rounded-tl-lg ${SEP_CATEGORIA} border-b-[1.5px] border-b-wt-border-strong pb-[7px] pl-3 pr-3 text-left align-bottom text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary ${sombra}`}
+                  className={`z-30 ${TH_PRIMEIRA} ${sombra}`}
                 >
                   Fornecedor
                 </th>
@@ -149,8 +152,8 @@ export default function RankingFornecedores({ periodo, fatias, anosFalha }: Prop
               </tr>
               <tr>
                 {tabela.anos.flatMap((a, i) => [
-                  <th key={`${a.ano}-valor`} className={`${TH} ${sep(i)} ${sombra}`}>Valor</th>,
-                  <th key={`${a.ano}-pct`} className={`${TH} ${sombra}`}>%</th>,
+                  <th key={`${a.ano}-valor`} scope="col" className={`${TH} ${sep(i)} ${sombra}`}>Valor</th>,
+                  <th key={`${a.ano}-pct`} scope="col" className={`${TH} ${sombra}`}>%</th>,
                 ])}
               </tr>
             </thead>

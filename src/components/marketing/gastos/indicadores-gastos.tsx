@@ -21,7 +21,8 @@ import {
 // O título é fixo, SEM o período (quem diz o período são as pills de ano). Sempre uma linha por ano
 // selecionado — MESMO com um ano só (decisão do Yan, 09/10: o formato não muda com a seleção) —, do
 // mais recente ao mais antigo, cada uma com o valor do ano e a variação % contra o ano logo abaixo
-// (o mais antigo não tem), e no fim o "Acumulado" (a soma; com um ano, igual à linha).
+// (o mais antigo não tem), e no fim o "Acumulado" (a soma; com um ano, igual à linha). Ano sem nenhum
+// lançamento é AUSÊNCIA: a linha mostra "—" (nunca "R$ 0,00") e a variação que o envolve fica sem número.
 // As contas (ordem, recorte igual com igual, Δ, acumulado, fail-closed) estão em
 // `@/lib/marketing/total-por-ano` — aqui só se desenha.
 //
@@ -85,7 +86,7 @@ function TilePorAno({ linhas, acumulado }: { linhas: readonly LinhaTotalAno[]; a
                 {l.rotulo}
               </span>
               <span className="shrink-0 whitespace-nowrap text-base font-extrabold leading-none tabular-nums text-zinc-800">
-                {fmtBRL2(l.valor)}
+                {l.valor === null ? '—' : fmtBRL2(l.valor)}
               </span>
             </div>
             {l.variacao && <Variacao v={l.variacao} />}

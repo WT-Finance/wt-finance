@@ -1,9 +1,15 @@
 // Card "Total de despesas no período" (v6.3.0, 3ª rodada) — módulo PURO.
 //
-// Com UM ano o card mostra o total dele; com DOIS OU MAIS, uma linha por ano — do mais recente ao
-// mais antigo — com o valor do ano e a VARIAÇÃO % contra o ano logo abaixo na lista (o próximo mais
-// antigo SELECIONADO, mesmo que não seja o do calendário: `2026 + 2024` compara 2026 com 2024), e
-// uma linha final "Acumulado" com a soma de todos (o mesmo número de `totalDoPeriodo`).
+// SEMPRE uma linha por ano selecionado (inclusive com um ano só) — do mais recente ao mais antigo —
+// com o valor do ano e a VARIAÇÃO % contra o ano logo abaixo na lista (o próximo mais antigo
+// SELECIONADO, mesmo que não seja o do calendário: `2026 + 2024` compara 2026 com 2024), e uma
+// linha final "Acumulado" com a soma dos anos COM dado (o mesmo número de `totalDoPeriodo`; um ano
+// ausente não soma nada).
+//
+// AUSÊNCIA × ZERO: ano SEM nenhum lançamento no seu recorte (`qtd === 0`) é AUSÊNCIA — a linha tem
+// `valor: null` (o card escreve "—", nunca "R$ 0,00") e a variação que o envolve, como linha ou como
+// base, sai sem número (`pct`/`sentido` null: travessão, sem "favorável/desfavorável"). Zero REAL
+// (lançamentos que somam 0) é `valor: 0`, e a variação sobre ele segue a `deltaYtd`.
 //
 // IGUAL COM IGUAL: a base da variação é lida no MESMO recorte do ano da linha — `totalNoRecorte(
 // base.linhas, atual.recorte)`. Linha parcial (ano corrente, jan–out): o ano de baixo entra com jan–out
@@ -32,7 +38,7 @@ export type SentidoVariacao = 'favoravel' | 'desfavoravel' | 'neutro'
 export interface VariacaoVsAnterior {
   /** O ano comparado (o próximo mais antigo da lista). */
   contra: number
-  /** Δ% (`deltaYtd`); `null` = base em zero contábil → travessão. */
+  /** Δ% (`deltaYtd`); `null` = base em zero contábil OU ano sem lançamento (linha ou base) → travessão. */
   pct: number | null
   /** `null` quando não há Δ. Despesa que cresce (Δ < 0) = `desfavoravel`. */
   sentido: SentidoVariacao | null
@@ -48,8 +54,8 @@ export interface LinhaTotalAno {
   rotulo: string
   /** O recorte do ano ("jan–out") quando é parcial; `null` num ano inteiro. */
   recorte: string | null
-  /** Total do ano no SEU recorte, com o sinal da DRE. */
-  valor: number
+  /** Total do ano no SEU recorte, com o sinal da DRE; `null` = ausência (nenhum lançamento: `qtd === 0`). */
+  valor: number | null
   qtd: number
   /** `null` na última linha (o ano mais antigo não tem contra quem comparar). */
   variacao: VariacaoVsAnterior | null
@@ -88,7 +94,8 @@ export function linhasTotalPorAno(
     if (abaixo) {
       // A base é lida no recorte do ano DA LINHA (igual com igual).
       const base = totalNoRecorte(abaixo.linhas, f.recorte)
-      const pct = deltaYtd(base.valor, valor)
+      // Sem dado de um dos lados (ano da linha ou base) não há variação: ausência não é zero.
+      const pct = qtd === 0 || base.qtd === 0 ? null : deltaYtd(base.valor, valor)
       variacao = {
         contra: abaixo.ano,
         pct,
@@ -97,7 +104,14 @@ export function linhasTotalPorAno(
         referencia: recorte ? `vs ${abaixo.ano} (${recorte})` : `vs ${abaixo.ano}`,
       }
     }
-    return { ano: f.ano, rotulo: rotuloAnoNoTotal(f.ano, f.recorte), recorte, valor, qtd, variacao }
+    return {
+      ano: f.ano,
+      rotulo: rotuloAnoNoTotal(f.ano, f.recorte),
+      recorte,
+      valor: qtd === 0 ? null : valor,
+      qtd,
+      variacao,
+    }
   })
 
   return { ok: true, linhas, acumulado: totalDoPeriodo(fatias) }

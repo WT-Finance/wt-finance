@@ -17,6 +17,7 @@ import CabecalhoCard from './cabecalho-card'
 import Valor from './celula-valor'
 import {
   BG_TOTAL_FOOT, BG_TOTAL_TD, LARG_PCT, LARG_PRIMEIRA, LARG_TOTAL, SEP, SEP_CATEGORIA, TD, TD_FOOT, TH, TH_GRUPO,
+  TH_PRIMEIRA,
 } from './tabela-estilos'
 import { useScrollAoAlternar } from './use-scroll-ao-alternar'
 import { useTotalPreso } from './use-total-preso'
@@ -116,10 +117,12 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
   }
 
   // Coluna de total presa à direita (ver bloco de comentário no topo). O hook fica ANTES dos early
-  // returns; `chave` muda com a estrutura (tabela visível, nº de linhas, anos abertos) e remede.
+  // returns; `chave` muda com a estrutura (tabela visível, categorias das linhas, anos abertos) e remede.
+  // As CATEGORIAS entram na chave (não só a contagem): conteúdo novo com o mesmo nº de linhas também remede.
+  // O separador \u001f (unit separator) não aparece em nome de categoria — não colide com o `|`.
   const tabelaRef = useRef<HTMLTableElement | null>(null)
   const mostrandoTabela = anosFalha.length === 0 && tabela.qtd > 0
-  const chaveEstrutura = `${mostrandoTabela}|${tabela.linhas.length}|${tabela.anos
+  const chaveEstrutura = `${mostrandoTabela}|${tabela.linhas.map(l => l.categoria).join('\u001f')}|${tabela.anos
     .map(a => `${a.ano}:${abertos.includes(a.ano) ? a.meses.length : 0}`)
     .join(',')}`
   const aoRolar = useTotalPreso(tabelaRef, chaveEstrutura, LARG_CATEGORIA)
@@ -170,6 +173,7 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
         >
           <table
             ref={tabelaRef}
+            aria-label="Despesas por categoria"
             className="w-full table-fixed border-separate border-spacing-0"
             style={{ minWidth: larguraMin }}
           >
@@ -190,7 +194,7 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
               <tr>
                 {/* Como "Conta" na DRE: rowSpan 2, embaixo à esquerda, régua de base aplicada DIRETO na
                     célula (o seletor de "última linha" nunca a alcança). */}
-                <th rowSpan={2} className={`sticky left-0 z-20 rounded-tl-lg ${SEP_CATEGORIA} border-b-[1.5px] border-b-wt-border-strong pb-[7px] pl-3 pr-3 text-left align-bottom text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary`}>Categoria</th>
+                <th rowSpan={2} className={`z-20 ${TH_PRIMEIRA}`}>Categoria</th>
                 {tabela.anos.flatMap(a => {
                   const aberto = estaAberto(a.ano)
                   const titulo = a.recorte ? `${a.ano}: ${a.recorte}` : undefined
@@ -216,7 +220,7 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
                           aria-expanded={aberto}
                           aria-label={rotuloAcao}
                           title={rotuloAcao}
-                          className="foco-neutro inline-flex shrink-0 items-center justify-center rounded p-0.5 text-[var(--text-muted)] transition-colors hover:bg-zinc-100"
+                          className="foco-neutro relative inline-flex shrink-0 items-center justify-center rounded p-0.5 text-[var(--text-muted)] transition-colors after:absolute after:-inset-1 hover:bg-zinc-100"
                         >
                           {aberto ? <ChevronsLeft size={13} /> : <ChevronsRight size={13} />}
                         </button>
@@ -224,7 +228,14 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
                     </th>
                   )
                   return comMeses
-                    ? [<th key={`${a.ano}-meses`} colSpan={a.meses.length} aria-hidden="true" className={`${TH_GRUPO} ${sep(a.ano)}`} />, rotulo]
+                    ? [
+                        // Sobre os meses: o ano em texto só para leitor de tela — sem a célula (ou com
+                        // `aria-hidden`) a contagem de colunas dessincronizaria e o contexto dos meses se perderia.
+                        <th key={`${a.ano}-meses`} colSpan={a.meses.length} className={`${TH_GRUPO} ${sep(a.ano)}`}>
+                          <span className="sr-only">{a.ano}</span>
+                        </th>,
+                        rotulo,
+                      ]
                     : [rotulo]
                 })}
               </tr>
@@ -235,26 +246,28 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
                   // `useTotalPreso`, que só prende anos expandidos).
                   if (!estaAberto(a.ano)) {
                     return [
-                      <th key={a.ano} data-ano-recolhido={a.ano} className={`${TH} ${sep(a.ano)}`}>Total</th>,
-                      <th key={`${a.ano}-pct`} data-ano-recolhido-fim={a.ano} className={TH}>%</th>,
+                      <th key={a.ano} scope="col" data-ano-recolhido={a.ano} className={`${TH} ${sep(a.ano)}`}>Total</th>,
+                      <th key={`${a.ano}-pct`} scope="col" data-ano-recolhido-fim={a.ano} className={TH}>%</th>,
                     ]
                   }
                   return [
                     ...a.meses.map((m, i) => (
                       <th
                         key={`${a.ano}-${m}`}
+                        scope="col"
                         data-grupo-ano={i === 0 ? a.ano : undefined}
                         className={`${TH} ${i === 0 ? sep(a.ano) : ''}`}
                       >{MESES_ABREV[m - 1]}</th>
                     )),
                     <th
                       key={`${a.ano}-total`}
+                      scope="col"
                       data-total-ano={a.ano}
                       data-total-ref=""
                       className={`${TH} ${a.meses.length === 0 ? sep(a.ano) : ''}`}
                     >Total</th>,
                     // `data-total-pct`: acompanha o bloco (transform) mas NÃO leva a sombra à esquerda.
-                    <th key={`${a.ano}-pct`} data-total-ano={a.ano} data-total-pct="" className={TH}>%</th>,
+                    <th key={`${a.ano}-pct`} scope="col" data-total-ano={a.ano} data-total-pct="" className={TH}>%</th>,
                   ]
                 })}
               </tr>
