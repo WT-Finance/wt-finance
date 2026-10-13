@@ -10,7 +10,8 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 MINOR · **Despesas de Marketing: seção nova "Marketing" com as despesas pagas da área.** Out-briefing
 `docs/briefings/WT_Finance_Out_Briefing_v6-3-0_Gastos_Marketing.md`. Migrations **0292** e **0293** (aditivas,
-aplicadas). ADR-0182. Medição da M0: `docs/auditoria/v6-3-0-m0-marketing.md`.
+aplicadas) e **0294** (destrutiva por classificação — só o rótulo da área "Gastos" → "Despesas" no editor
+de roles; aplicada por humano em TTY). ADR-0182. Medição da M0: `docs/auditoria/v6-3-0-m0-marketing.md`.
 
 ### Adicionado
 

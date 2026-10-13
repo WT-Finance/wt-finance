@@ -226,6 +226,20 @@ Pedidos e o que virou:
   presa na rolagem passou a prender o **bloco Total + %** junto, com sombra só à esquerda do bloco.
   Testes cobrem a lógica do % e a largura do bloco; uma sonda estática trava a marcação.
 
+### 9ª rodada (13/10) — rótulo da área no editor de roles
+
+O Yan notou que o editor de roles ainda mostrava "Gastos". A correção é a **migration 0294**: `UPDATE
+app.rbac_areas SET rotulo = 'Despesas'`, só o rótulo. A chave `marketing/gastos`, as permissões, os
+guards e as RPCs não mudam. O `AREA_INFO` no código já espelha o novo rótulo.
+
+- É **destrutiva por classificação** (UPDATE em dado existente; o `classificar.mjs` confirma). Por isso
+  é **aplicada pelo Yan em TTY**: o wrapper aborta sem TTY (ADR-0131).
+- Ensaio em transação revertida: o guard passou, o rótulo virou "Despesas", as concessões ficaram
+  intactas e o ROLLBACK restaurou "Gastos". As concessões da área estavam em **4**; a 0292 criou 3, e a
+  4ª é provavelmente a role da gestora, criada pelo Yan.
+- ⚠️ Enquanto a 0294 estiver pendente, **nenhum `db:migrate --aditiva` deve rodar a partir desta
+  branch**: o push leva tudo o que está pendente.
+
 ### Técnicas (orquestrador)
 
 - **Correções ao briefing:**

@@ -68,7 +68,7 @@ describe('areasDaRota — toda rota de página tem dono', () => {
   })
   it("v6.3.0/M3: 'marketing/gastos' existe no catálogo (migration 0292), no grupo próprio 'Marketing' e fora da Administração", () => {
     expect((AREAS as readonly string[]).includes('marketing/gastos')).toBe(true)
-    expect(AREA_INFO['marketing/gastos']).toEqual({ rotulo: 'Gastos', grupo: 'Marketing', ordem: 70 })
+    expect(AREA_INFO['marketing/gastos']).toEqual({ rotulo: 'Despesas', grupo: 'Marketing', ordem: 70 })
   })
   it("v6.3.0: a rota de Marketing NÃO é liberada pela área de admin vizinha 'admin/design-system'", () => {
     for (const rota of ['/marketing', '/marketing/gastos']) {
