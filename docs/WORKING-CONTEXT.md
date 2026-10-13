@@ -9,9 +9,18 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-13 (pós-merge da v6.3.0, em produção desde 11:08).
+Última atualização: 2026-10-13 (v6.3.1 atualizada sobre o main com a v6.3.0; v6.3.0 em produção desde 11:08).
 
 ---
+
+## Em voo — v6.3.1 "Solicitações: exportar todas para Excel" (PR #300, branch `feat/v6-3-1-exportar-solicitacoes`)
+
+Botão "Exportar" na página de Solicitações (gestão, área `solicitacoes`) → `GET /api/solicitacoes/exportar`
+devolve `.xlsx` com TODAS as solicitações (abas Todas / uma por tipo / Anexos / Sobre). Sem migration, sem RPC
+nova. Out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-3-1_Exportar_Solicitacoes.md`. Em 13/10 a branch
+recebeu o `main` com a v6.3.0 (conflito só em versão, CHANGELOGs e neste arquivo — resolvido; versão 6.3.1).
+
+> 🔴 **Yan:** mergear o PR; conferência visual + download autenticado (roteiro no out-briefing §5); depois `/pos-merge`.
 
 ## Em produção — v6.3.0 "Despesas de Marketing" (PR #299, mergeado 13/10 às 11:08)
 
@@ -47,8 +56,6 @@ medição `docs/auditoria/v6-3-0-m0-marketing.md`.
 > 🔴 **Yan — produto:** decidir o sentido do eixo do card de proporção (hoje as barras descem do zero; na
 > DRE o eixo é invertido); criar a role/usuário da gestora (só `marketing/gastos`) se ainda não criou;
 > conferir no ar e mostrar à gestora (anotar o que ela pedir — insumo da próxima versão da seção).
-> 🔴 **PR #300 (v6.3.1)** ainda aberto: ao mergeá-lo, vai conflitar com a v6.3.0 em `package.json`
-> (versão) e nos CHANGELOGs — ajuste trivial (a v6.3.1 passa a vir DEPOIS da 6.3.0).
 
 ## Em produção — v6.2.3 "Vendas por Produto: venda sem Setor deixa de derrubar a carga" (PR #297, mergeado 08/10 às 11:34)
 
