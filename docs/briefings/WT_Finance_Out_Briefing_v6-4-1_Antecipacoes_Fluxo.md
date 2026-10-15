@@ -13,7 +13,7 @@ O gráfico **Fluxo de Caixa Mensal** (`/financeiro/fluxo-caixa`) passa a mostrar
   15/10);
 - o tooltip mostra "Entradas efetivadas R$ X · das quais antecipação R$ Y (Z%)", com a nota "segundo o
   registro de antecipações";
-- na legenda entra o item "Antecipação (dentro das entradas efetivadas)".
+- na legenda entra o item "Antecipações".
 
 A fonte é o registro `financeiro.antecipacao` da v6.4.0. A leitura é um **recorte do registro**, não uma
 marcação do Monde. Ela se sustenta pela medição da v6.4.0: em 25 de 25 meses, as entradas da própria conta

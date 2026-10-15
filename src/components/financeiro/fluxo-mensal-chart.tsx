@@ -159,7 +159,7 @@ function BaseEntradaEfetivada(props: BarShapeProps) {
 function FluxoLegend() {
   const items = [
     { label: 'Entradas efetivadas',  color: 'var(--positive)',     opacity: 1,    type: 'rect' as const },
-    { label: 'Antecipação (dentro das entradas efetivadas)', color: fluxoColors.antecipacao, opacity: 1, type: 'rect' as const },
+    { label: 'Antecipações', color: fluxoColors.antecipacao, opacity: 1, type: 'rect' as const },
     { label: 'Entradas previstas',  color: 'var(--positive)',     opacity: 0.45, type: 'rect' as const },
     { label: 'Saídas efetivadas',    color: 'var(--negative)',     opacity: 1,    type: 'rect' as const },
     { label: 'Saídas previstas',     color: 'var(--negative)',     opacity: 0.45, type: 'rect' as const },
