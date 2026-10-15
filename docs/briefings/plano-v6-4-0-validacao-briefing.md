@@ -130,3 +130,27 @@ Missões e gates do briefing §8/§9. Commit por missão com `git add` de arquiv
   - `tsc` + `lint` por missão;
   - `build` + `test` após M3, M4, M7 e no fechamento;
   - `revisor-db` em M3, M4 e M5; `revisor` ao fim; `verificador-visual` ou conferência do Yan no preview.
+
+## Decisões do Yan (15/10/2026)
+
+**GATE 0** (detalhe em `docs/auditoria/v6-4-0-m0-financeiro-geral.md`, "Decisões do Yan"):
+
+- custos financeiros = custos por grupo + câmbio/receitas, fechando no FIN;
+- prejuízos bruto, com a reversão ao lado e série por mês (sem "por natureza");
+- prazos = clientes × fornecedores, com saldo do Aberto desde 25/09;
+- acesso em dois níveis: `financeiro/geral` (Diretoria, Financeiro, Administrador) e
+  `financeiro/geral/gestao` "Financeiro · Geral (gestão)" (Financeiro, Administrador);
+- a planilha de antecipações é entregue pelo Yan em `~/projects/arquivo-worktrees-janus/fixtures-ingestao/`.
+
+**GATE 1, antes do export** (briefing §3):
+
+- **(a) Recorte:** só **a receber**, vencimentos de **todos os anos**, em aberto **e a vencer** (N arquivos aceitos).
+- **(b) Inadimplência = só a marcação** `Conferido = Inadimplente`. O "vencido em aberto" pela data **não**
+  aparece como número. As faixas de atraso (1–30, 31–60, 61–90, 90+) são sobre os títulos **marcados**; o
+  "a vencer" continua como carteira.
+- **(c) Valor = `Valor Final`** (o que a linha de total soma).
+- **(d) Nome do devedor:** `Pessoa` entra na lista fechada. A faixa do topo mostra "10 maiores = X%" sem
+  nome; a seção lista o top 10 de inadimplentes **com nome**, só para quem tem `financeiro/geral`.
+- **"A receber" = todo título de crédito**, inclusive comissão a receber de fornecedor (faturas de fornecedor
+  de crédito; na M-1, 67 dos vencidos). Se o filtro "a receber" do Monde não trouxer esses títulos, a M1
+  aponta a diferença.
