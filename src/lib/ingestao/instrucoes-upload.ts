@@ -18,7 +18,7 @@ import { PESSOAS_COLUNAS } from '@/lib/carga/parse-pessoas'
 
 export type BaseUpload =
   | 'vendas' | 'lancamentos' | 'lancamentos_movimentacao' | 'titulos_em_aberto' | 'pessoas'
-  | 'demonstrativo_competencia'
+  | 'demonstrativo_competencia' | 'contas_receber'
 
 export interface InstrucoesUpload {
   /** De onde vem o arquivo — o nome do relatório como o repositório o conhece. */
@@ -192,6 +192,33 @@ export const INSTRUCOES_UPLOAD: Record<BaseUpload, InstrucoesUpload> = {
       rotulo: 'Campos da tabela dinâmica (área de linhas)',
       itens: ['Tipo', 'Grupo', 'Descrição', 'Ano', 'Mês'],
       nota: 'Mais a coluna de valor ("Total Geral"), a última com conteúdo.',
+    },
+  },
+
+  contas_receber: {
+    limiteMB: LIMITE_MB_ARQUIVO,
+    origem: 'Relatório "Contas a pagar e a receber" do Monde, filtrado em a receber, em Excel (.xlsx).',
+    atencao: [
+      AVISO_NAO_TRATAR,
+      'Mantenha a linha de total do fim do relatório (a última linha). Ela traz a contagem de títulos e a soma do arquivo e é a conferência de cada arquivo: sem ela o envio é recusado.',
+      'Filtre o relatório em A RECEBER. Um arquivo com contas a pagar e a receber juntas traz valores negativos e é recusado.',
+      'O relatório do Monde tem limite de 30 mil linhas por pesquisa — por isso exporte UM ARQUIVO POR FAIXA DE VENCIMENTO (até 30 mil linhas cada), a partir de 01/01/2024, e selecione todos os arquivos juntos no card.',
+      'As faixas não podem ter lacuna nem sobreposição. O mesmo título em dois arquivos faz o envio ser recusado; uma lacuna entre as faixas só gera um aviso — e passa, porque cada arquivo confere sozinho. Confira as datas das faixas antes de enviar.',
+      'Envie TODAS as faixas juntas, de uma vez: o envio substitui a base inteira.',
+    ],
+    passos: [
+      'No relatório "Contas a pagar e a receber", filtre em a receber e exporte em Excel, um arquivo por faixa de vencimento (até 30 mil linhas), a partir de 01/01/2024 e sem lacunas entre as faixas.',
+      'O cabeçalho precisa estar na primeira linha da planilha.',
+      'Arraste todos os arquivos juntos para o card (ou clique e selecione todos).',
+      'Confira no aviso a contagem antes × depois, a soma do arquivo e os avisos (emissão inválida, lacuna entre faixas) e confirme.',
+    ],
+    colunas: {
+      rotulo: 'Colunas obrigatórias',
+      itens: [
+        'Número', 'Emissão', 'Pessoa', 'Descrição', 'Vencimento', 'Liquidação', 'Valor Final',
+        'Conferido', 'Operação Própria',
+      ],
+      nota: 'O relatório traz outras colunas (Documento, Observações, Conta (Previsão), Valor etc.) — são ignoradas e nunca gravadas. Pessoa, Descrição e Operação Própria podem conter nomes de pessoas: o acesso à página que as usa é restrito.',
     },
   },
 }

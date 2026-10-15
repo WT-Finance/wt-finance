@@ -6,6 +6,76 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [6.4.0] — 2026-10-15
+
+MINOR · **Financeiro · Geral: página executiva para a diretoria, com a base de Contas a receber e o registro
+de antecipações.** Out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-4-0_Financeiro_Geral.md`.
+Migrations **0295**, **0296** e **0297** (aditivas, aplicadas em 15/10) e o **patch destrutivo**
+`supabase/patches/contas_receber_checks_ingestao.sql` (amplia os CHECKs de `base` para 6 bases —
+**pendente**, aplicação humana em TTY; até lá a carga de Contas a receber falha fechada). ADR-0183.
+Medições: `docs/auditoria/v6-4-0-m-1-api-monde.md`, `v6-4-0-m0-financeiro-geral.md`,
+`v6-4-0-m1-export-contas-receber.md`.
+
+### Adicionado
+
+- **Página "Geral"** em Financeiro (`/financeiro/geral`, área RBAC `financeiro/geral`: Diretoria, Financeiro,
+  Administrador e Máquina · verificação; quem só tem ela entra direto). Cabeçalho com pills de ano
+  (seleção múltipla) e "Última atualização", faixa de cinco indicadores e cinco seções, cada uma com a
+  etiqueta do recorte (estoque ou fluxo), carimbo próprio e degradação própria: **Recebíveis e
+  inadimplência** (posição na carga: a vencer, inadimplentes por faixa de atraso, concentração com o top 10,
+  recuperado no ano, evolução pelas fotos), **Antecipações** (volume por mês, desconto, nº, dias desde a
+  última e maior intervalo do ano), **Perdas e prejuízos** (prejuízo bruto por mês, com a reversão e o
+  líquido como contexto), **Custos financeiros** (por grupo × ano, com câmbio e receitas financeiras abaixo,
+  fechando no FIN, e % da receita bruta) e **Prazos médios** (PMR × PMP e a folga).
+- **RPCs de leitura** `get_geral_custos_financeiros|prejuizos|antecipacoes(p_ano)`, `get_geral_recebiveis()`
+  e `get_geral_prazos()` (0297), `exigir_acesso(['financeiro/geral'])` inline. Custos e prejuízos usam o
+  predicado do Realizado de `get_dre_mensal` sobre o **mapa vivo** (FIN = bloco do mapa; prejuízo e reversão
+  = tabela curada `geral_perda_map`, grupos do FIN em `geral_fin_grupo`, com bandeja para categoria nova):
+  cada total ≡ a célula da DRE, ao centavo (ADR-0183).
+- **Registro de antecipações no Janus** (0296): `financeiro.antecipacao` + `antecipacao_conta`, sob o diário,
+  com **carga inicial das 38 linhas** da planilha (guard que aborta se os totais divergirem: antecipado
+  7.245.412,45, líquido 7.057.349,44, desconto 188.063,01). RPCs `antecipacao_salvar|excluir|desfazer|
+  listar|historico` na área nova `financeiro/geral/gestao` (Financeiro e Administrador). **PK `bigserial`,
+  não IDENTITY**: o desfazer de exclusão não duplica o registro. Painel "Registrar antecipação" na seção
+  (lista, formulário com valor pt-BR e histórico com "Desfazer"), só para quem tem a gestão.
+- **Base de ingestão `contas-receber`** (0295): `raw.contas_receber` (lista fechada de 9 colunas), RPCs
+  `limpar_staging|inserir_lote_staging|validar_carga|promover_carga_contas_receber`, parser
+  `parsers/contas-receber.ts`, card em `/admin/ingestao/upload` com instruções, entrada no contrato
+  `ingestao-v1` (mudança **aditiva**). **N arquivos por carga** (um por faixa de vencimento; limite de 30 mil
+  linhas do Monde), **checksum por arquivo** pela linha de total, número repetido entre arquivos reprova,
+  `Conferido` em domínio fechado, aviso de lacuna de vencimento. Inadimplência = só a marcação
+  `Conferido = Inadimplente`.
+- **Fotos por carga** (`contas_receber_foto_carga` + `_foto`), gravadas na mesma transação da promoção, e
+  **foto dos prazos médios** (`geral_prazo_foto`, `registrar_foto_prazos`) gravada por um gancho **fail-soft**
+  depois de aplicar o Aberto (`src/lib/ingestao/foto-prazos.ts`) — falha vira aviso, nunca desfaz a carga.
+- **Casos de contrato** (`rpc-contrato.test.ts`, credencial `verificador`): forma das 5 RPCs, paridade FIN,
+  prejuízo, reversão e receita bruta ≡ `get_dre_mensal`, Σ grupos ≡ FIN, negação a `anon` e a usuário sem
+  a área, escrita negada a quem só lê, e nenhum `expect` recebe o campo com nomes de clientes. Oráculo cru↔tratado da base nova com
+  os dois exports reais (42/42).
+
+### Alterado
+
+- **`ingestao_carga_abrir`, `ingestao_carga_ultima` e `ingestao_soma_por_ano`** (0295, reescritos do catálogo
+  vivo) aceitam `contas-receber`; em `ingestao_soma_por_ano` o `ELSE` implícito de Operação vira `ELSIF`
+  explícito + `ELSE RAISE` (fail-closed para uma sétima base sem ramo).
+- **Alarme "ano fechado alterado"** isenta `contas-receber` (base de posição, `alarme.ts`).
+- **Multiarquivo generalizado**: deixa de ser fixo para Vendas (`BASES_MULTIARQUIVO`).
+- **Skills**: `ingestao-planilhas` (seis bases; base `contas-receber`; "sem negativos não é todos positivos";
+  faixa de datas também anula emissão antiga legítima; alarme isento para posição) e `banco-e-rpc` +
+  `revisor-db` (D-12: PK `bigserial` sob o diário; ampliar `CHECK` é destrutivo, com patch e falha fechada;
+  `NOT NULL` vaza a linha no `DETAIL`).
+
+### Observações
+
+- `Valor Final` zero é legítimo (611 títulos de fatura zerada por compensação): a regra "> 0" do contrato
+  nasceu de uma medição incompleta e o oráculo a derrubou antes da aplicação.
+- A API v3 do Monde cobre o Contas a receber por inteiro (M-1); o upload manual foi mantido por decisão do
+  Yan, e a API fica candidata a versão própria.
+- Pendências para o Yan (retenção das fotos, desfazer de ação de terceiro, gestão sem leitura, posição da
+  subaba) e o achado sobre a Movimentação sem a despesa paga com cartão: ver o out-briefing.
+
+---
+
 ## [6.3.1] — 2026-10-08
 
 PATCH · **Solicitações: exportar todas para Excel.** Out-briefing

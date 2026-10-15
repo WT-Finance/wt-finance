@@ -14,7 +14,7 @@ import {
   LayoutDashboard, TrendingUp, Target, Upload, Building, Plane, Sparkles, Briefcase, Wallet,
   BarChart3, Table2, Calculator, Receipt, Library, Users, IdCard, Boxes, Palette, Inbox,
   LineChart, ClipboardList, FileSpreadsheet, BookOpen, ScrollText, DatabaseZap, Settings, Plug,
-  Megaphone, HandCoins,
+  Megaphone, HandCoins, Gauge,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Area } from '@/lib/auth/areas'
@@ -55,7 +55,11 @@ const PERFORMANCE_SUBS: NavSubItem[] = [
 ]
 
 const FINANCEIRO_SUBS: NavSubItem[] = [
-  { href: '/financeiro/acervo',                label: 'Acervo de Documentos', icon: Library, area: 'financeiro/acervo', areasAny: ['financeiro/acervo', 'financeiro/acervo/gestao'] },
+  // v6.4.0 — visão executiva da diretoria; 1ª subaba do grupo. Área própria 'financeiro/geral'
+  // (migration 0297), a MESMA de `areasDaRota` e do `requireArea` da página. Sem `areasAny`: a gestão
+  // ('financeiro/geral/gestao', só o painel de antecipações) NÃO libera a página.
+  { href: '/financeiro/geral',                 label: 'Geral',                icon: Gauge,   area: 'financeiro/geral' },
+  { href: '/financeiro/acervo',               label: 'Acervo de Documentos', icon: Library, area: 'financeiro/acervo', areasAny: ['financeiro/acervo', 'financeiro/acervo/gestao'] },
   { href: '/financeiro/dre',                   label: 'Demonstrativo de Resultado', icon: FileSpreadsheet, area: 'financeiro/dre' },
   { href: '/financeiro/fluxo-caixa',           label: 'Fluxo de Caixa',       icon: BarChart3,  area: 'financeiro/fluxo-caixa' },
   { href: '/financeiro/fluxo-caixa/gerencial', label: 'Gerencial',            icon: Table2,     area: 'financeiro/gerencial'   },

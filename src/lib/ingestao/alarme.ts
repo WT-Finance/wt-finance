@@ -80,6 +80,20 @@ export function anoCorrenteSP(agora: Date = new Date()): number {
 
 // ── Diff por ano + decisão do alarme "ano fechado alterado" — PURA (anexo §4) ───────────────
 
+/**
+ * EXCEÇÃO DECLARADA (v6.4.0): bases cujo "ano" NÃO é um período fechado e imutável, e que por isso
+ * NUNCA geram `ano_fechado_alterado` (nem preenchem `anos_fechados_alterados`).
+ *
+ * `contas-receber` é uma POSIÇÃO (estoque) de recebíveis, fatiada pelo ano do VENCIMENTO. Um título
+ * com vencimento em 2024 muda de estado e de valor legitimamente a qualquer carga — liquidação, encargos
+ * (juros/multa), marcação do Financeiro, baixa que tira o título da posição. Tratar o ano de vencimento
+ * passado como "ano fechado" faria o alarme disparar (com e-mail real) em QUASE TODA carga, até virar
+ * ruído ignorado — e então esconderia o alarme verdadeiro das cinco bases de fluxo (Demonstrativo,
+ * Vendas, Movimentação, Aberto, Operação), onde ano fechado que mexe é anomalia. Acrescentar uma base
+ * aqui é decisão (a lista é fechada de propósito); `por_ano` continua calculado para todas.
+ */
+const BASES_ISENTAS_DE_ANO_FECHADO: ReadonlySet<BaseIngestao> = new Set<BaseIngestao>(['contas-receber'])
+
 export interface ResultadoDiffPorAno {
   /** Delta de LINHAS por ano (contrato ingestao-v1 §2.3: `diff.por_ano`) — para TODO ano
    *  presente em qualquer um dos dois lados, fechado ou não. */
@@ -110,6 +124,7 @@ export function calcularDiffPorAno(
   const porAno: Record<string, number> = {}
   const anosFechadosAlterados: number[] = []
   const alarmes: AlarmeAnoFechadoAlterado[] = []
+  const avaliaAnoFechado = !BASES_ISENTAS_DE_ANO_FECHADO.has(base)
 
   for (const anoStr of anos) {
     const a = antes[anoStr] ?? { linhas: 0, centavos: 0 }
@@ -119,7 +134,7 @@ export function calcularDiffPorAno(
     const ano = Number(anoStr)
     const mudouContagem = a.linhas !== d.linhas
     const mudouSoma = a.centavos !== d.centavos
-    if (ano < anoCorrente && (mudouContagem || mudouSoma)) {
+    if (avaliaAnoFechado && ano < anoCorrente && (mudouContagem || mudouSoma)) {
       anosFechadosAlterados.push(ano)
       alarmes.push({
         tipo: 'ano_fechado_alterado', base, ano,

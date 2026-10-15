@@ -485,6 +485,22 @@
       "security_definer": true,
       "volatilidade": "STABLE"
     },
+    "financeiro.antecipacao_diario_campos(jsonb)": {
+      "acl": {
+        "postgres": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "3ca1a669128bc0c5f64e129319d175a608cab46d71a98dbac49e880d9ce98992",
+      "linguagem": "sql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "json",
+      "security_definer": false,
+      "volatilidade": "STABLE"
+    },
     "financeiro.fn_broadcast_gerencial()": {
       "acl": {
         "postgres": {
@@ -532,6 +548,25 @@
       "retorno": "trigger",
       "security_definer": false,
       "volatilidade": "VOLATILE"
+    },
+    "financeiro.geral_prazo_calcular()": {
+      "acl": {
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "12c5d4e3551ac1c33eee65c25310451b725c3cc1709f7122b798b0abae647703",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "record",
+      "security_definer": true,
+      "volatilidade": "STABLE"
     },
     "financeiro.reverter_diario(bigint[])": {
       "acl": {
@@ -1187,6 +1222,116 @@
       "retorno": "jsonb",
       "security_definer": true,
       "volatilidade": "STABLE"
+    },
+    "public.antecipacao_desfazer(bigint)": {
+      "acl": {
+        "authenticated": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "a3a347c5e56756aa62cdbc9ac45bdecf3cb88848dd7424a46c28953ffe56675c",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "json",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
+    "public.antecipacao_excluir(bigint)": {
+      "acl": {
+        "authenticated": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "0aa94458ad170f82e38a7f26470d26e9c6b8a5940f62045df82eae4bcb333cd7",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "void",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
+    "public.antecipacao_historico(integer)": {
+      "acl": {
+        "authenticated": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "1fb38cff191071b49b29853ab56f51a1030aa125d0fb3a43884b1826b3cbc4b1",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "json",
+      "security_definer": true,
+      "volatilidade": "STABLE"
+    },
+    "public.antecipacao_listar()": {
+      "acl": {
+        "authenticated": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "0259ff2cdb2737a51d2bc9ee4f1e03e51a7ea01fd42bfea02191d3b2aa0878e4",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "json",
+      "security_definer": true,
+      "volatilidade": "STABLE"
+    },
+    "public.antecipacao_salvar(bigint, smallint, date, numeric, numeric)": {
+      "acl": {
+        "authenticated": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "4b51e734f27e0da5d126bbdf0a49a667c23ad50786c0127e835a6da39d8a294c",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "json",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
     },
     "public.apagar_clientes_corp(bigint[])": {
       "acl": {
@@ -3243,6 +3388,131 @@
       "security_definer": true,
       "volatilidade": "STABLE"
     },
+    "public.get_geral_antecipacoes(integer)": {
+      "acl": {
+        "authenticated": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        },
+        "verificador": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "30cca5b059e9ecd8b2abe5912e0cd13e51ae99f113e9c46ee9a99e4e4f1610bf",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "json",
+      "security_definer": true,
+      "volatilidade": "STABLE"
+    },
+    "public.get_geral_custos_financeiros(integer)": {
+      "acl": {
+        "authenticated": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        },
+        "verificador": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "160865651c677ab275eecde960615d663ccd0e4ae70136c8730b4e574c9546ad",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "json",
+      "security_definer": true,
+      "volatilidade": "STABLE"
+    },
+    "public.get_geral_prazos()": {
+      "acl": {
+        "authenticated": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        },
+        "verificador": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "7ca2c9e188d10857a9a0981c2237c7640a509e9ab68d7995cc6e5a74a0fb6153",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "json",
+      "security_definer": true,
+      "volatilidade": "STABLE"
+    },
+    "public.get_geral_prejuizos(integer)": {
+      "acl": {
+        "authenticated": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        },
+        "verificador": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "c26133278d0b8dbc6ed3ae70dbb5c4c90ba7c5ae347c3c04da3aa21288f15edd",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "json",
+      "security_definer": true,
+      "volatilidade": "STABLE"
+    },
+    "public.get_geral_recebiveis()": {
+      "acl": {
+        "authenticated": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        },
+        "verificador": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "f316315f62e12904f41956beb6ffd344726052a7e508ddd9efde599f9a0db110",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "json",
+      "security_definer": true,
+      "volatilidade": "STABLE"
+    },
     "public.get_gerencial_lancamentos(integer)": {
       "acl": {
         "authenticated": {
@@ -4609,7 +4879,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "79d008361c4e343cc014f6ad8a425ea443a2866df58c916c8c3dbe8fdd505a6e",
+      "hash_corpo": "4de052fd003f95ac965783ca9fa02f15c2f03fdd8f0c395a3f38c33045cd1da3",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -4666,7 +4936,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "008f25d2a81de9150e641ec2ab76a8386550c1b0690ba3a36c4ea28369e7ee24",
+      "hash_corpo": "f3df8d72a71705cdf0b8561073a8680933d93d6b145bf1d4c6c260dd6c94e561",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -4824,7 +5094,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "14c41103de5f8fa655223f43ef46e04e6330ad79c439e2fb1ce176d1f6e2beca",
+      "hash_corpo": "3f514705aa8de7467a126961fcb26880d77f6cfce7c40ade3aa15c8baf8713ca",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -4959,6 +5229,28 @@
       "security_definer": true,
       "volatilidade": "VOLATILE"
     },
+    "public.inserir_lote_staging_contas_receber(jsonb)": {
+      "acl": {
+        "ingestor": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "6c619b72d8ca2e0a95661b5ce8e8c96cb89bdbb73b1e3d9c861874752588fe47",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "void",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
     "public.inserir_lote_staging_demonstrativo(jsonb)": {
       "acl": {
         "ingestor": {
@@ -5077,6 +5369,28 @@
       },
       "dono": "postgres",
       "hash_corpo": "998c89093c20b2f308cb683230452eb5069f20c89915cde7dfa22d991377b900",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "void",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
+    "public.limpar_staging_contas_receber()": {
+      "acl": {
+        "ingestor": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "1af011a2af8c10a2f4201323db55697555c4f29fca6aa6599374afe6f6d5b3a1",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -6055,6 +6369,28 @@
       "security_definer": true,
       "volatilidade": "VOLATILE"
     },
+    "public.promover_carga_contas_receber(jsonb, uuid)": {
+      "acl": {
+        "ingestor": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "68f197e6f1daf7f304e0bb273fcf879b3c6f237ecc0509f90ae92173096a2b99",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "jsonb",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
     "public.promover_carga_demonstrativo(jsonb, uuid)": {
       "acl": {
         "ingestor": {
@@ -6318,6 +6654,25 @@
       },
       "dono": "postgres",
       "hash_corpo": "6f4081d17740ec322f5ef1c6365590072106998355e2cde7fc33f0f53119e583",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "jsonb",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
+    "public.registrar_foto_prazos(uuid)": {
+      "acl": {
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "a196962bc7e2c3c779cbcfed5a5155122aa99518fb7ae576662b10b2a9318fc3",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -7118,6 +7473,28 @@
       "security_definer": true,
       "volatilidade": "VOLATILE"
     },
+    "public.validar_carga_contas_receber()": {
+      "acl": {
+        "ingestor": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "4daf98e842f1101d0f6bf46fff3a5c5079b2535118fcaed9eee639fcf1d7f5c0",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "jsonb",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
     "public.validar_carga_demonstrativo()": {
       "acl": {
         "ingestor": {
@@ -7234,20 +7611,24 @@
       "allowlist": [
         "public.inserir_lote_staging(jsonb)",
         "public.inserir_lote_staging_aberto(jsonb)",
+        "public.inserir_lote_staging_contas_receber(jsonb)",
         "public.inserir_lote_staging_demonstrativo(jsonb)",
         "public.inserir_lote_staging_movimentacao(jsonb)",
         "public.inserir_lote_staging_operacao(jsonb)",
         "public.limpar_staging_aberto()",
+        "public.limpar_staging_contas_receber()",
         "public.limpar_staging_demonstrativo()",
         "public.limpar_staging_movimentacao()",
         "public.limpar_staging_operacao()",
         "public.limpar_staging_vendas()",
         "public.promover_carga_aberto(jsonb, uuid)",
+        "public.promover_carga_contas_receber(jsonb, uuid)",
         "public.promover_carga_demonstrativo(jsonb, uuid)",
         "public.promover_carga_movimentacao(jsonb, uuid)",
         "public.promover_carga_operacao(jsonb, uuid)",
         "public.promover_carga_vendas(jsonb, uuid)",
         "public.validar_carga_aberto()",
+        "public.validar_carga_contas_receber()",
         "public.validar_carga_demonstrativo()",
         "public.validar_carga_movimentacao()",
         "public.validar_carga_operacao()",
@@ -7301,6 +7682,11 @@
         "public.get_fluxo_previsto_diario()",
         "public.get_fluxo_ranking(integer)",
         "public.get_fluxo_runway_semanal()",
+        "public.get_geral_antecipacoes(integer)",
+        "public.get_geral_custos_financeiros(integer)",
+        "public.get_geral_prazos()",
+        "public.get_geral_prejuizos(integer)",
+        "public.get_geral_recebiveis()",
         "public.get_marketing_gastos_fornecedores(integer)",
         "public.get_marketing_gastos_lancamentos(integer)",
         "public.get_marketing_gastos_resumo(integer)",
@@ -11329,6 +11715,330 @@
         "trg_diario_estante_movimentacao": "CREATE TRIGGER trg_diario_estante_movimentacao AFTER INSERT OR DELETE OR UPDATE ON estante.movimentacao FOR EACH ROW EXECUTE FUNCTION financeiro.fn_diario_alteracoes()"
       }
     },
+    "financeiro.antecipacao": {
+      "acl": {
+        "postgres": {
+          "DELETE": false,
+          "INSERT": false,
+          "MAINTAIN": false,
+          "REFERENCES": false,
+          "SELECT": false,
+          "TRIGGER": false,
+          "TRUNCATE": false,
+          "UPDATE": false
+        }
+      },
+      "colunas": {
+        "atualizado_em": {
+          "default": "now()",
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "timestamp with time zone"
+        },
+        "atualizado_por": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "uuid"
+        },
+        "conta_id": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "smallint"
+        },
+        "criado_em": {
+          "default": "now()",
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "timestamp with time zone"
+        },
+        "criado_por": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "uuid"
+        },
+        "data": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "date"
+        },
+        "desconto": {
+          "default": "(valor_antecipado - valor_liquido)",
+          "generated": "STORED",
+          "identity": null,
+          "not_null": false,
+          "tipo": "numeric(14,2)"
+        },
+        "id": {
+          "default": "nextval('financeiro.antecipacao_id_seq'::regclass)",
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "bigint"
+        },
+        "valor_antecipado": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "numeric(14,2)"
+        },
+        "valor_liquido": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "numeric(14,2)"
+        }
+      },
+      "constraints": {
+        "antecipacao_conta_id_fkey": "FOREIGN KEY (conta_id) REFERENCES financeiro.antecipacao_conta(id)",
+        "antecipacao_data_min": "CHECK (data >= '2000-01-01'::date)",
+        "antecipacao_liquido_le_antecipado": "CHECK (valor_liquido <= valor_antecipado)",
+        "antecipacao_pkey": "PRIMARY KEY (id)",
+        "antecipacao_valor_antecipado_pos": "CHECK (valor_antecipado > 0::numeric)",
+        "antecipacao_valor_liquido_pos": "CHECK (valor_liquido > 0::numeric)"
+      },
+      "dono": "postgres",
+      "indices": {
+        "antecipacao_conta_idx": "CREATE INDEX antecipacao_conta_idx ON financeiro.antecipacao USING btree (conta_id)",
+        "antecipacao_data_idx": "CREATE INDEX antecipacao_data_idx ON financeiro.antecipacao USING btree (data DESC)",
+        "antecipacao_pkey": "CREATE UNIQUE INDEX antecipacao_pkey ON financeiro.antecipacao USING btree (id)"
+      },
+      "policies": {},
+      "rls_forcado": false,
+      "rls_habilitado": true,
+      "tipo": "tabela",
+      "triggers": {
+        "trg_diario_antecipacao": "CREATE TRIGGER trg_diario_antecipacao AFTER INSERT OR DELETE OR UPDATE ON financeiro.antecipacao FOR EACH ROW EXECUTE FUNCTION financeiro.fn_diario_alteracoes()",
+        "trg_touch_antecipacao": "CREATE TRIGGER trg_touch_antecipacao BEFORE UPDATE ON financeiro.antecipacao FOR EACH ROW EXECUTE FUNCTION financeiro.fn_dre_touch_atualizado_em()"
+      }
+    },
+    "financeiro.antecipacao_conta": {
+      "acl": {
+        "postgres": {
+          "DELETE": false,
+          "INSERT": false,
+          "MAINTAIN": false,
+          "REFERENCES": false,
+          "SELECT": false,
+          "TRIGGER": false,
+          "TRUNCATE": false,
+          "UPDATE": false
+        }
+      },
+      "colunas": {
+        "ativo": {
+          "default": "true",
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "boolean"
+        },
+        "id": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "smallint"
+        },
+        "nome": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "text"
+        }
+      },
+      "constraints": {
+        "antecipacao_conta_nome_check": "CHECK (btrim(nome) <> ''::text)",
+        "antecipacao_conta_nome_uniq": "UNIQUE (nome)",
+        "antecipacao_conta_pkey": "PRIMARY KEY (id)"
+      },
+      "dono": "postgres",
+      "indices": {
+        "antecipacao_conta_nome_uniq": "CREATE UNIQUE INDEX antecipacao_conta_nome_uniq ON financeiro.antecipacao_conta USING btree (nome)",
+        "antecipacao_conta_pkey": "CREATE UNIQUE INDEX antecipacao_conta_pkey ON financeiro.antecipacao_conta USING btree (id)"
+      },
+      "policies": {},
+      "rls_forcado": false,
+      "rls_habilitado": true,
+      "tipo": "tabela",
+      "triggers": {}
+    },
+    "financeiro.contas_receber_foto": {
+      "acl": {
+        "postgres": {
+          "DELETE": false,
+          "INSERT": false,
+          "MAINTAIN": false,
+          "REFERENCES": false,
+          "SELECT": false,
+          "TRIGGER": false,
+          "TRUNCATE": false,
+          "UPDATE": false
+        }
+      },
+      "colunas": {
+        "carga_id": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "uuid"
+        },
+        "conferido": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "text"
+        },
+        "liquidacao": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "date"
+        },
+        "numero": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "text"
+        },
+        "valor_final": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "numeric(18,2)"
+        },
+        "vencimento": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "date"
+        }
+      },
+      "constraints": {
+        "contas_receber_foto_carga_id_fkey": "FOREIGN KEY (carga_id) REFERENCES financeiro.contas_receber_foto_carga(carga_id)",
+        "contas_receber_foto_conferido_dominio": "CHECK (conferido IS NULL OR (conferido = ANY (ARRAY['Sim'::text, 'Pendente'::text, 'Enviado para o banco'::text, 'Inadimplente'::text])))",
+        "contas_receber_foto_pkey": "PRIMARY KEY (carga_id, numero)"
+      },
+      "dono": "postgres",
+      "indices": {
+        "contas_receber_foto_pkey": "CREATE UNIQUE INDEX contas_receber_foto_pkey ON financeiro.contas_receber_foto USING btree (carga_id, numero)"
+      },
+      "policies": {},
+      "rls_forcado": false,
+      "rls_habilitado": true,
+      "tipo": "tabela",
+      "triggers": {}
+    },
+    "financeiro.contas_receber_foto_carga": {
+      "acl": {
+        "postgres": {
+          "DELETE": false,
+          "INSERT": false,
+          "MAINTAIN": false,
+          "REFERENCES": false,
+          "SELECT": false,
+          "TRIGGER": false,
+          "TRUNCATE": false,
+          "UPDATE": false
+        }
+      },
+      "colunas": {
+        "a_vencer_n": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "integer"
+        },
+        "a_vencer_valor": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "numeric(18,2)"
+        },
+        "carga_id": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "uuid"
+        },
+        "data_posicao": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "date"
+        },
+        "em_aberto": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "integer"
+        },
+        "gravado_em": {
+          "default": "now()",
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "timestamp with time zone"
+        },
+        "inadimplente_n": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "integer"
+        },
+        "inadimplente_valor": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "numeric(18,2)"
+        },
+        "titulos": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "integer"
+        }
+      },
+      "constraints": {
+        "contas_receber_foto_carga_pkey": "PRIMARY KEY (carga_id)"
+      },
+      "dono": "postgres",
+      "indices": {
+        "contas_receber_foto_carga_pkey": "CREATE UNIQUE INDEX contas_receber_foto_carga_pkey ON financeiro.contas_receber_foto_carga USING btree (carga_id)",
+        "contas_receber_foto_carga_posicao_idx": "CREATE INDEX contas_receber_foto_carga_posicao_idx ON financeiro.contas_receber_foto_carga USING btree (data_posicao DESC, gravado_em DESC)"
+      },
+      "policies": {},
+      "rls_forcado": false,
+      "rls_habilitado": true,
+      "tipo": "tabela",
+      "triggers": {}
+    },
     "financeiro.diario_alteracoes": {
       "acl": {
         "postgres": {
@@ -12208,6 +12918,231 @@
       "tipo": "tabela",
       "triggers": {}
     },
+    "financeiro.geral_fin_grupo": {
+      "acl": {
+        "postgres": {
+          "DELETE": false,
+          "INSERT": false,
+          "MAINTAIN": false,
+          "REFERENCES": false,
+          "SELECT": false,
+          "TRIGGER": false,
+          "TRUNCATE": false,
+          "UPDATE": false
+        },
+        "service_role": {
+          "SELECT": false
+        }
+      },
+      "colunas": {
+        "categoria_id": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "integer"
+        },
+        "grupo": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "text"
+        },
+        "ordem": {
+          "default": "0",
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "integer"
+        }
+      },
+      "constraints": {
+        "geral_fin_grupo_categoria_id_fkey": "FOREIGN KEY (categoria_id) REFERENCES financeiro.dim_categoria(id)",
+        "geral_fin_grupo_grupo_check": "CHECK (grupo = ANY (ARRAY['cartao'::text, 'antecipacao'::text, 'juros_iof'::text, 'tarifas'::text, 'cambio'::text, 'receitas_financeiras'::text]))",
+        "geral_fin_grupo_pkey": "PRIMARY KEY (categoria_id)"
+      },
+      "dono": "postgres",
+      "indices": {
+        "geral_fin_grupo_pkey": "CREATE UNIQUE INDEX geral_fin_grupo_pkey ON financeiro.geral_fin_grupo USING btree (categoria_id)"
+      },
+      "policies": {},
+      "rls_forcado": false,
+      "rls_habilitado": true,
+      "tipo": "tabela",
+      "triggers": {}
+    },
+    "financeiro.geral_perda_map": {
+      "acl": {
+        "postgres": {
+          "DELETE": false,
+          "INSERT": false,
+          "MAINTAIN": false,
+          "REFERENCES": false,
+          "SELECT": false,
+          "TRIGGER": false,
+          "TRUNCATE": false,
+          "UPDATE": false
+        },
+        "service_role": {
+          "SELECT": false
+        }
+      },
+      "colunas": {
+        "categoria_id": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "integer"
+        },
+        "papel": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "text"
+        }
+      },
+      "constraints": {
+        "geral_perda_map_categoria_id_fkey": "FOREIGN KEY (categoria_id) REFERENCES financeiro.dim_categoria(id)",
+        "geral_perda_map_papel_check": "CHECK (papel = ANY (ARRAY['prejuizo'::text, 'reversao'::text]))",
+        "geral_perda_map_pkey": "PRIMARY KEY (categoria_id)"
+      },
+      "dono": "postgres",
+      "indices": {
+        "geral_perda_map_pkey": "CREATE UNIQUE INDEX geral_perda_map_pkey ON financeiro.geral_perda_map USING btree (categoria_id)"
+      },
+      "policies": {},
+      "rls_forcado": false,
+      "rls_habilitado": true,
+      "tipo": "tabela",
+      "triggers": {}
+    },
+    "financeiro.geral_prazo_foto": {
+      "acl": {
+        "postgres": {
+          "DELETE": false,
+          "INSERT": false,
+          "MAINTAIN": false,
+          "REFERENCES": false,
+          "SELECT": false,
+          "TRIGGER": false,
+          "TRUNCATE": false,
+          "UPDATE": false
+        },
+        "service_role": {
+          "SELECT": false
+        }
+      },
+      "colunas": {
+        "capturado_em": {
+          "default": "now()",
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "timestamp with time zone"
+        },
+        "carga_id": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "uuid"
+        },
+        "data": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "date"
+        },
+        "entrada_12m": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "numeric(18,2)"
+        },
+        "folga": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "numeric"
+        },
+        "id": {
+          "default": null,
+          "generated": null,
+          "identity": "ALWAYS",
+          "not_null": true,
+          "tipo": "bigint"
+        },
+        "janela_ate": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "date"
+        },
+        "janela_de": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "date"
+        },
+        "pagamento_12m": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "numeric(18,2)"
+        },
+        "pmp": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "numeric"
+        },
+        "pmr": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "numeric"
+        },
+        "saldo_pagar": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "numeric(18,2)"
+        },
+        "saldo_receber": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "numeric(18,2)"
+        }
+      },
+      "constraints": {
+        "geral_prazo_foto_pkey": "PRIMARY KEY (id)"
+      },
+      "dono": "postgres",
+      "indices": {
+        "geral_prazo_foto_carga_uq": "CREATE UNIQUE INDEX geral_prazo_foto_carga_uq ON financeiro.geral_prazo_foto USING btree (carga_id) WHERE (carga_id IS NOT NULL)",
+        "geral_prazo_foto_data_idx": "CREATE INDEX geral_prazo_foto_data_idx ON financeiro.geral_prazo_foto USING btree (data)",
+        "geral_prazo_foto_pkey": "CREATE UNIQUE INDEX geral_prazo_foto_pkey ON financeiro.geral_prazo_foto USING btree (id)"
+      },
+      "policies": {},
+      "rls_forcado": false,
+      "rls_habilitado": true,
+      "tipo": "tabela",
+      "triggers": {}
+    },
     "financeiro.saldo_caixa": {
       "acl": {
         "postgres": {
@@ -12543,7 +13478,7 @@
         "carga_chave_id_fkey": "FOREIGN KEY (chave_id) REFERENCES app.api_chave(id)",
         "carga_pkey": "PRIMARY KEY (carga_id)",
         "carga_usuario_id_fkey": "FOREIGN KEY (usuario_id) REFERENCES auth.users(id)",
-        "ingestao_carga_base_valida": "CHECK (base = ANY (ARRAY['demonstrativo-competencia'::text, 'vendas-produto'::text, 'lancamentos-movimentacao'::text, 'lancamentos-aberto'::text, 'lancamentos-operacao'::text]))",
+        "ingestao_carga_base_valida": "CHECK (base = ANY (ARRAY['demonstrativo-competencia'::text, 'vendas-produto'::text, 'lancamentos-movimentacao'::text, 'lancamentos-aberto'::text, 'lancamentos-operacao'::text, 'contas-receber'::text]))",
         "ingestao_carga_status_valido": "CHECK (status = ANY (ARRAY['aberta'::text, 'aplicada'::text, 'rejeitada'::text, 'erro'::text]))"
       },
       "dono": "postgres",
@@ -12797,7 +13732,7 @@
       },
       "constraints": {
         "ingestao_promocao_base_carga_uniq": "UNIQUE (base, carga_id)",
-        "ingestao_promocao_base_valida": "CHECK (base = ANY (ARRAY['demonstrativo-competencia'::text, 'vendas-produto'::text, 'lancamentos-movimentacao'::text, 'lancamentos-aberto'::text, 'lancamentos-operacao'::text]))",
+        "ingestao_promocao_base_valida": "CHECK (base = ANY (ARRAY['demonstrativo-competencia'::text, 'vendas-produto'::text, 'lancamentos-movimentacao'::text, 'lancamentos-aberto'::text, 'lancamentos-operacao'::text, 'contas-receber'::text]))",
         "promocao_pkey": "PRIMARY KEY (id)"
       },
       "dono": "postgres",
@@ -14071,6 +15006,248 @@
       "triggers": {
         "trg_diario_patrimonio_movimentacao": "CREATE TRIGGER trg_diario_patrimonio_movimentacao AFTER INSERT OR DELETE OR UPDATE ON patrimonio.movimentacao FOR EACH ROW EXECUTE FUNCTION financeiro.fn_diario_alteracoes()"
       }
+    },
+    "raw.contas_receber": {
+      "acl": {
+        "postgres": {
+          "DELETE": false,
+          "INSERT": false,
+          "MAINTAIN": false,
+          "REFERENCES": false,
+          "SELECT": false,
+          "TRIGGER": false,
+          "TRUNCATE": false,
+          "UPDATE": false
+        },
+        "service_role": {
+          "DELETE": false,
+          "INSERT": false,
+          "SELECT": false
+        }
+      },
+      "colunas": {
+        "arquivo_origem": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "text"
+        },
+        "carregado_em": {
+          "default": "now()",
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "timestamp with time zone"
+        },
+        "conferido": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "text"
+        },
+        "descricao": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "text"
+        },
+        "emissao": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "date"
+        },
+        "id": {
+          "default": "nextval('raw.contas_receber_id_seq'::regclass)",
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "bigint"
+        },
+        "linha_origem": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "integer"
+        },
+        "liquidacao": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "date"
+        },
+        "numero": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "text"
+        },
+        "operacao_propria": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "text"
+        },
+        "pessoa": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "text"
+        },
+        "valor_final": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "numeric(18,2)"
+        },
+        "vencimento": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "date"
+        }
+      },
+      "constraints": {
+        "contas_receber_conferido_dominio": "CHECK (conferido IS NULL OR (conferido = ANY (ARRAY['Sim'::text, 'Pendente'::text, 'Enviado para o banco'::text, 'Inadimplente'::text])))",
+        "contas_receber_pkey": "PRIMARY KEY (id)"
+      },
+      "dono": "postgres",
+      "indices": {
+        "contas_receber_numero_uniq": "CREATE UNIQUE INDEX contas_receber_numero_uniq ON raw.contas_receber USING btree (numero)",
+        "contas_receber_pkey": "CREATE UNIQUE INDEX contas_receber_pkey ON raw.contas_receber USING btree (id)",
+        "contas_receber_vencimento_idx": "CREATE INDEX contas_receber_vencimento_idx ON raw.contas_receber USING btree (vencimento)"
+      },
+      "policies": {},
+      "rls_forcado": false,
+      "rls_habilitado": true,
+      "tipo": "tabela",
+      "triggers": {}
+    },
+    "raw.contas_receber_staging": {
+      "acl": {
+        "postgres": {
+          "DELETE": false,
+          "INSERT": false,
+          "MAINTAIN": false,
+          "REFERENCES": false,
+          "SELECT": false,
+          "TRIGGER": false,
+          "TRUNCATE": false,
+          "UPDATE": false
+        }
+      },
+      "colunas": {
+        "arquivo_origem": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "text"
+        },
+        "carregado_em": {
+          "default": "now()",
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "timestamp with time zone"
+        },
+        "conferido": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "text"
+        },
+        "descricao": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "text"
+        },
+        "emissao": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "date"
+        },
+        "id": {
+          "default": "nextval('raw.contas_receber_id_seq'::regclass)",
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "bigint"
+        },
+        "linha_origem": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "integer"
+        },
+        "liquidacao": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "date"
+        },
+        "numero": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "text"
+        },
+        "operacao_propria": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "text"
+        },
+        "pessoa": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "text"
+        },
+        "valor_final": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "numeric(18,2)"
+        },
+        "vencimento": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "date"
+        }
+      },
+      "constraints": {},
+      "dono": "postgres",
+      "indices": {},
+      "policies": {},
+      "rls_forcado": false,
+      "rls_habilitado": true,
+      "tipo": "tabela",
+      "triggers": {}
     },
     "raw.demonstrativo_competencia": {
       "acl": {
@@ -15748,7 +16925,7 @@
       "triggers": {}
     }
   },
-  "ultima_migration": "0294",
+  "ultima_migration": "0298",
   "views": {
     "analytics.mv_ranking_produtos_mensal": {
       "acl": {

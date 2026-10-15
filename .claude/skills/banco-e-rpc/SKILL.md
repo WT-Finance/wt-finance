@@ -576,6 +576,42 @@ ser idêntica, senão o `REPLACE` falha — e **redeclare** `REVOKE`/`GRANT` mes
 Postgres preserva as ACLs (precedente 0197/0206): o dia em que aquilo virar `DROP`+`CREATE`, o
 default privilege do Supabase abre `anon` em silêncio.
 
+### Ampliar a lista de um `CHECK` existente também é DESTRUTIVA — a feature nasce FALHANDO FECHADA (v6.4.0)
+
+Acrescentar um valor a um `CHECK ... IN (...)` (ex.: a sexta base de ingestão em
+`ingestao.carga`/`ingestao.promocao`) exige `ALTER TABLE ... DROP CONSTRAINT` + `ADD CONSTRAINT` — o
+mesmo regex do classificador da seção acima. Não há como ampliar sem o par. O desenho que fecha:
+
+1. **Tudo o mais é aditivo** e vai na migration normal (tabelas novas, RPCs novas, o ramo novo nas RPCs
+   que já aceitam a lista) — aplicada pelo caminho autônomo.
+2. **O par `DROP`/`ADD` vai sozinho num patch em `supabase/patches/`** (FORA de `supabase/migrations/`,
+   senão o `db push` o empurra junto do pendente — §1), aplicado pelo humano em TTY, com o corpo da
+   volta (DOWN) no próprio arquivo.
+3. **Até o patch, a funcionalidade falha FECHADA**: a abertura da carga é recusada pelo `CHECK` antigo,
+   nada é gravado, as bases anteriores seguem iguais. O header da migration aditiva declara a
+   dependência. Precedente: v6.4.0, `supabase/patches/contas_receber_checks_ingestao.sql`.
+4. Ao copiar o patch para `migrations/`, o teste que lê a lista por NOME de arquivo
+   (`bases-paridade.test.ts`) é reapontado para a migration nova.
+
+### Tabela sob o diário com DESFAZER de exclusão: PK `bigserial`, NUNCA `IDENTITY` (v6.4.0, 0296)
+
+`financeiro.reverter_diario` (0268), no ramo D (desfazer uma EXCLUSÃO), reinsere a linha só com as colunas
+de `is_identity = 'NO'`. Com `GENERATED ... AS IDENTITY` o `id` fica de fora: a linha volta com **id
+novo**, a entrada D antiga continua "desfazível" (a linha de id antigo segue ausente) e **um segundo
+desfazer REINSERE o registro — duplica, e infla todo total**. Com `bigserial` o `id` volta do snapshot e o
+segundo desfazer é recusado ("já existe uma linha com o id …"). Provado em ensaio em transação revertida.
+Regra: tabela que entra no diário (`fn_diario_alteracoes`) com reversão por `reverter_diario` usa PK
+`bigserial` (molde `dre_comp_par`/`gerencial_lancamentos`). Achado do `implementador` na 0296 — o
+contrato da spec dizia IDENTITY.
+
+### Erro de `NOT NULL` (23502) em staging vaza a LINHA INTEIRA no `DETAIL`
+
+Violação de `NOT NULL` devolve `DETAIL: Failing row contains (...)` com **todos os campos da linha** — em
+base com dado pessoal, o erro da carga viraria vazamento. A RPC de lote (`inserir_lote_staging_*`) valida
+os campos obrigatórios **antes** do `INSERT` e reprova citando só a **posição no lote e o nome do campo**
+(`22023`, `LOTE_LINHA_INVALIDA` — 0295), nunca o conteúdo. Vale para qualquer RPC que receba linhas de
+arquivo com PII.
+
 ### `CHECK` com `CASE` sobre enum: sem `ELSE false` é FAIL-OPEN
 
 Um CHECK que valida "quais campos cada tipo exige" é natural escrever como `CASE tipo WHEN

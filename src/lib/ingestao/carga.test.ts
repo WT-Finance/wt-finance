@@ -87,6 +87,15 @@ describe('validarArquivosDeclarados', () => {
     expect(erro?.message).toContain('aceita exatamente 1')
   })
 
+  it('Contas a receber (v6.4.0) também aceita N arquivos — um por faixa de vencimento —, só em .xlsx', () => {
+    const b = { ...ARQUIVO_XLSX, nome: 'b.xlsx' }
+    expect(validarArquivosDeclarados('contas-receber', [ARQUIVO_XLSX, b])).toBeNull()
+    expect(validarArquivosDeclarados('contas-receber', [ARQUIVO_CSV])?.codigo).toBe('FORMATO_INVALIDO')
+    // Operação continua single-file mesmo sendo a base de scrape: o multiarquivo é por LISTA, não por padrão.
+    expect(validarArquivosDeclarados('lancamentos-operacao', [ARQUIVO_CSV, { ...ARQUIVO_CSV, nome: 'b.csv' }])?.message)
+      .toContain('aceita exatamente 1')
+  })
+
   it('extensão errada por base é rejeitada — só lancamentos-operacao aceita .csv', () => {
     expect(validarArquivosDeclarados('vendas-produto', [ARQUIVO_CSV])?.codigo).toBe('FORMATO_INVALIDO')
     expect(validarArquivosDeclarados('lancamentos-operacao', [ARQUIVO_XLSX])?.codigo).toBe('FORMATO_INVALIDO')

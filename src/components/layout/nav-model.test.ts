@@ -234,6 +234,38 @@ describe('filtro por permissão — a seção nova não vaza nem apaga o que já
     expect(hrefAtivoDoGrupo(NAV_GROUPS['/gestao-pessoas'], '/marketing/gastos')).toBeNull()
   })
 
+  // ── v6.4.0 — Financeiro · Geral ─────────────────────────────────────────────────────────
+  // Subaba nova do grupo Financeiro, área própria 'financeiro/geral' (migration 0297). As quatro
+  // pontas — AREAS/AREA_INFO, areasDaRota, requireArea da page e a `area` da subaba — viram juntas.
+  it('v6.4.0: "Geral" é a 1ª subaba de Financeiro, na área financeiro/geral e sem areasAny', () => {
+    const subs = NAV_GROUPS['/financeiro']
+    expect(subs[0]).toMatchObject({ label: 'Geral', href: '/financeiro/geral', area: 'financeiro/geral' })
+    // A gestão (registrar antecipações) NÃO mostra a subaba: as RPCs de leitura exigem 'financeiro/geral'.
+    expect(subs[0].areasAny).toBeUndefined()
+    expect(ROTAS).toContain('/financeiro/geral')
+  })
+
+  it('v6.4.0: quem tem SÓ financeiro/geral vê só Financeiro, com SÓ a subaba Geral', () => {
+    expect(rotulos(['financeiro/geral'])).toEqual(['Financeiro'])
+    const subs = NAV_GROUPS['/financeiro'].filter(s => subVisivel(s, ['financeiro/geral']))
+    expect(subs.map(s => s.href)).toEqual(['/financeiro/geral'])
+  })
+
+  it('v6.4.0: a gestão SOZINHA não mostra Financeiro (não libera a leitura); as áreas vizinhas não mostram Geral', () => {
+    expect(rotulos(['financeiro/geral/gestao'])).toEqual([])
+    for (const vizinha of ['financeiro/fluxo-caixa', 'financeiro/gerencial', 'financeiro/dre', 'financeiro/acervo']) {
+      const subs = NAV_GROUPS['/financeiro'].filter(s => subVisivel(s, [vizinha]))
+      expect(subs.map(s => s.href)).not.toContain('/financeiro/geral')
+    }
+  })
+
+  it('v6.4.0: em /financeiro/geral acende só a subaba Geral; as irmãs não acendem', () => {
+    const subs = NAV_GROUPS['/financeiro']
+    expect(hrefAtivoDoGrupo(subs, '/financeiro/geral')).toBe('/financeiro/geral')
+    expect(hrefAtivoDoGrupo(subs, '/financeiro/dre')).toBe('/financeiro/dre')
+    expect(hrefAtivoDoGrupo(subs, '/financeiro/fluxo-caixa/gerencial')).toBe('/financeiro/fluxo-caixa/gerencial')
+  })
+
   it('v6.1.1/M3: "API Externa" é um grupo com Configuração ANTES da Documentação, logo depois de Ingestão de Dados', () => {
     const subs = NAV_GROUPS['/admin/api-externa']
     expect(subs.map(s => [s.label, s.href, s.area])).toEqual([

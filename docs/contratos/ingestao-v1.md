@@ -120,7 +120,7 @@ chave de uma RPA carrega relatório e nada mais.
 
 | Termo | Significado |
 |---|---|
-| **base** | uma das cinco fontes de dados: `demonstrativo-competencia`, `vendas-produto`, `lancamentos-movimentacao`, `lancamentos-aberto`, `lancamentos-operacao` |
+| **base** | uma das seis fontes de dados: `demonstrativo-competencia`, `vendas-produto`, `lancamentos-movimentacao`, `lancamentos-aberto`, `lancamentos-operacao`, `contas-receber` (esta última, **v6.4.0**, mudança aditiva — ver §3, §4 e a nota abaixo da tabela de §3) |
 | **cru** | o arquivo exatamente como o Monde exporta (xlsx; csv só para `lancamentos-operacao`), sem tratamento |
 | **carga** | uma execução: 1..N arquivos crus de UMA base → parse → checksums → promoção atômica → linha em `ingestao.carga` |
 | **checksum do arquivo** | os totais/subtotais que o próprio export traz (linha de totais, linhas de outline "Grupo de Categoria: … (n, R$ …)", Total Geral) — lidos ANTES de serem descartados e conferidos contra as linhas parseadas |
@@ -167,7 +167,8 @@ Body (JSON):
 { "arquivos": [ { "nome": "25-26.xlsx", "bytes": 3118968, "sha256": "a06e…95dd" } ] }
 ```
 
-Regras: 1..N arquivos (Vendas aceita um por ano; as outras bases aceitam 1); extensão pela base
+Regras: 1..N arquivos (Vendas aceita um por ano e Contas a receber um por faixa de vencimento; as outras
+bases aceitam 1 — `BASES_MULTIARQUIVO` em `src/lib/ingestao/bases.ts`); extensão pela base
 (`.xlsx`; `.csv` só em `lancamentos-operacao`); `bytes` ≤ **50 MB** por arquivo e ≤ **200 MB** por
 carga (constantes `LIMITE_BYTES_ARQUIVO` / `LIMITE_BYTES_CARGA`); `sha256` do conteúdo que será
 enviado, calculado pelo chamador.
@@ -273,9 +274,31 @@ Formato do erro: `{ "ok": false, "erro": { "codigo": "...", "mensagem": "...", "
 | `lancamentos-movimentacao` | 1 xlsx ("Lançamentos por categoria — movimentação") | `raw.lancamentos_movimentacao` | lançamento liquidado |
 | `lancamentos-aberto` | 1 xlsx ("Lançamentos por categoria — vencimento em aberto") | `raw.titulos_em_aberto` | título em aberto |
 | `lancamentos-operacao` | 1 csv ("Análise de Operações", scrape; coluna opcional `Operacao_Id` — **errata 4(a)**) | `raw.lancamentos_operacao` (nova) → `analytics.fato_lancamento_operacao` | lançamento por operação |
+| `contas-receber` | N xlsx, um por faixa de vencimento (relatório "Contas a pagar e a receber" do Monde, filtrado em a receber) — **v6.4.0** | `raw.contas_receber` | título a receber |
 
 Cada carga **substitui a base inteira** (não é append). Vendas: os N arquivos são unidos no
 servidor; a cobertura é derivada do dado (`min/max(data_venda)`), nunca do nome do arquivo.
+
+**`contas-receber` (v6.4.0 — mudança ADITIVA do contrato: nada nas cinco bases anteriores muda).**
+- **Arquivos:** N por carga, um por faixa de vencimento (o Monde limita a pesquisa a 30 mil linhas),
+  a partir de 01/01/2024, sem lacuna e sem sobreposição entre as faixas. Só xlsx, 1 aba, cabeçalho na
+  linha 1, 17 colunas.
+- **Lista fechada gravada** (9 colunas): `Número`, `Emissão`, `Pessoa`, `Descrição`, `Vencimento`,
+  `Liquidação`, `Valor Final`, `Conferido`, `Operação Própria`. As outras 8 colunas do export só servem
+  para mapear o cabeçalho e **nunca** são gravadas. `Pessoa`, `Descrição` e `Operação Própria` carregam
+  nomes de pessoas: ficam no raw sob a área `financeiro/geral`.
+- **Regras de conteúdo:** `Número` é texto (pode ter sufixo `-N`) e **único por carga** — repetido
+  (entre arquivos ou dentro de um) ⇒ `422 CONJUNTO_NAO_RECONCILIA`; `Valor Final` > 0 (um arquivo
+  misto de pagar + receber é recusado); `Conferido` ∈ {vazio, `Sim`, `Pendente`, `Enviado para o
+  banco`, `Inadimplente`}, outro valor ⇒ recusa; `Emissão` com data zero/fora da faixa (errata 1) ⇒
+  `null` + aviso, a linha permanece.
+- **Aviso, não bloqueio:** lacuna entre as faixas de vencimento dos arquivos (início da faixa seguinte a
+  mais de 1 dia do fim da anterior). O checksum não a vê — cada arquivo fecha sozinho.
+- **Sem RPA e sem expectativa de vigia por ora:** a base não entra em `escopo_bases` de chave de API nem
+  em `ingestao_expectativa`. Entra só no card de `/admin/ingestao/upload` (sessão, área `admin/uploads`).
+- **Efeito colateral de outra base:** depois de **aplicar** `lancamentos-aberto`, o servidor chama
+  `registrar_foto_prazos(carga_id)` (série histórica de PMR/PMP). É **fail-soft**: falha vira um aviso em
+  `alarmes[]`, nunca erro nem desfaz a carga.
 
 ## 4. Checksums por base (o que o arquivo já traz)
 
@@ -286,6 +309,11 @@ servidor; a cobertura é derivada do dado (`min/max(data_venda)`), nunca do nome
 | `lancamentos-movimentacao` | outline `Grupo de Categoria: X (n, R$ v)` e `Categoria: Y (n, R$ v)` + total | 148 + 1 | 0 |
 | `lancamentos-aberto` | idem | 95 + 1 | 0 |
 | `lancamentos-operacao` | **não há** — cruzamento: todo `Número` sem `Liquidação` existe em Aberto ∪ Movimentação e `Vencimento` coincide | baseline 3 ausentes | acima do baseline = alarme, não bloqueio |
+| `contas-receber` | linha de total de **cada arquivo** (a última linha: `Número` = contagem de títulos, `Valor Final` = Σ), conferida contra os títulos do arquivo e, na promoção, contra o GRAVADO | **1 por arquivo** — `{escopo:"arquivo", chave:{arquivo_origem}, linhas, centavos}` | 0 |
+
+`contas-receber`: arquivo sem a linha de total ⇒ `422 ESTRUTURA_INESPERADA`; arquivo gravado sem checksum
+na promoção ⇒ `CHECKSUM_AUSENTE`. Como cada arquivo fecha sozinho, o checksum **não** pega lacuna nem
+sobreposição entre faixas de vencimento — daí o `Número` único por carga (§3) e o aviso de lacuna.
 
 **Checksum falho nunca aplica.** Não há flag de bypass; a via de exceção é corrigir na origem e
 reprocessar o cru.
@@ -296,6 +324,7 @@ reprocessar o cru.
 vendas-produto ─┬─► lancamentos-movimentacao ─┬─► lancamentos-operacao
                 └─► lancamentos-aberto ───────┘
 demonstrativo-competencia  (independente)
+contas-receber             (independente — v6.4.0)
 ```
 
 `lancamentos-operacao` exige carga **aplicada no dia** de `lancamentos-aberto` (é de onde vem o

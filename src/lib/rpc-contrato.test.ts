@@ -23,7 +23,12 @@ import {
 import {
   dreMensalSchema, dreCompMensalSchema, dreCompEstruturaSchema, dreEstruturaSchema,
   historicoLotesSchema, historicoEntradasSchema, decomposicaoBlocoSchema,
+  type DreMensal,
 } from './dre/schemas'
+import {
+  custosFinanceirosSchema, prejuizosSchema, recebiveisSchema, antecipacoesSchema, prazosSchema,
+  antecipacaoListarSchema, antecipacaoHistoricoSchema, FAIXAS_ATRASO,
+} from './financeiro-geral/schemas'
 import {
   resumoMarketingSchema, fornecedoresMarketingSchema, lancamentosMarketingSchema,
 } from './marketing/schemas'
@@ -363,6 +368,18 @@ const CONTRATOS_PARSE_RPC: Array<{ fn: string; params: Record<string, unknown>; 
   // v6.3.0 (0293): os insumos (centavos) da proporção Marketing / Receita Bruta por COMPETÊNCIA. A
   // paridade com a grade da DRE tem bloco próprio logo após o de Gastos de Marketing.
   { fn: 'get_marketing_proporcao_receita',   params: { p_ano: ANO_FECHADO_MKT },                                       schema: proporcaoReceitaMarketingSchema },
+  // v6.4.0 (0297): as 5 RPCs de leitura de "Financeiro · Geral" (/financeiro/geral), contra os schemas
+  // que a página usa. As com `p_ano` rodam no último ano FECHADO e no CORRENTE (o ramo `corrente` é o
+  // que o ano fechado não exercita: mes_corrente, recorte do ano anterior). As invariantes (paridade com
+  // a DRE de caixa, partição, PII, negações) têm bloco próprio no fim do arquivo.
+  { fn: 'get_geral_custos_financeiros',      params: { p_ano: ANO_FECHADO_MKT },                                       schema: custosFinanceirosSchema },
+  { fn: 'get_geral_custos_financeiros',      params: { p_ano: ANO_SP_MKT },                                            schema: custosFinanceirosSchema },
+  { fn: 'get_geral_prejuizos',               params: { p_ano: ANO_FECHADO_MKT },                                       schema: prejuizosSchema },
+  { fn: 'get_geral_prejuizos',               params: { p_ano: ANO_SP_MKT },                                            schema: prejuizosSchema },
+  { fn: 'get_geral_antecipacoes',            params: { p_ano: ANO_FECHADO_MKT },                                       schema: antecipacoesSchema },
+  { fn: 'get_geral_antecipacoes',            params: { p_ano: ANO_SP_MKT },                                            schema: antecipacoesSchema },
+  { fn: 'get_geral_recebiveis',              params: {},                                                               schema: recebiveisSchema },
+  { fn: 'get_geral_prazos',                  params: {},                                                               schema: prazosSchema },
 ]
 
 describe.skipIf(!ON)('contrato RPC — schema parseRpc (F7) aceita o retorno REAL', () => {
@@ -2879,6 +2896,665 @@ describe.skipIf(!ON || !DB_URL)('contrato RBAC — Gastos de Marketing: usuário
       if (resumo.ok) exigirParseMkt(resumoMarketingSchema, resumo.valor, 'resumo (como usuário com a área)')
       if (fornecedores.ok) exigirParseMkt(fornecedoresMarketingSchema, fornecedores.valor, 'fornecedores (como usuário com a área)')
       if (lancamentos.ok) exigirParseMkt(lancamentosMarketingSchema, lancamentos.valor, 'lancamentos (como usuário com a área)')
+    })
+  }, 30_000)
+})
+
+// ══ v6.4.0 (0296/0297) — Financeiro · Geral (/financeiro/geral) ═══════════════════════════════════
+// O que este bloco prova (todos os casos via REST com o `verificador`, salvo onde dito que é `pg`):
+//   1. SHAPE — as 5 `get_geral_*` passam nos schemas de `financeiro-geral/schemas.ts` (os que a página
+//      usa): ano FECHADO e CORRENTE onde há `p_ano` (as entradas estão na lista F7 lá em cima). Aqui,
+//      além do schema, `relacao`/`mes_corrente` coerentes com o "hoje" de São Paulo.
+//   2. PARIDADE COM A DRE DE CAIXA (inv. 1; "dois números vizinhos" — skill contrato-rpc-front §5). A
+//      0297 COPIA o predicado da DRE (realizado, de-para vivo, NOT excluida) em vez de chamar
+//      `get_dre_mensal` (gated por `financeiro/dre`); se alguém "otimizar" uma das pontas, é aqui que
+//      estoura, e não na tela da diretoria. A DRE troca realizado por PREVISTO nos meses futuros do ano
+//      corrente e estas RPCs são só realizado: compara-se mês a mês os meses REALIZADOS (fechado: 12;
+//      corrente: 1..mes_corrente — o teto vem da PRÓPRIA resposta da DRE). Em CENTAVOS inteiros.
+//        · `fin.meses` ≡ linha do bloco FIN;  `receita_bruta.meses` ≡ linha RB_H;
+//        · Σ `grupos[].meses` ≡ `fin.meses` (partição: nada some nem duplica) e Σ categorias ≡ grupo;
+//        · `prejuizo`/`reversao` ≡ Σ das linhas `cat` da DRE cujo `categoria_id` está no papel da tabela
+//          curada `geral_perda_map`. O mapa NÃO é alcançável por REST (tabela sem acesso direto), então é
+//          lido por `pg` (READ ONLY, como os demais casos deste arquivo) — por id, não pelo rótulo,
+//          porque a DRE exibe `dre_categoria_map.rotulo` (override) e casar por texto seria frágil;
+//        · `prazos.atual.entrada_12m`/`pagamento_12m` ≡ Σ ENT_H / |Σ PAG_H| da janela de 12 meses.
+//   3. PII — `get_geral_recebiveis` devolve `concentracao.top[].pessoa` com NOMES REAIS de clientes. O
+//      vitest imprime o valor comparado quando um `expect` falha, então NENHUM `expect` neste bloco
+//      recebe esse campo: só forma (chaves, tipos como booleano, contagem, somas de `valor`). Mensagens de
+//      drift de schema listam só `caminho:código` do issue (nunca o valor). O JSON cru de `get_geral_*`
+//      nunca vai a `console`.
+//   4. NEGAÇÕES — anon (HTTP 401/403 + 42501); o `verificador` NÃO executa as RPCs de escrita do módulo
+//      (catálogo primeiro, depois REST); usuário ATIVO sem a área (`pg`, identidade por claims).
+//
+// ⚠️ DERIVADOR DE ALLOWLIST (`scripts/credencial/derivar-allowlist.mjs`): ele varre o TEXTO inteiro deste
+// arquivo — COMENTÁRIOS INCLUÍDOS — atrás de `rpc('<nome>'` e `fn: '<nome>'` e concede EXECUTE ao
+// `verificador` em tudo que casar. Por isso: (a) os nomes das RPCs de ESCRITA do módulo (registro de
+// antecipações e carga de Contas a receber) só aparecem aqui como ASSINATURA COMPLETA
+// (`public.<nome>(<tipos>)`) ou como string solta passada a `statusVerificador`/`verificadorTemExecute`/
+// `chamarComoGeral` — formas que o derivador NÃO casa; (b) nenhuma chave `fn` é usada para elas. Nomes
+// novos que o derivador passa a ver: exatamente as 5 `get_geral_*` (que o `verificador` JÁ TEM, 0297).
+// `get_dre_mensal` já estava na allowlist. As leituras `antecipacao_listar`/`antecipacao_historico` só são
+// chamadas por `pg` com identidade de usuário (nunca pela credencial), logo também não entram.
+
+const RPCS_GERAL = [
+  { fn: 'get_geral_custos_financeiros', comAno: true },
+  { fn: 'get_geral_prejuizos',          comAno: true },
+  { fn: 'get_geral_recebiveis',         comAno: false },
+  { fn: 'get_geral_antecipacoes',       comAno: true },
+  { fn: 'get_geral_prazos',             comAno: false },
+] as const
+/** Parâmetros nomeados de cada RPC: as sem `p_ano` NÃO aceitam o argumento (PostgREST responderia 404). */
+const paramsGeral = (comAno: boolean, ano: number): Record<string, unknown> => (comAno ? { p_ano: ano } : {})
+
+/** Os dois anos do shape: o último FECHADO e o CORRENTE (SP). */
+const ANOS_GERAL = [ANO_FECHADO_MKT, ANO_SP_MKT]
+const MES_SP_GERAL = Number(hojeSP().slice(5, 7))
+
+/** Como `exigirParseMkt`, mas a mensagem lista só `caminho:código` de cada issue — nunca o VALOR. */
+function exigirParseGeral<T>(schema: ZodType<T>, cru: unknown, nome: string): T {
+  const r = schema.safeParse(cru)
+  if (!r.success) {
+    const issues = r.error.issues.slice(0, 6).map(i => `${i.path.map(String).join('.')}:${i.code}`).join(' | ')
+    throw new Error(`${nome} drift: ${issues}`)
+  }
+  return r.data
+}
+
+/** Último mês REALIZADO de um ano, pela própria resposta (a mesma definição que a RPC usa). */
+const ultimoMesGeral = (relacao: string, mesCorrente: number | null): number =>
+  relacao === 'fechado' ? 12 : relacao === 'corrente' ? (mesCorrente ?? 0) : 0
+
+/** A ÚNICA linha de bloco (não-`cat`) com a chave dada na DRE; qualquer outra contagem é erro de contrato. */
+function linhaDreGeral(dre: DreMensal, chave: string) {
+  const achadas = dre.linhas.filter(l => l.t !== 'cat' && l.chave === chave)
+  if (achadas.length !== 1) throw new Error(`get_dre_mensal(${dre.ano}): esperada 1 linha de bloco "${chave}", vieram ${achadas.length}`)
+  return achadas[0]
+}
+
+/** Σ (em centavos) dos 12 meses de várias séries, mês a mês. */
+const somaMesesCentavos = (series: number[][]): number[] =>
+  Array.from({ length: 12 }, (_, i) => series.reduce((s, a) => s + centavos(a[i]), 0))
+const emCentavos = (a: number[]): number[] => a.map(centavos)
+
+/** Dias de calendário entre dois 'YYYY-MM-DD' (date puro, sem fuso). */
+const diasEntreGeral = (de: string, ate: string): number => {
+  const ms = (d: string) => Date.UTC(Number(d.slice(0, 4)), Number(d.slice(5, 7)) - 1, Number(d.slice(8, 10)))
+  return Math.round((ms(ate) - ms(de)) / 86_400_000)
+}
+
+// Um ano é carregado UMA vez e reaproveitado (3 RPCs do ano + a DRE, em paralelo).
+const cacheGeral = new Map<number, ReturnType<typeof carregarGeral>>()
+async function carregarGeral(ano: number) {
+  const [custosCru, prejuizosCru, antecipacoesCru, dreCru] = await Promise.all([
+    rpc('get_geral_custos_financeiros', { p_ano: ano }),
+    rpc('get_geral_prejuizos', { p_ano: ano }),
+    rpc('get_geral_antecipacoes', { p_ano: ano }),
+    rpc('get_dre_mensal', { p_ano: ano }),
+  ])
+  return {
+    custos: exigirParseGeral(custosFinanceirosSchema, custosCru, `custos ${ano}`),
+    prejuizos: exigirParseGeral(prejuizosSchema, prejuizosCru, `prejuízos ${ano}`),
+    antecipacoes: exigirParseGeral(antecipacoesSchema, antecipacoesCru, `antecipações ${ano}`),
+    dre: exigirParseGeral(dreMensalSchema, dreCru, `get_dre_mensal ${ano}`),
+  }
+}
+function dadosGeral(ano: number) {
+  let p = cacheGeral.get(ano)
+  if (!p) { p = carregarGeral(ano); cacheGeral.set(ano, p) }
+  return p
+}
+
+// Recebíveis e prazos não têm ano: UMA leitura cada. `cru` fica para o caso de lista fechada de chaves.
+let cacheRecebiveisGeral: ReturnType<typeof carregarRecebiveisGeral> | undefined
+async function carregarRecebiveisGeral() {
+  const cru = await rpc('get_geral_recebiveis', {})
+  return { cru, r: exigirParseGeral(recebiveisSchema, cru, 'recebíveis') }
+}
+const dadosRecebiveisGeral = () => (cacheRecebiveisGeral ??= carregarRecebiveisGeral())
+
+let cachePrazosGeral: ReturnType<typeof carregarPrazosGeral> | undefined
+async function carregarPrazosGeral() {
+  return exigirParseGeral(prazosSchema, await rpc('get_geral_prazos', {}), 'prazos')
+}
+const dadosPrazosGeral = () => (cachePrazosGeral ??= carregarPrazosGeral())
+
+// ── Conexão `pg` somente-leitura (mapa curado de perdas; identidade de usuário nas negações) ───────
+type ClientePgGeral = { query: (q: string, p?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }> }
+async function comPgGeral<T>(f: (c: ClientePgGeral) => Promise<T>): Promise<T> {
+  const { createRequire } = await import('node:module')
+  const pg = createRequire(process.cwd() + '/')('pg')
+  const c = new pg.Client({ connectionString: DB_URL })
+  await c.connect()
+  // Trava READ ONLY de SESSÃO, por CONEXÃO (sonda-teste-escreve-banco): qualquer escrita, inclusive a que
+  // uma função fizesse por dentro, é recusada pelo Postgres.
+  await c.query('SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY')
+  try { return await f(c) } finally { await c.end() }
+}
+
+type ResultadoGeral = { ok: true; valor: unknown } | { ok: false; code?: string; msg: string }
+/** Assume a identidade do usuário na SESSÃO (claims) e chama `public.<nome>(<chamada>)`. `nome` e
+ *  `chamada` são constantes deste arquivo (nunca entrada externa). Sem transação: erro só falha o statement. */
+async function chamarComoGeral(c: ClientePgGeral, uid: string, nome: string, chamada: string, params: unknown[]): Promise<ResultadoGeral> {
+  await c.query(`SELECT set_config('request.jwt.claims', $1, false)`, [JSON.stringify({ sub: uid, role: 'authenticated' })])
+  try {
+    const r = await c.query(`SELECT public.${nome}(${chamada}) AS r`, params)
+    return { ok: true, valor: r.rows[0]?.r }
+  } catch (e) {
+    const err = e as { code?: string; message?: string }
+    return { ok: false, code: err.code, msg: String(err.message) }
+  }
+}
+
+// ── 1. SHAPE: relacao e mes_corrente coerentes com o "hoje" de São Paulo ─────────────────────────
+describe.skipIf(!ON)('contrato RPC — Financeiro · Geral: shape e janela (v6.4.0, 0297)', () => {
+  it.each(ANOS_GERAL)('%i: custos, prejuízos e antecipações passam nos schemas; relacao/mes_corrente ≡ hoje de São Paulo', async (ano) => {
+    const { custos, prejuizos, antecipacoes } = await dadosGeral(ano)
+    const esperada = ano < ANO_SP_MKT ? 'fechado' : 'corrente'
+    const mes = esperada === 'corrente' ? MES_SP_GERAL : null
+    for (const [nome, x] of [['custos', custos], ['prejuízos', prejuizos], ['antecipações', antecipacoes]] as const) {
+      expect(x.ano, `${nome}: ano devolvido`).toBe(ano)
+      expect(x.relacao, `${nome}: relacao`).toBe(esperada)
+      expect(x.mes_corrente, `${nome}: mes_corrente`).toBe(mes)
+    }
+  }, 30_000)
+
+  it('a lista de grupos é a do contrato: 4 de custo + cambio/receitas_financeiras (+ nao_classificado só se houver)', async () => {
+    const { custos } = await dadosGeral(ANO_FECHADO_MKT)
+    const ordem = custos.grupos.map(g => g.grupo)
+    const esperada = ['cartao', 'antecipacao', 'juros_iof', 'tarifas', 'cambio', 'receitas_financeiras']
+    expect(ordem.slice(0, 6), 'grupos curados fora de ordem ou ausentes').toEqual(esperada)
+    expect(ordem.slice(6).every(g => g === 'nao_classificado'), 'grupo desconhecido depois dos curados').toBe(true)
+    for (const g of custos.grupos) {
+      const custo = ['cartao', 'antecipacao', 'juros_iof', 'tarifas'].includes(g.grupo)
+      expect(g.tipo, `tipo do grupo ${g.grupo}`).toBe(custo ? 'custo' : 'outros')
+    }
+  }, 30_000)
+})
+
+// ── 2. PARIDADE com a DRE de caixa (inv. 1) ──────────────────────────────────────────────────────
+describe.skipIf(!ON)('contrato RPC — Financeiro · Geral: custos financeiros ≡ bloco FIN / Receita Bruta ≡ RB_H da DRE (v6.4.0, 0297)', () => {
+  // INVARIANTE 1 — o oráculo de paridade.
+  it.each(ANOS_MKT)('%i: fin ≡ bloco FIN e receita_bruta ≡ RB_H de get_dre_mensal, ao centavo, em cada mês realizado', async (ano) => {
+    const { custos, dre } = await dadosGeral(ano)
+    expect(dre.relacao, `get_dre_mensal(${ano}).relacao`).toBe(ano < ANO_SP_MKT ? 'fechado' : 'corrente')
+    expect(custos.relacao, 'a RPC e a DRE discordam da relacao do ano').toBe(dre.relacao)
+    expect(custos.mes_corrente, 'a RPC e a DRE discordam do mes_corrente').toBe(dre.mes_corrente)
+    const ultimo = ultimoMesGeral(dre.relacao, dre.mes_corrente)
+    expect(ultimo, 'sem mês realizado para comparar').toBeGreaterThanOrEqual(1)
+
+    const fin = linhaDreGeral(dre, 'FIN')
+    const rb = linhaDreGeral(dre, 'RB_H')
+    const divergencias: string[] = []
+    for (let i = 0; i < ultimo; i++) {
+      const rotulo = `${ano}-${String(i + 1).padStart(2, '0')}`
+      if (centavos(custos.fin.meses[i]) !== centavos(fin.meses[i])) {
+        divergencias.push(`${rotulo}: fin ${centavos(custos.fin.meses[i])} ≠ FIN da DRE ${centavos(fin.meses[i])} (centavos)`)
+      }
+      if (centavos(custos.receita_bruta.meses[i]) !== centavos(rb.meses[i])) {
+        divergencias.push(`${rotulo}: receita_bruta ${centavos(custos.receita_bruta.meses[i])} ≠ RB_H da DRE ${centavos(rb.meses[i])} (centavos)`)
+      }
+    }
+    expect(divergencias, `a página discorda da DRE:\n${divergencias.join('\n')}`).toEqual([])
+  }, 30_000)
+
+  // Partição: grupos e categorias são o MESMO conjunto de linhas do `fin`, repartido. Σ ≡ por construção
+  // — este caso cai se alguém trocar o LEFT JOIN do grupo por um INNER (categoria sem grupo SUMIRIA).
+  it.each(ANOS_MKT)('%i: partição — Σ grupos ≡ fin, Σ categorias ≡ grupo, custos ≡ Σ grupos de custo; totais ≡ Σ meses', async (ano) => {
+    const { custos } = await dadosGeral(ano)
+    expect(emCentavos(custos.fin.meses), 'Σ grupos ≠ fin (mês a mês, centavos)').toEqual(somaMesesCentavos(custos.grupos.map(g => g.meses)))
+    expect(
+      emCentavos(custos.custos.meses),
+      'custos ≠ Σ grupos de tipo "custo" (mês a mês, centavos)',
+    ).toEqual(somaMesesCentavos(custos.grupos.filter(g => g.tipo === 'custo').map(g => g.meses)))
+    for (const g of custos.grupos) {
+      expect(emCentavos(g.meses), `Σ categorias ≠ grupo ${g.grupo} (mês a mês, centavos)`).toEqual(somaMesesCentavos(g.categorias.map(c => c.meses)))
+      expect(centavos(g.total), `total do grupo ${g.grupo} ≠ Σ meses`).toBe(somaMesesCentavos([g.meses]).reduce((s, v) => s + v, 0))
+      for (const c of g.categorias) {
+        expect(centavos(c.total), `total da categoria ${c.categoria_id} ≠ Σ meses`).toBe(somaMesesCentavos([c.meses]).reduce((s, v) => s + v, 0))
+      }
+    }
+    for (const [nome, s] of [['fin', custos.fin], ['custos', custos.custos], ['receita_bruta', custos.receita_bruta]] as const) {
+      expect(centavos(s.total), `${nome}.total ≠ Σ meses`).toBe(somaMesesCentavos([s.meses]).reduce((a, v) => a + v, 0))
+    }
+  }, 30_000)
+
+  // O Δ da tela usa `ano_anterior_ytd`: tem de ser o recorte do ano ANTERIOR do próprio contrato
+  // (corrente: jan..mes_corrente; fechado: o ano todo), idêntico ao que a RPC do ano anterior mostra.
+  it.each(ANOS_MKT.filter(a => a > ANO_INICIAL_MKT))('%i: ano_anterior_ytd ≡ mesmo recorte de meses do ano anterior (custos e prejuízos)', async (ano) => {
+    const atual = await dadosGeral(ano)
+    const anterior = await dadosGeral(ano - 1)
+    const corte = atual.custos.relacao === 'corrente' ? (atual.custos.mes_corrente ?? 0) : 12
+    const ytd = (meses: number[]) => meses.slice(0, corte).reduce((s, v) => s + centavos(v), 0)
+
+    const c = atual.custos.ano_anterior_ytd
+    const p = atual.prejuizos.ano_anterior_ytd
+    if (!c || !p) throw new Error(`ano_anterior_ytd ausente em ${ano} (a RPC sempre o emite)`)
+    expect(centavos(c.fin ?? NaN), 'fin YTD anterior').toBe(ytd(anterior.custos.fin.meses))
+    expect(centavos(c.custos ?? NaN), 'custos YTD anterior').toBe(ytd(anterior.custos.custos.meses))
+    expect(centavos(c.receita_bruta ?? NaN), 'receita_bruta YTD anterior').toBe(ytd(anterior.custos.receita_bruta.meses))
+    expect(centavos(p.prejuizo ?? NaN), 'prejuízo YTD anterior').toBe(ytd(anterior.prejuizos.prejuizo.meses))
+    expect(centavos(p.reversao ?? NaN), 'reversão YTD anterior').toBe(ytd(anterior.prejuizos.reversao.meses))
+    expect(centavos(p.liquido ?? NaN), 'líquido YTD anterior').toBe(ytd(anterior.prejuizos.liquido.meses))
+  }, 30_000)
+
+  it('caso POSITIVO: a base viva tem FIN e Receita Bruta ≠ 0 em algum mês realizado (sem isto a paridade passaria 0=0)', async () => {
+    let fin = 0
+    let rb = 0
+    for (const ano of ANOS_MKT) {
+      const { custos, dre } = await dadosGeral(ano)
+      const ultimo = ultimoMesGeral(dre.relacao, dre.mes_corrente)
+      for (let i = 0; i < ultimo; i++) {
+        if (centavos(custos.fin.meses[i]) !== 0) fin++
+        if (centavos(custos.receita_bruta.meses[i]) !== 0) rb++
+      }
+    }
+    expect(fin, 'nenhum mês realizado com FIN ≠ 0 — bloco FIN vazio ou filtro quebrado?').toBeGreaterThan(0)
+    expect(rb, 'nenhum mês realizado com Receita Bruta ≠ 0 — fórmula RB_H quebrada?').toBeGreaterThan(0)
+  }, 30_000)
+})
+
+describe.skipIf(!ON || !DB_URL)('contrato RPC — Financeiro · Geral: prejuízo e reversão ≡ linhas de categoria da DRE (v6.4.0, 0297)', () => {
+  /** Ids por papel, lidos de `financeiro.geral_perda_map` por `pg` READ ONLY (a tabela não tem acesso direto). */
+  async function mapaPerdas(): Promise<{ prejuizo: Set<number>; reversao: Set<number> }> {
+    return comPgGeral(async c => {
+      const r = await c.query(`SELECT categoria_id, papel FROM financeiro.geral_perda_map ORDER BY categoria_id`)
+      const m = { prejuizo: new Set<number>(), reversao: new Set<number>() }
+      for (const x of r.rows) (x.papel === 'prejuizo' ? m.prejuizo : m.reversao).add(Number(x.categoria_id))
+      return m
+    })
+  }
+  const somaCat = (dre: DreMensal, ids: Set<number>, i: number): number =>
+    dre.linhas
+      .filter(l => l.t === 'cat' && l.categoria_id !== undefined && ids.has(l.categoria_id))
+      .reduce((s, l) => s + centavos(l.meses[i]), 0)
+
+  it.each(ANOS_MKT)('%i: prejuizo ≡ Σ linhas de categoria do papel "prejuizo"; reversao ≡ as do papel "reversao"; liquido = prejuízo + reversão', async (ano) => {
+    const { prejuizos, dre } = await dadosGeral(ano)
+    const mapa = await mapaPerdas()
+    expect(mapa.prejuizo.size, 'geral_perda_map sem categoria de prejuízo').toBeGreaterThan(0)
+    expect(mapa.reversao.size, 'geral_perda_map sem categoria de reversão').toBeGreaterThan(0)
+
+    expect(prejuizos.relacao, 'a RPC e a DRE discordam da relacao do ano').toBe(dre.relacao)
+    expect(prejuizos.mes_corrente, 'a RPC e a DRE discordam do mes_corrente').toBe(dre.mes_corrente)
+    const ultimo = ultimoMesGeral(dre.relacao, dre.mes_corrente)
+    expect(ultimo, 'sem mês realizado para comparar').toBeGreaterThanOrEqual(1)
+
+    const divergencias: string[] = []
+    for (let i = 0; i < ultimo; i++) {
+      const rotulo = `${ano}-${String(i + 1).padStart(2, '0')}`
+      const dp = somaCat(dre, mapa.prejuizo, i)
+      const dr = somaCat(dre, mapa.reversao, i)
+      if (centavos(prejuizos.prejuizo.meses[i]) !== dp) divergencias.push(`${rotulo}: prejuizo ${centavos(prejuizos.prejuizo.meses[i])} ≠ DRE ${dp} (centavos)`)
+      if (centavos(prejuizos.reversao.meses[i]) !== dr) divergencias.push(`${rotulo}: reversao ${centavos(prejuizos.reversao.meses[i])} ≠ DRE ${dr} (centavos)`)
+    }
+    expect(divergencias, `a página discorda da DRE:\n${divergencias.join('\n')}`).toEqual([])
+
+    // O líquido é a soma das duas séries, nos 12 meses (mês futuro = 0 nas três).
+    expect(emCentavos(prejuizos.liquido.meses), 'liquido ≠ prejuízo + reversão (mês a mês, centavos)')
+      .toEqual(somaMesesCentavos([prejuizos.prejuizo.meses, prejuizos.reversao.meses]))
+    for (const [nome, s] of [['prejuizo', prejuizos.prejuizo], ['reversao', prejuizos.reversao], ['liquido', prejuizos.liquido]] as const) {
+      expect(centavos(s.total), `${nome}.total ≠ Σ meses`).toBe(somaMesesCentavos([s.meses]).reduce((a, v) => a + v, 0))
+    }
+  }, 30_000)
+
+  it('caso POSITIVO: a base viva tem prejuízo ou reversão ≠ 0 em algum mês realizado (sem isto a paridade passaria 0=0)', async () => {
+    let vistos = 0
+    for (const ano of ANOS_MKT) {
+      const { prejuizos, dre } = await dadosGeral(ano)
+      const ultimo = ultimoMesGeral(dre.relacao, dre.mes_corrente)
+      for (let i = 0; i < ultimo; i++) {
+        if (centavos(prejuizos.prejuizo.meses[i]) !== 0 || centavos(prejuizos.reversao.meses[i]) !== 0) vistos++
+      }
+    }
+    expect(vistos, 'nenhum mês realizado com prejuízo/reversão ≠ 0 — mapa de perdas vazio ou categoria fora da DRE?').toBeGreaterThan(0)
+  }, 30_000)
+})
+
+// ── Antecipações e prazos: coerência interna + paridade do prazo com a DRE ───────────────────────
+describe.skipIf(!ON)('contrato RPC — Financeiro · Geral: antecipações e prazos (v6.4.0, 0297)', () => {
+  it.each(ANOS_GERAL)('%i: antecipações — total ≡ Σ meses ≡ Σ contas; desconto = volume − líquido; datas coerentes', async (ano) => {
+    const { antecipacoes: a } = await dadosGeral(ano)
+    const soma = (f: (m: (typeof a.meses)[number]) => number) => a.meses.reduce((s, m) => s + centavos(f(m)), 0)
+    expect(centavos(a.total.volume), 'total.volume ≠ Σ meses').toBe(soma(m => m.volume))
+    expect(centavos(a.total.liquido), 'total.liquido ≠ Σ meses').toBe(soma(m => m.liquido))
+    expect(centavos(a.total.desconto), 'total.desconto ≠ Σ meses').toBe(soma(m => m.desconto))
+    expect(a.total.n, 'total.n ≠ Σ meses').toBe(a.meses.reduce((s, m) => s + m.n, 0))
+
+    // O desconto é DERIVADO (antecipado − líquido), nunca digitado (briefing inv. 6): fecha em todo mês.
+    a.meses.forEach((m, i) => {
+      expect(centavos(m.volume) - centavos(m.liquido), `mês ${i + 1}: desconto ≠ volume − líquido`).toBe(centavos(m.desconto))
+    })
+
+    // Por conta: contas ativas (ou com registro no ano) — todo registro do ano cai em alguma.
+    expect(a.por_conta.reduce((s, c) => s + centavos(c.volume), 0), 'Σ por_conta.volume ≠ total').toBe(centavos(a.total.volume))
+    expect(a.por_conta.reduce((s, c) => s + centavos(c.desconto), 0), 'Σ por_conta.desconto ≠ total').toBe(centavos(a.total.desconto))
+    expect(a.por_conta.reduce((s, c) => s + c.n, 0), 'Σ por_conta.n ≠ total').toBe(a.total.n)
+
+    if (centavos(a.total.volume) > 0) {
+      expect(a.total.desconto_pct, 'desconto_pct nulo com volume > 0').not.toBeNull()
+      expect(a.total.desconto_pct as number).toBeCloseTo(a.total.desconto / a.total.volume * 100, 6)
+    } else {
+      expect(a.total.desconto_pct, 'desconto_pct com volume 0 deveria ser null').toBeNull()
+    }
+
+    // `ultima_data` é GLOBAL (todos os anos): `dias_desde_ultima` = hoje SP − ela; os dois nulos juntos.
+    expect(a.ultima_data === null, 'ultima_data e dias_desde_ultima: um nulo e o outro não').toBe(a.dias_desde_ultima === null)
+    if (a.ultima_data !== null) expect(a.dias_desde_ultima, 'dias_desde_ultima ≠ hoje SP − ultima_data').toBe(diasEntreGeral(a.ultima_data, hojeSP()))
+
+    // Maior intervalo entre datas consecutivas DENTRO do ano: o dia a dia fecha e as pontas são do ano.
+    if (a.maior_intervalo_ano) {
+      const { dias, de, ate } = a.maior_intervalo_ano
+      expect(dias, 'maior_intervalo_ano.dias ≠ ate − de').toBe(diasEntreGeral(de, ate))
+      expect(dias, 'maior_intervalo_ano.dias deveria ser > 0').toBeGreaterThan(0)
+      expect(de.startsWith(`${ano}-`) && ate.startsWith(`${ano}-`), 'maior_intervalo_ano fora do ano pedido').toBe(true)
+    }
+  }, 30_000)
+
+  it('a última data de antecipação é a MESMA nos dois anos lidos (é global, não do ano)', async () => {
+    const [x, y] = await Promise.all(ANOS_GERAL.map(dadosGeral))
+    expect(x.antecipacoes.ultima_data).toBe(y.antecipacoes.ultima_data)
+  }, 30_000)
+
+  it('prazos: folga = pmp − pmr, pmr/pmp ≈ saldo ÷ fluxo × 365 (1 casa), série crescente e sem dia repetido', async () => {
+    const p = await dadosPrazosGeral()
+    if (p.atual) {
+      const a = p.atual
+      if (a.entrada_12m > 0) {
+        expect(a.pmr, 'pmr nulo com entrada_12m > 0').not.toBeNull()
+        expect(Math.abs((a.pmr as number) - a.saldo_receber / a.entrada_12m * 365), 'pmr fora de saldo ÷ entrada × 365').toBeLessThanOrEqual(0.05 + 1e-9)
+      } else expect(a.pmr, 'pmr com entrada_12m ≤ 0 deveria ser null').toBeNull()
+      if (a.pagamento_12m > 0) {
+        expect(a.pmp, 'pmp nulo com pagamento_12m > 0').not.toBeNull()
+        expect(Math.abs((a.pmp as number) - a.saldo_pagar / a.pagamento_12m * 365), 'pmp fora de saldo ÷ pagamento × 365').toBeLessThanOrEqual(0.05 + 1e-9)
+      } else expect(a.pmp, 'pmp com pagamento_12m ≤ 0 deveria ser null').toBeNull()
+      // A folga sai dos valores JÁ arredondados (a tela soma sem resíduo).
+      if (a.pmr !== null && a.pmp !== null) {
+        expect(a.folga, 'folga nula com pmr e pmp').not.toBeNull()
+        expect(Math.round((a.folga as number) * 10), 'folga ≠ pmp − pmr (1 casa)').toBe(Math.round(a.pmp * 10) - Math.round(a.pmr * 10))
+      } else expect(a.folga, 'folga com pmr/pmp nulo deveria ser null').toBeNull()
+
+      expect(a.data, 'a data do núcleo é o hoje de São Paulo').toBe(hojeSP())
+      // Janela = os 12 meses FECHADOS anteriores ao mês da data: [1º dia 12 meses atrás, último dia do mês anterior].
+      const ano = Number(a.data.slice(0, 4))
+      const mes = Number(a.data.slice(5, 7))
+      expect(a.janela_de, 'janela_de').toBe(`${ano - 1}-${String(mes).padStart(2, '0')}-01`)
+      expect(a.janela_ate, 'janela_ate').toBe(new Date(Date.UTC(ano, mes - 1, 0)).toISOString().slice(0, 10))
+      // Com título em aberto a migration grava a foto inicial: a série nunca vem vazia.
+      expect(p.serie.length, 'atual existe mas a série de fotos está vazia').toBeGreaterThan(0)
+    }
+    const dias = p.serie.map(s => s.data)
+    expect(dias.every((d, i) => i === 0 || d > dias[i - 1]), 'série fora de ordem ou com dia repetido').toBe(true)
+    expect(p.historico_desde, 'historico_desde ≠ 1ª data da série').toBe(dias[0] ?? null)
+    for (const s of p.serie) {
+      if (s.pmr !== null && s.pmp !== null) {
+        expect(s.folga, 'ponto da série: folga nula com pmr e pmp').not.toBeNull()
+        expect(Math.round((s.folga as number) * 10), 'ponto da série: folga ≠ pmp − pmr').toBe(Math.round(s.pmp * 10) - Math.round(s.pmr * 10))
+      }
+    }
+  }, 30_000)
+
+  // Dois números vizinhos: o prazo usa o MESMO realizado de ENT_H/PAG_H que a DRE mostra mês a mês.
+  it('prazos: entrada_12m ≡ Σ ENT_H e pagamento_12m ≡ |Σ PAG_H| dos 12 meses da janela, em get_dre_mensal', async () => {
+    const { atual } = await dadosPrazosGeral()
+    if (!atual) return   // sem título em aberto carregado não há prazo a conferir (estado normal, não erro)
+    let ent = 0
+    let pag = 0
+    let ano = Number(atual.janela_de.slice(0, 4))
+    let mes = Number(atual.janela_de.slice(5, 7))
+    for (let k = 0; k < 12; k++) {
+      const { dre } = await dadosGeral(ano)
+      ent += centavos(linhaDreGeral(dre, 'ENT_H').meses[mes - 1])
+      pag += centavos(linhaDreGeral(dre, 'PAG_H').meses[mes - 1])
+      if (++mes > 12) { mes = 1; ano++ }
+    }
+    expect(centavos(atual.entrada_12m), 'entrada_12m ≠ Σ ENT_H da janela (centavos)').toBe(ent)
+    expect(centavos(atual.pagamento_12m), 'pagamento_12m ≠ |Σ PAG_H| da janela (centavos)').toBe(Math.abs(pag))
+    expect(ent, 'janela sem entrada alguma — ENT_H quebrado?').toBeGreaterThan(0)
+  }, 60_000)
+})
+
+// ── 3. Recebíveis: invariantes SEM tocar em `pessoa` (PII) ───────────────────────────────────────
+describe.skipIf(!ON)('contrato RPC — Financeiro · Geral: recebíveis, invariantes sem PII (v6.4.0, 0297)', () => {
+  it('lista FECHADA de chaves (JSON cru, só nomes de chave): top[] = {n, pessoa, valor}, sem coluna extra da base', async () => {
+    const { cru } = await dadosRecebiveisGeral()
+    // Os NOMES das colunas, nunca os valores: o schema Zod descarta chave extra em silêncio e aprovaria um
+    // vazamento (Descricao / Operacao Propria da base contêm nomes de pessoas — migration 0295).
+    expect(Object.keys(cru).sort()).toEqual([
+      'a_vencer', 'carga', 'comparativo', 'concentracao', 'evolucao', 'historico_desde',
+      'inadimplente', 'marcacao_em_aberto', 'recuperado_ano',
+    ])
+    const conc = cru.concentracao as { top?: Array<Record<string, unknown>> }
+    expect(Object.keys(conc).sort()).toEqual(['pct_top', 'top', 'valor_top'])
+    const chavesPorItem = (conc.top ?? []).map(t => Object.keys(t).sort().join(','))
+    expect(chavesPorItem.every(k => k === 'n,pessoa,valor'), 'item de concentracao.top com chave fora de {n, pessoa, valor}').toBe(true)
+  }, 30_000)
+
+  it('sem base (carga null): zeros e listas vazias — nunca zero fabricado como posição', async () => {
+    const { r } = await dadosRecebiveisGeral()
+    if (r.carga !== null) return   // com base carregada, os casos abaixo valem
+    expect(r.a_vencer).toEqual({ n: 0, valor: 0 })
+    expect(r.inadimplente.n).toBe(0)
+    expect(r.inadimplente.valor).toBe(0)
+    expect(r.inadimplente.faixas).toEqual([])
+    expect(r.marcacao_em_aberto).toEqual([])
+    expect(r.concentracao.top.length).toBe(0)
+    expect(r.concentracao.pct_top).toBeNull()
+    expect(r.comparativo).toBeNull()
+    expect(r.evolucao).toEqual([])
+  }, 30_000)
+
+  it('inadimplente: faixas na ordem do contrato, Σ faixas ≡ total; marcação "Inadimplente" em aberto ≡ inadimplente', async () => {
+    const { r } = await dadosRecebiveisGeral()
+    if (r.carga === null) return   // coberto pelo caso "sem base"
+    expect(r.inadimplente.faixas.map(f => f.faixa), 'faixas fora de ordem ou faltando').toEqual([...FAIXAS_ATRASO])
+    expect(r.inadimplente.faixas.reduce((s, f) => s + f.n, 0), 'Σ faixas.n ≠ inadimplente.n').toBe(r.inadimplente.n)
+    expect(r.inadimplente.faixas.reduce((s, f) => s + centavos(f.valor), 0), 'Σ faixas.valor ≠ inadimplente.valor (centavos)').toBe(centavos(r.inadimplente.valor))
+
+    const marcas = r.marcacao_em_aberto.map(m => m.conferido)
+    expect(new Set(marcas).size, 'marcacao_em_aberto com estado repetido').toBe(marcas.length)
+    const inad = r.marcacao_em_aberto.find(m => m.conferido === 'Inadimplente')
+    expect(inad?.n ?? 0, 'marcação Inadimplente ≠ inadimplente.n').toBe(r.inadimplente.n)
+    expect(centavos(inad?.valor ?? 0), 'marcação Inadimplente ≠ inadimplente.valor (centavos)').toBe(centavos(r.inadimplente.valor))
+  }, 30_000)
+
+  it('concentração (SÓ FORMA): ≤ 10, decrescente por valor, Σ ≡ valor_top ≤ inadimplente.valor, pct_top coerente', async () => {
+    const { r } = await dadosRecebiveisGeral()
+    if (r.carga === null) return   // coberto pelo caso "sem base"
+    const { top, valor_top, pct_top } = r.concentracao
+    // Só números e booleanos entram nos `expect`: o campo `pessoa` (nome real) NUNCA é comparado, ecoado
+    // em mensagem ou passado a `toEqual` — o vitest imprimiria o valor na falha.
+    expect(top.length, 'mais de 10 na concentração').toBeLessThanOrEqual(10)
+    expect(top.every(t => typeof t.pessoa === 'string' || t.pessoa === null), 'pessoa fora de string|null').toBe(true)
+    const valores = top.map(t => centavos(t.valor))
+    expect(valores.every((v, i) => i === 0 || v <= valores[i - 1]), 'top fora de ordem decrescente de valor').toBe(true)
+    expect(top.reduce((s, t) => s + t.n, 0), 'Σ top.n > inadimplente.n').toBeLessThanOrEqual(r.inadimplente.n)
+    expect(valores.reduce((s, v) => s + v, 0), 'Σ top.valor ≠ valor_top (centavos)').toBe(centavos(valor_top))
+    expect(centavos(valor_top), 'valor_top > inadimplente.valor').toBeLessThanOrEqual(centavos(r.inadimplente.valor))
+    if (centavos(r.inadimplente.valor) > 0) {
+      expect(pct_top, 'pct_top nulo com inadimplente > 0').not.toBeNull()
+      expect(pct_top as number).toBeCloseTo(valor_top / r.inadimplente.valor * 100, 6)
+    } else {
+      expect(pct_top, 'pct_top com inadimplente 0 deveria ser null').toBeNull()
+    }
+  }, 30_000)
+
+  it('datas e histórico: recuperado do ano da posição, comparativo = mês anterior, evolução crescente e sem buraco de contrato', async () => {
+    const { r } = await dadosRecebiveisGeral()
+    if (r.carga === null) return   // coberto pelo caso "sem base"
+    const dp = r.carga.data_posicao
+    expect(dp <= hojeSP(), 'data_posicao no futuro').toBe(true)
+    expect(r.recuperado_ano.ano, 'recuperado_ano.ano ≠ ano da data_posicao').toBe(Number(dp.slice(0, 4)))
+    if (r.comparativo) {
+      const ano = Number(dp.slice(0, 4))
+      const mes = Number(dp.slice(5, 7))
+      const anterior = mes === 1 ? `${ano - 1}-12` : `${ano}-${String(mes - 1).padStart(2, '0')}`
+      expect(r.comparativo.data_posicao.slice(0, 7), 'comparativo fora do mês anterior à posição').toBe(anterior)
+    }
+    const meses = r.evolucao.map(e => e.mes)
+    expect(meses.every((m, i) => i === 0 || m > meses[i - 1]), 'evolucao fora de ordem ou com mês repetido').toBe(true)
+    expect(meses.every((m, i) => r.evolucao[i].data_posicao.slice(0, 7) === m), 'evolucao.mes ≠ mês da data_posicao').toBe(true)
+    expect(r.evolucao.length, 'carga existe mas a evolução está vazia (a foto é gravada na mesma transação)').toBeGreaterThan(0)
+    expect(r.historico_desde, 'historico_desde nulo com carga').not.toBeNull()
+    expect((r.historico_desde as string) <= r.evolucao[0].data_posicao, 'historico_desde depois da 1ª foto da evolução').toBe(true)
+  }, 30_000)
+})
+
+// ── 4a. NEGAÇÃO: anon (sem JWT) ──────────────────────────────────────────────────────────────────
+// REVOKE EXECUTE de PUBLIC/anon nas 5 (0297) → o PostgREST responde com erro de permissão (42501), que
+// para o papel `anon` vira HTTP 401 (403 para `authenticated`). Aceita-se as duas faixas; o que se EXIGE é
+// o código do Postgres no corpo — não uma resposta 200 vazia. Cada RPC leva só os parâmetros que tem.
+describe.skipIf(!ON || !ANON)('contrato RBAC — Financeiro · Geral: anon negado (v6.4.0)', () => {
+  it.each(RPCS_GERAL)('$fn: anon → erro de permissão 42501 (HTTP 401/403)', async ({ fn, comAno }) => {
+    const res = await fetch(`${HOST}/rest/v1/rpc/${fn}`, {
+      method: 'POST',
+      headers: { apikey: ANON as string, Authorization: `Bearer ${ANON as string}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(paramsGeral(comAno, ANO_FECHADO_MKT)),
+    })
+    const texto = await res.text()
+    // O corpo de um erro de permissão não leva dado da base; ainda assim, só o status e o código no texto.
+    expect([401, 403], `${fn}: anon recebeu HTTP ${res.status}`).toContain(res.status)
+    let codigo = ''
+    try { codigo = String((JSON.parse(texto) as { code?: unknown }).code) } catch { /* corpo não-JSON: cai no expect abaixo */ }
+    expect(codigo, `${fn}: HTTP ${res.status}, código ${codigo}`).toBe('42501')
+  })
+})
+
+// ── 4b. NEGAÇÃO: a credencial de VERIFICAÇÃO não escreve neste módulo ────────────────────────────
+// Mesma anatomia do "GATE 2" (acima): (1) o CATÁLOGO diz que a role não tem EXECUTE — se disser que tem,
+// o caso reprova ANTES de qualquer chamada de rede (o `verificador` TEM a área `financeiro/geral/gestao`:
+// só o GRANT o impede de gravar, então chamar com o grant presente seria uma escrita real); (2) só então a
+// chamada REST, com os parâmetros NOMEADOS CERTOS (sem eles o PostgREST nem chega ao Postgres e responde
+// 404 PGRST202 — e o caso provaria o erro de digitação, não a barreira) e valores que reprovariam a
+// validação mesmo se o grant vazasse. Os nomes aparecem só como assinatura completa / string solta:
+// NÃO são `rpc('…')` nem `fn:` — o derivador não os casa, e a allowlist não os ganha por estar aqui.
+const ESCRITA_GERAL = [
+  { assinatura: 'public.antecipacao_salvar(bigint, smallint, date, numeric, numeric)',
+    body: { p_id: null, p_conta_id: 0, p_data: null, p_valor_antecipado: -1, p_valor_liquido: -1 } },
+  { assinatura: 'public.antecipacao_excluir(bigint)', body: { p_id: -1 } },
+  { assinatura: 'public.antecipacao_desfazer(bigint)', body: { p_diario_id: -1 } },
+  { assinatura: 'public.promover_carga_contas_receber(jsonb, uuid)',
+    body: { p_checksums: [], p_carga_id: '00000000-0000-0000-0000-000000000000' } },
+] as const
+
+describe.skipIf(!ON || !DB_URL)('contrato RBAC — Financeiro · Geral: a credencial de verificação NÃO escreve (v6.4.0)', () => {
+  it.each(ESCRITA_GERAL)('$assinatura: sem EXECUTE no catálogo E negada via REST', async ({ assinatura, body }) => {
+    const tem = await verificadorTemExecute(assinatura)
+    expect(tem, `${assinatura}: função inexistente no catálogo (assinatura mudou?)`).not.toBeNull()
+    // Camada 1 — se o catálogo diz que a role PODE executar, parar AQUI: chamar seria uma escrita.
+    expect(tem, `${assinatura}: a role verificador TEM EXECUTE — a allowlist vazou para uma função de escrita`).toBe(false)
+    // Camada 2 — a barreira vista negando.
+    const nome = assinatura.replace(/^public\./, '').replace(/\(.*$/, '')
+    const { status, texto } = await statusVerificador(nome, body as Record<string, unknown>)
+    expect(status, `${nome}: esperado 4xx, veio ${status}: ${texto}`).toBeGreaterThanOrEqual(400)
+    expect(status).toBeLessThan(500)
+    if (status === 403) expect(texto, `${nome}: 403 sem 42501`).toMatch(/"42501"/)
+  })
+})
+
+// ── 4c. NEGAÇÃO: usuário ATIVO sem a área ────────────────────────────────────────────────────────
+// Mesmo caminho do bloco de Marketing (conexão direta `pg` assumindo identidade por `request.jwt.claims`,
+// sessão READ ONLY): o REST do `verificador` (que TEM as duas áreas) e a service_role (que faz bypass do
+// guard) não alcançam este ramo. O usuário é escolhido DINAMICAMENTE por role (nunca id fixo) e o
+// `exigir_acesso` para antes do corpo, com PERMISSAO_NEGADA (42501). Duas negações:
+//   · sem `financeiro/geral`        → as 5 `get_geral_*`;
+//   · com `financeiro/geral` mas SEM `financeiro/geral/gestao` ("só lê") → a escrita do registro de
+//     antecipações e as leituras de gestão. Os argumentos da escrita reprovariam a validação mesmo se a
+//     permissão vazasse, e a sessão é READ ONLY (nada grava).
+// E a contraprova (só LEITURAS): quem TEM a área é atendido — sem ela, um erro qualquer (função quebrada)
+// passaria por "negação". Sem usuário elegível o caso REPROVA (não pula): uma negação sem prova.
+describe.skipIf(!ON || !DB_URL)('contrato RBAC — Financeiro · Geral: usuário sem a área (v6.4.0)', () => {
+  const AREA = 'financeiro/geral'
+  const AREA_GESTAO = 'financeiro/geral/gestao'
+
+  /** Um usuário ATIVO por role cuja role TEM todas as áreas de `com` e NENHUMA das de `sem`. */
+  async function usuariosPorRole(c: ClientePgGeral, com: string[], sem: string[]) {
+    const r = await c.query(
+      `SELECT DISTINCT ON (u.role_id) u.user_id::text AS uid, ro.nome AS role
+         FROM app.rbac_usuarios u
+         JOIN app.rbac_roles ro ON ro.id = u.role_id
+        WHERE u.ativo
+          AND NOT EXISTS (SELECT 1 FROM unnest($1::text[]) a
+                           WHERE NOT EXISTS (SELECT 1 FROM app.rbac_role_permissoes rp WHERE rp.role_id = u.role_id AND rp.area = a))
+          AND NOT EXISTS (SELECT 1 FROM app.rbac_role_permissoes rp WHERE rp.role_id = u.role_id AND rp.area = ANY($2::text[]))
+        ORDER BY u.role_id, u.user_id`,
+      [com, sem],
+    )
+    return r.rows
+  }
+
+  it('um usuário ATIVO de cada role SEM financeiro/geral recebe PERMISSAO_NEGADA (42501) nas 5 RPCs de leitura', async () => {
+    await comPgGeral(async c => {
+      const usuarios = await usuariosPorRole(c, [], [AREA])
+      expect(usuarios.length, `não há usuário ativo fora de ${AREA} — a negação ficaria sem prova (o caso REPROVA, não pula)`).toBeGreaterThan(0)
+      for (const u of usuarios) {
+        for (const { fn, comAno } of RPCS_GERAL) {
+          const quem = `${fn} como «${String(u.role)}»`
+          const res = await chamarComoGeral(c, String(u.uid), fn, comAno ? '$1::int' : '', comAno ? [ANO_FECHADO_MKT] : [])
+          expect(res.ok, `${quem}: a RPC DEVOLVEU dado a quem não tem a área`).toBe(false)
+          if (res.ok) continue
+          expect(res.code, `${quem}: ${res.msg}`).toBe('42501')
+          expect(res.msg, quem).toMatch(/PERMISSAO_NEGADA.*financeiro\/geral/)
+        }
+      }
+    })
+  }, 30_000)
+
+  it('quem só lê (TEM financeiro/geral, NÃO tem financeiro/geral/gestao) é negado na escrita e nas leituras de gestão do registro', async () => {
+    await comPgGeral(async c => {
+      const usuarios = await usuariosPorRole(c, [AREA], [AREA_GESTAO])
+      expect(usuarios.length, `não há usuário ativo com ${AREA} e sem ${AREA_GESTAO} — a negação ficaria sem prova (o caso REPROVA, não pula)`).toBeGreaterThan(0)
+      const chamadas = [
+        // Valores que reprovariam a validação mesmo se a permissão vazasse; a sessão é READ ONLY.
+        { nome: 'antecipacao_salvar', chamada: '$1::bigint, $2::smallint, $3::date, $4::numeric, $5::numeric', params: [null, 0, null, -1, -1] },
+        { nome: 'antecipacao_listar', chamada: '', params: [] },
+        { nome: 'antecipacao_historico', chamada: '$1::int', params: [5] },
+      ]
+      for (const u of usuarios) {
+        for (const { nome, chamada, params } of chamadas) {
+          const quem = `${nome} como «${String(u.role)}»`
+          const res = await chamarComoGeral(c, String(u.uid), nome, chamada, params)
+          expect(res.ok, `${quem}: a RPC DEVOLVEU/EXECUTOU para quem não tem a área de gestão`).toBe(false)
+          if (res.ok) continue
+          expect(res.code, `${quem}: ${res.msg}`).toBe('42501')
+          expect(res.msg, quem).toMatch(/PERMISSAO_NEGADA.*financeiro\/geral\/gestao/)
+        }
+      }
+    })
+  }, 30_000)
+
+  it('contraprova: um usuário ATIVO COM financeiro/geral é atendido pelas 5 RPCs; COM a gestão, pelas 2 leituras do registro', async () => {
+    await comPgGeral(async c => {
+      const uid = async (area: string) => {
+        const r = await c.query(
+          `SELECT u.user_id::text AS uid
+             FROM app.rbac_usuarios u
+             JOIN app.rbac_role_permissoes rp ON rp.role_id = u.role_id AND rp.area = $1
+            WHERE u.ativo
+            ORDER BY u.user_id
+            LIMIT 1`,
+          [area],
+        )
+        expect(r.rows.length, `não há usuário ativo com ${area}`).toBeGreaterThan(0)
+        return String(r.rows[0].uid)
+      }
+      const leitor = await uid(AREA)
+      const schemas = {
+        get_geral_custos_financeiros: custosFinanceirosSchema, get_geral_prejuizos: prejuizosSchema,
+        get_geral_recebiveis: recebiveisSchema, get_geral_antecipacoes: antecipacoesSchema, get_geral_prazos: prazosSchema,
+      } as const
+      for (const { fn, comAno } of RPCS_GERAL) {
+        const res = await chamarComoGeral(c, leitor, fn, comAno ? '$1::int' : '', comAno ? [ANO_FECHADO_MKT] : [])
+        expect(res.ok, `${fn}: ${res.ok ? '' : res.msg}`).toBe(true)
+        if (res.ok) exigirParseGeral(schemas[fn] as ZodType, res.valor, `${fn} (como usuário com a área)`)
+      }
+
+      const gestor = await uid(AREA_GESTAO)
+      const lista = await chamarComoGeral(c, gestor, 'antecipacao_listar', '', [])
+      expect(lista.ok, `antecipacao_listar: ${lista.ok ? '' : lista.msg}`).toBe(true)
+      if (lista.ok) exigirParseGeral(antecipacaoListarSchema, lista.valor, 'antecipacao_listar (como usuário com a gestão)')
+      const hist = await chamarComoGeral(c, gestor, 'antecipacao_historico', '$1::int', [5])
+      expect(hist.ok, `antecipacao_historico: ${hist.ok ? '' : hist.msg}`).toBe(true)
+      if (hist.ok) exigirParseGeral(antecipacaoHistoricoSchema, hist.valor, 'antecipacao_historico (como usuário com a gestão)')
     })
   }, 30_000)
 })

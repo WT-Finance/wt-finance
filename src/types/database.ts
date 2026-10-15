@@ -128,6 +128,20 @@ export type Database = {
         Args: { p_email: string }
         Returns: Json
       }
+      antecipacao_desfazer: { Args: { p_diario_id: number }; Returns: Json }
+      antecipacao_excluir: { Args: { p_id: number }; Returns: undefined }
+      antecipacao_historico: { Args: { p_limite?: number }; Returns: Json }
+      antecipacao_listar: { Args: never; Returns: Json }
+      antecipacao_salvar: {
+        Args: {
+          p_conta_id: number
+          p_data: string
+          p_id: number
+          p_valor_antecipado: number
+          p_valor_liquido: number
+        }
+        Returns: Json
+      }
       apagar_clientes_corp: { Args: { p_ids: number[] }; Returns: Json }
       api_chamada_registrar: {
         Args: {
@@ -499,6 +513,11 @@ export type Database = {
       get_fluxo_previsto_diario: { Args: never; Returns: Json }
       get_fluxo_ranking: { Args: { p_limite?: number }; Returns: Json }
       get_fluxo_runway_semanal: { Args: never; Returns: Json }
+      get_geral_antecipacoes: { Args: { p_ano: number }; Returns: Json }
+      get_geral_custos_financeiros: { Args: { p_ano: number }; Returns: Json }
+      get_geral_prazos: { Args: never; Returns: Json }
+      get_geral_prejuizos: { Args: { p_ano: number }; Returns: Json }
+      get_geral_recebiveis: { Args: never; Returns: Json }
       get_gerencial_lancamentos: { Args: { p_limit?: number }; Returns: Json }
       get_gerencial_lancamentos_planilha: { Args: never; Returns: Json }
       get_gerencial_projecao_diaria: {
@@ -815,6 +834,10 @@ export type Database = {
         Args: { p_linhas: Json }
         Returns: undefined
       }
+      inserir_lote_staging_contas_receber: {
+        Args: { p_linhas: Json }
+        Returns: undefined
+      }
       inserir_lote_staging_demonstrativo: {
         Args: { p_linhas: Json }
         Returns: undefined
@@ -833,6 +856,7 @@ export type Database = {
       }
       inserir_metas: { Args: { p_metas: Json }; Returns: undefined }
       limpar_staging_aberto: { Args: never; Returns: undefined }
+      limpar_staging_contas_receber: { Args: never; Returns: undefined }
       limpar_staging_demonstrativo: { Args: never; Returns: undefined }
       limpar_staging_movimentacao: { Args: never; Returns: undefined }
       limpar_staging_operacao: { Args: never; Returns: undefined }
@@ -982,6 +1006,10 @@ export type Database = {
         Args: { p_carga_id: string; p_checksums: Json }
         Returns: Json
       }
+      promover_carga_contas_receber: {
+        Args: { p_carga_id: string; p_checksums: Json }
+        Returns: Json
+      }
       promover_carga_demonstrativo: {
         Args: { p_carga_id: string; p_checksums: Json }
         Returns: Json
@@ -1007,6 +1035,7 @@ export type Database = {
       regenerar_fluxo_caixa: { Args: never; Returns: Json }
       registrar_email: { Args: { p_dados: Json }; Returns: Json }
       registrar_emissao: { Args: { p_dados: Json }; Returns: Json }
+      registrar_foto_prazos: { Args: { p_carga_id: string }; Returns: Json }
       registrar_nota: { Args: { p_dados: Json }; Returns: Json }
       reordenar_gerencial_contas: {
         Args: { p_contas: string[] }
@@ -1073,6 +1102,7 @@ export type Database = {
             Returns: boolean
           }
       validar_carga_aberto: { Args: never; Returns: Json }
+      validar_carga_contas_receber: { Args: never; Returns: Json }
       validar_carga_demonstrativo: { Args: never; Returns: Json }
       validar_carga_movimentacao: { Args: never; Returns: Json }
       validar_carga_operacao: { Args: never; Returns: Json }

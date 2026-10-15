@@ -6,6 +6,7 @@ import { mapearColunas, camposFaltando } from './parsers/comum'
 import * as vendas from './parsers/vendas-produto'
 import * as operacao from './parsers/lancamentos-operacao'
 import * as categoria from './parsers/lancamentos-categoria'
+import * as contasReceber from './parsers/contas-receber'
 import { CAMPOS_CANONICOS } from './parsers/demonstrativo-competencia'
 import { PESSOAS_COLUNAS } from '@/lib/carga/parse-pessoas'
 import { normalizeHeader } from '@/lib/carga/vendas-parser'
@@ -42,6 +43,15 @@ describe('instruções de upload × parser do servidor', () => {
   it('Movimentação e Em aberto listam exatamente as colunas exigidas (parser único)', () => {
     conferir('lancamentos_movimentacao', categoria.COL_MAP, categoria.OBRIGATORIOS)
     conferir('titulos_em_aberto', categoria.COL_MAP, categoria.OBRIGATORIOS)
+  })
+
+  it('Contas a receber lista exatamente as 9 colunas gravadas (e nenhuma das 8 que nunca se gravam)', () => {
+    conferir('contas_receber', contasReceber.COL_MAP, contasReceber.OBRIGATORIOS)
+    const rotulos = INSTRUCOES_UPLOAD.contas_receber.colunas.itens
+    expect(rotulos).toHaveLength(9)
+    for (const nunca of ['Documento', 'Observações', 'Conta (Previsão)', 'Valor', 'Pendente com:']) {
+      expect(rotulos, nunca).not.toContain(nunca)
+    }
   })
 
   it('Demonstrativo lista os cinco campos do pivot', () => {

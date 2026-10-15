@@ -14,6 +14,8 @@ export const AREAS = [
   'financeiro/acervo',
   'financeiro/acervo/gestao',
   'financeiro/dre',
+  'financeiro/geral',
+  'financeiro/geral/gestao',
   'metas',
   'metas/acompanhamento',
   'admin/uploads',
@@ -53,6 +55,16 @@ export const AREA_INFO: Record<Area, { rotulo: string; grupo: string; ordem: num
   // DRE (v5.2.0, checkpoint): área própria da aba /financeiro/dre (migration 0197) —
   // gate apertado no seed (só admins); o admin concede aos demais pelo editor de roles.
   'financeiro/dre':           { rotulo: 'Demonstrativo de Resultado',    grupo: 'Financeiro', ordem: 35 },
+  // Financeiro · Geral (v6.4.0, migration 0297) em DOIS níveis, molde do Acervo: 'financeiro/geral'
+  // = LER a página (visão executiva da diretoria); 'financeiro/geral/gestao' = REGISTRAR
+  // antecipações (painel + RPCs de escrita da 0296). Diferença do Acervo: a gestão NÃO inclui a
+  // leitura — as RPCs de leitura exigem 'financeiro/geral' e quem registra (Financeiro,
+  // Administrador) já a recebe. A página, a regra de rota e a subaba usam só a de leitura.
+  // ATENÇÃO ao conceder pelo editor de roles: 'financeiro/geral/gestao' SÓ TEM EFEITO junto com
+  // 'financeiro/geral' — sozinha, a pessoa não abre a página e não vê o botão. (AREA_INFO não tem campo de
+  // descrição/ajuda e o rótulo espelha app.rbac_areas — por isso o aviso fica aqui, não no rótulo.)
+  'financeiro/geral':         { rotulo: 'Geral',                         grupo: 'Financeiro', ordem: 36 },
+  'financeiro/geral/gestao':  { rotulo: 'Geral (gestão)',                grupo: 'Financeiro', ordem: 37 },
   // Metas em DOIS níveis (v5.0.0): a CHAVE 'metas' (nome histórico) = GESTÃO/Cadastro (definir/
   // editar metas, inclui a visão + o botão "Modo de Comparação", v5.1.9); 'metas/acompanhamento'
   // = VER o Acompanhamento (liderança). A página de Acompanhamento faz OR das duas; o Cadastro e
@@ -134,6 +146,9 @@ export function areasDaRota(pathname: string): Area[] | null {
   // visão); os botões de adicionar documento continuam exigindo só a de gestão.
   if (p.startsWith('/financeiro/acervo'))       return ['financeiro/acervo', 'financeiro/acervo/gestao']
   if (p.startsWith('/financeiro/dre'))          return ['financeiro/dre']
+  // Financeiro · Geral (v6.4.0): ANTES da genérica '/financeiro' logo abaixo, senão a visão
+  // executiva da diretoria seria gated pelo Fluxo de Caixa/Gerencial e ela cairia em /sem-acesso.
+  if (p.startsWith('/financeiro/geral'))        return ['financeiro/geral']
   if (p.startsWith('/financeiro'))              return ['financeiro/fluxo-caixa', 'financeiro/gerencial']
   if (p.startsWith('/executiva'))               return ['executiva']
   // Metas em DOIS níveis (v5.0.0): /metas/cadastro exige a área forte 'metas' (editar);
@@ -189,7 +204,10 @@ const PRIORIDADE_INICIAL: { area: Area; href: string }[] = [
   { area: 'performance',             href: '/performance' },
   { area: 'financeiro/fluxo-caixa',  href: '/financeiro/fluxo-caixa' },
   { area: 'financeiro/gerencial',    href: '/financeiro/fluxo-caixa/gerencial' },
-  { area: 'metas',                   href: '/metas' },
+  // v6.4.0: quem tem SÓ 'financeiro/geral' (a diretoria) entra direto na página, não em /sem-acesso.
+  // Depois das duas áreas operacionais do Financeiro: quem tem as duas cai no Fluxo de Caixa, como antes.
+  { area: 'financeiro/geral',        href: '/financeiro/geral' },
+  { area: 'metas',                  href: '/metas' },
   { area: 'admin/uploads',           href: '/admin/ingestao/upload' },
   // v6.1.1/M3: área de Administração com entrada própria na sidebar, como as vizinhas — sem
   // isto, quem tem SÓ 'api-externa' cairia em /sem-acesso ao entrar pela raiz.

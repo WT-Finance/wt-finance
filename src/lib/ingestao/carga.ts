@@ -11,8 +11,9 @@ import 'server-only'
 // (dentro do parser da M3) → reconciliação do conjunto → diff → aplica (só se `confirmar`) →
 // conclui/loga.
 
-import { ROTULO_BASE, type BaseIngestao } from './bases'
+import { ROTULO_BASE, aceitaMultiplosArquivos, type BaseIngestao } from './bases'
 import { preRequisitosBloqueantes, avaliarDependenciaDeCarga } from './grafo'
+import { registrarFotoDePrazos } from './foto-prazos'
 import { hojeSP } from '@/lib/fmt'
 import {
   LIMITE_BYTES_ARQUIVO, LIMITE_BYTES_CARGA,
@@ -28,6 +29,10 @@ import {
 import { parseDemonstrativoCruRows, type DemonstrativoCompetenciaCru } from './parsers/demonstrativo-competencia'
 import { parseLancamentosCategoriaRows } from './parsers/lancamentos-categoria'
 import { parseLancamentosOperacaoRows, type LancamentoOperacaoCru } from './parsers/lancamentos-operacao'
+import {
+  parseContasReceberRows, avisosDoDiagnostico,
+  type ArquivoContasReceber, type ContaReceberCru,
+} from './parsers/contas-receber'
 import {
   aplicarCarga, CargaRejeitada, PromocaoIncerta, lancamentoOperacaoAplicavel, operacoesDaBaseSchema,
   type ResultadoAplicacao,
@@ -116,13 +121,15 @@ const EXTENSAO_POR_BASE: Record<BaseIngestao, FormatoArquivo> = {
   'lancamentos-movimentacao': 'xlsx',
   'lancamentos-aberto': 'xlsx',
   'lancamentos-operacao': 'csv',
+  'contas-receber': 'xlsx',
 }
 
 const REGEX_SHA256_HEX = /^[0-9a-f]{64}$/i
 
 /** `null` quando a lista de arquivos declarada respeita o §2.1; senão, o `ErroCarga` pronto
- *  para a rota devolver. Cobre: contagem (só Vendas aceita >1), extensão por base, `bytes`
- *  positivo, `sha256` no formato esperado, teto por arquivo e teto por carga (soma). */
+ *  para a rota devolver. Cobre: contagem (só as bases multiarquivo — `BASES_MULTIARQUIVO`: Vendas e
+ *  Contas a receber — aceitam >1), extensão por base, `bytes` positivo, `sha256` no formato
+ *  esperado, teto por arquivo e teto por carga (soma). */
 export function validarArquivosDeclarados(
   base: BaseIngestao,
   arquivos: readonly ArquivoDeclarado[],
@@ -130,7 +137,7 @@ export function validarArquivosDeclarados(
   if (arquivos.length === 0) {
     return new ErroCarga('FORMATO_INVALIDO', 422, 'Informe ao menos um arquivo em "arquivos".')
   }
-  if (base !== 'vendas-produto' && arquivos.length > 1) {
+  if (!aceitaMultiplosArquivos(base) && arquivos.length > 1) {
     return new ErroCarga(
       'FORMATO_INVALIDO', 422,
       `A base "${base}" aceita exatamente 1 arquivo por carga (recebidos: ${arquivos.length}).`,
@@ -356,6 +363,45 @@ export function reconciliarVendas(
   )
 }
 
+// ── Reconciliação do conjunto de Contas a receber (§2.3 passo 7) ─────────────────────────────
+
+/** `null` quando cada `Número` de título aparece UMA vez na carga. Diferente de Vendas (onde repetir
+ *  dentro do arquivo é normal), aqui o grão é o TÍTULO: `Número` é único por carga. Repetido entre
+ *  arquivos é o sinal de faixas de vencimento que se sobrepõem — o checksum não vê isso (cada arquivo
+ *  fecha sozinho), então esta é a rede. Repetido dentro de um só arquivo também reprova (o
+ *  `validar_carga_contas_receber` reprovaria no banco; aqui a mensagem sai antes e mais clara).
+ *  Devolve só `Número` e nomes de arquivo — nunca `Pessoa`/`Descrição`. Pura, sem I/O.
+ *
+ *  Usa o código `CONJUNTO_NAO_RECONCILIA` (já existente no §2.4): "o conjunto dos arquivos não fecha
+ *  como uma carga" — em vez de cunhar um código novo que o contrato e os clientes teriam de aprender. */
+export function reconciliarContasReceber(
+  linhas: readonly Pick<ContaReceberCru, 'numero' | 'arquivo_origem'>[],
+): ErroCarga | null {
+  const arquivosPorNumero = new Map<string, string[]>()
+  for (const l of linhas) {
+    const lista = arquivosPorNumero.get(l.numero) ?? []
+    lista.push(l.arquivo_origem)
+    arquivosPorNumero.set(l.numero, lista)
+  }
+  const repetidos: { numero: string; arquivos: string[] }[] = []
+  let entreArquivos = 0
+  for (const [numero, lista] of arquivosPorNumero) {
+    if (lista.length < 2) continue
+    const distintos = [...new Set(lista)]
+    if (distintos.length > 1) entreArquivos++
+    repetidos.push({ numero, arquivos: distintos })
+  }
+  if (repetidos.length === 0) return null
+  const dentro = repetidos.length - entreArquivos
+  return new ErroCarga(
+    'CONJUNTO_NAO_RECONCILIA', 422,
+    `${repetidos.length} "Número" de título aparece(m) mais de uma vez na carga ` +
+    `(${entreArquivos} em mais de um arquivo — as faixas de vencimento se sobrepõem —, ` +
+    `${dentro} repetido(s) dentro de um mesmo arquivo). A base não foi alterada.`,
+    { repetidos: repetidos.slice(0, 20), total: repetidos.length, entre_arquivos: entreArquivos },
+  )
+}
+
 // ── Diff contra o estado ATUAL da base (§2.3 passo 8) ────────────────────────────────────────
 //
 // Medido contra a base VIVA (as RPCs `status_*`/`get_upload_status` que o card já lia — anexo
@@ -490,6 +536,15 @@ export async function statusAtualDaBase(base: BaseIngestao): Promise<{ linhas: n
         if (error) throw new Error(error.message)
         const s = data as { total?: number; soma_centavos?: number } | null
         return { linhas: s?.total ?? 0, somaCentavos: s?.soma_centavos ?? null }
+      }
+      case 'contas-receber': {
+        // Sem RPC `status_*` para esta base (o contrato da v6.4.0 não criou uma): o "antes" é a
+        // contagem da ÚLTIMA CARGA APLICADA — a base é substituída inteira, sem filtro, então
+        // `linhas` da carga = linhas na base. Falha de leitura (inclusive antes da 0295: a RPC
+        // `ingestao_carga_ultima` ainda recusa a base) degrada para `null` + aviso, como as outras.
+        const r = await lerUltimaCargaAplicada(base)
+        if (!r.ok) throw new Error(r.erro)
+        return { linhas: r.linha?.linhas ?? 0, somaCentavos: null }
       }
       default: {
         const exaustivo: never = base
@@ -883,6 +938,42 @@ async function executarParse(base: BaseIngestao, arquivosLidos: readonly Arquivo
       }
     }
 
+    case 'contas-receber': {
+      // N arquivos (um por faixa de vencimento), 1 checksum por arquivo. Cada linha traz o próprio
+      // `arquivo_origem`, então — como Vendas — não há `arquivoOrigem` único para o aplicador.
+      const arquivosContas: ArquivoContasReceber[] = arquivosLidos.map((a) => ({ nome: a.nome, rows: a.matriz }))
+      const resultado = parseContasReceberRows(arquivosContas)
+      if (!resultado.ok) return traduzirFalhaParse(resultado)
+
+      const reconciliacao = reconciliarContasReceber(resultado.linhas)
+      if (reconciliacao) return reconciliacao
+
+      const diagArquivos = (resultado.diagnostico.arquivos as { nome: string; linhas: number }[] | undefined) ?? []
+      const somaDeclarada = diagArquivos.reduce((acc, a) => acc + a.linhas, 0)
+      if (somaDeclarada !== resultado.linhas.length) {
+        return new ErroCarga(
+          'CONJUNTO_NAO_RECONCILIA', 422,
+          `A soma das linhas por arquivo (${somaDeclarada}) não bate com o total parseado (${resultado.linhas.length}).`,
+          { somaDeclarada, total: resultado.linhas.length },
+        )
+      }
+      return {
+        linhasParaAplicar: resultado.linhas,
+        totalLinhas: resultado.linhas.length,
+        checksums: resultado.checksums,
+        datasRejeitadasN: resultado.datasRejeitadas.length,
+        diagnostico: resultado.diagnostico,
+        // Emissão inválida, data fora da faixa e lacuna entre as faixas de vencimento: avisos do
+        // PARSE que o operador precisa ler já na conferência.
+        avisos: avisosDoDiagnostico(resultado.diagnostico),
+        porArquivo: diagArquivos.map((a) => ({
+          nome: a.nome,
+          linhas: a.linhas,
+          checksumsConferidos: resultado.checksums.filter((c) => c.chave[0] === a.nome).length,
+        })),
+      }
+    }
+
     default: {
       const exaustivo: never = base
       return new ErroCarga('ERRO_INTERNO', 500, `Base não reconhecida: ${String(exaustivo)}`)
@@ -1158,7 +1249,7 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
     // listar 2 `arquivos[]` para uma base single-file); sem isto, o passo abaixo baixaria e
     // verificaria o sha256 de TODOS os arquivos mas `executarParse` usaria só o primeiro,
     // descartando o resto em silêncio.
-    if (base !== 'vendas-produto' && entrada.arquivos.length > 1) {
+    if (!aceitaMultiplosArquivos(base) && entrada.arquivos.length > 1) {
       throw new ErroCarga(
         'FORMATO_INVALIDO', 422,
         `A base "${base}" aceita exatamente 1 arquivo por carga (recebidos: ${entrada.arquivos.length}).`,
@@ -1214,9 +1305,14 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
     if (parseado instanceof ErroCarga) throw parseado
 
     // Passo 8: diff contra o estado ATUAL da base.
+    // Σ do PRÓPRIO ARQUIVO (o que o modal mostra em "Σ do arquivo"): Demonstrativo e Contas a receber,
+    // as duas bases conferidas por soma. Em Contas a receber o "antes" não existe (sem `status_*`),
+    // então `diff.soma` sai `null` — só `parse.soma` é preenchido.
     const somaCentavosNovo = base === 'demonstrativo-competencia'
       ? somaCentavos((parseado.linhasParaAplicar as readonly DemonstrativoCompetenciaCru[]).map((l) => l.valor))
-      : null
+      : base === 'contas-receber'
+        ? somaCentavos((parseado.linhasParaAplicar as readonly ContaReceberCru[]).map((l) => l.valor_final))
+        : null
     const { diff: diffTotal, aviso: avisoDiff } = await calcularDiff(base, parseado.linhasNaBase ?? parseado.totalLinhas, somaCentavosNovo)
     // Os avisos do PARSE (hoje: a cobertura do cruzamento de Vencimento) entram junto com o do
     // diff, e valem para a CONFERÊNCIA também — é antes de confirmar que o operador precisa
@@ -1304,6 +1400,14 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
     const aplicacao = await aplicarComTraducaoDeErro(
       base, parseado.linhasParaAplicar, parseado.arquivoOrigem, cargaId, parseado.checksums, camposPivotDemonstrativo,
     )
+
+    // v6.4.0 — foto de prazos (PMR/PMP): a cada Aberto APLICADO, o servidor registra o ponto da
+    // série (`registrar_foto_prazos(carga_id)`). Fica DEPOIS da promoção (que já aconteceu — senão
+    // `aplicarComTraducaoDeErro` teria lançado) e é FAIL-SOFT: falha vira aviso em `alarmes[]`, nunca
+    // erro da carga nem desfaz o que foi aplicado. É a única mudança no caminho de outra base. O
+    // aviso entra em `resultado.alarmes` ANTES de `concluirCarga`, para a resposta guardada (replay
+    // idempotente) também levá-lo.
+    const avisoFotoPrazos = base === 'lancamentos-aberto' ? await registrarFotoDePrazos(cargaId) : null
 
     // A promoção já aconteceu (senão `aplicarComTraducaoDeErro` teria lançado antes daqui) —
     // mede o "depois" com a MESMA RPC, e a decisão do alarme é uma função PURA
@@ -1422,7 +1526,10 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
         linhas_na_base: parseado.linhasNaBase ?? parseado.totalLinhas,
       },
       diff: diffComAno,
-      alarmes: [...alarmesBase, ...avisosDoConjunto, ...linhasLegiveisDeOperacoes(diffComAno), ...aplicacao.avisos],
+      alarmes: [
+        ...alarmesBase, ...avisosDoConjunto, ...linhasLegiveisDeOperacoes(diffComAno), ...aplicacao.avisos,
+        ...(avisoFotoPrazos ? [avisoFotoPrazos] : []),
+      ],
       promocao: {
         checksums_conferidos: aplicacao.checksumsConferidos,
         checksums_nao_conferiveis: aplicacao.checksumsNaoConferiveis,

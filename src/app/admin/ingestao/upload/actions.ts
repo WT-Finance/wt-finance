@@ -3,6 +3,7 @@
 import { getAdminClient } from '@/lib/supabase/admin'
 import { requireAreaAction } from '@/lib/auth/sessao'
 import { parseRpc, statusDemonstrativoCompetenciaSchema } from '@/lib/schemas-rpc'
+import { lerUltimaCargaAplicada } from '@/lib/ingestao/log'
 import type { PessoaRaw } from '@/lib/carga/parse-pessoas'
 
 type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
@@ -241,6 +242,28 @@ export async function getDemonstrativoCompetenciaStatusAction(): Promise<
   await requireAreaAction('admin/uploads')
   try {
     return await lerStatusDemonstrativoCompetencia()
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Contas a receber (v6.4.0) — só STATUS (a carga é `POST /api/ingestao/contas-receber`). Não há RPC
+// `status_*` para esta base: o card mostra a contagem e a data da ÚLTIMA CARGA APLICADA
+// (`ingestao_carga_ultima`, a mesma fonte do Log de Ingestão). A base é substituída inteira a cada
+// carga, então `linhas` da carga = linhas na base. Falha de leitura vira `{ error }` aqui; como nas outras
+// bases, quem decide o que mostrar é a página — `statusAntesDoUpload` (upload/page.tsx) usa 0 no "antes"
+// quando a leitura falha — e a conferência do servidor, no envio, degrada com aviso.
+// ---------------------------------------------------------------------------
+
+export async function getContasReceberStatusAction(): Promise<
+  { total: number; ultima_atualizacao: string | null } | { error: string }
+> {
+  await requireAreaAction('admin/uploads')
+  try {
+    const r = await lerUltimaCargaAplicada('contas-receber')
+    if (!r.ok) return { error: r.erro }
+    return { total: r.linha?.linhas ?? 0, ultima_atualizacao: r.linha?.concluido_em ?? null }
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) }
   }

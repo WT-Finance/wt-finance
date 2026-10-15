@@ -19,7 +19,12 @@ import type { BaseIngestao } from './bases'
  * vendas-produto ─┬─► lancamentos-movimentacao ─┬─► lancamentos-operacao
  *                 └─► lancamentos-aberto ───────┘        (só esta aresta é bloqueante)
  * demonstrativo-competencia  (independente — nenhuma aresta a toca)
+ * contas-receber             (independente — v6.4.0; nenhuma aresta a toca)
  * ```
+ *
+ * `contas-receber` não depende de outra base: lê só o próprio export (e a foto de prazos, que é
+ * gravada a partir do Aberto, não da base nova). A sonda `grafo.test.ts` trava as duas bases
+ * isoladas.
  */
 export interface ArestaGrafo {
   readonly de: BaseIngestao

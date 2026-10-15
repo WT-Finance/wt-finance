@@ -11,6 +11,7 @@ import {
   inserirLotePessoasAction,
   finalizarPessoasAction,
   getDemonstrativoCompetenciaStatusAction,
+  getContasReceberStatusAction,
 } from './actions'
 import { fmtBRL2 } from '@/lib/fmt'
 import { ModalConfirmacaoUpload, type DetalhesConferencia } from '@/components/admin/modal-confirmacao-upload'
@@ -87,7 +88,8 @@ interface BaseConfig {
   /** Extensões aceitas no seletor. A extensão é POR BASE (contrato §2.1): `.xlsx` para as
    *  quatro bases de planilha; `.csv` para Lançamentos por Operação (scrape). */
   accept:  string
-  /** Só Vendas: a base aceita N arquivos, um por ano (contrato §2.1/§3). */
+  /** Vendas (um por ano) e Contas a receber (um por faixa de vencimento): a base aceita N arquivos
+   *  (contrato §2.1/§3; `BASES_MULTIARQUIVO` em `bases.ts`). */
   multiplos?: boolean
 }
 
@@ -140,6 +142,15 @@ const BASES: BaseConfig[] = [
     descricao: 'Substitui toda a base do regime de COMPETÊNCIA (fato gerador: data de emissão) — o export "Demonstrativo de Resultado" do Monde como sai do sistema (tabela dinâmica, sem tratamento). Importe sempre o arquivo completo.',
     unidade: 'linhas',
     accept: '.xlsx',
+  },
+  {
+    key: 'contas_receber',
+    baseIngestao: 'contas-receber',
+    label: 'Contas a receber',
+    descricao: 'Substitui toda a base de Contas a receber (títulos a receber, em aberto e liquidados). Um arquivo por faixa de vencimento, a partir de 01/01/2024, sem lacunas — selecione todos de uma vez.',
+    unidade: 'títulos',
+    accept: '.xlsx',
+    multiplos: true,
   },
 ]
 
@@ -439,6 +450,11 @@ function mensagemDeSucesso(config: BaseConfig, resposta: RespostaCarga): string 
     extras.push(`${formatarNum(resposta.parse.rejeitadas_por_data)} data(s) fora da faixa`)
   }
   if (resposta.diff.soma !== null) extras.push(`Σ ${fmtBRL2(resposta.diff.soma)}`)
+  // Contas a receber não tem "antes" por soma (sem `status_*`), então `diff.soma` é null; o Σ do
+  // próprio arquivo (que fechou com a linha de total) vem em `parse.soma`.
+  if (config.key === 'contas_receber' && resposta.parse.soma !== null) {
+    extras.push(`Σ ${fmtBRL2(resposta.parse.soma)}`)
+  }
   if (config.key === 'demonstrativo_competencia') {
     const falhos = resposta.arquivos.reduce((s, a) => s + a.checksums_falhos, 0)
     if (falhos === 0) extras.push('conferido com o arquivo')
@@ -452,12 +468,12 @@ function mensagemDeSucesso(config: BaseConfig, resposta: RespostaCarga): string 
 export default function AdminUploadsPage() {
   const [status, setStatus] = useState<Record<BaseKey, StatusCarga | null>>({
     vendas: null, lancamentos: null, lancamentos_movimentacao: null, titulos_em_aberto: null, pessoas: null,
-    demonstrativo_competencia: null,
+    demonstrativo_competencia: null, contas_receber: null,
   })
   const [estados, setEstados] = useState<Record<BaseKey, EstadoUpload>>({
     vendas: ESTADO_INICIAL, lancamentos: ESTADO_INICIAL,
     lancamentos_movimentacao: ESTADO_INICIAL, titulos_em_aberto: ESTADO_INICIAL, pessoas: ESTADO_INICIAL,
-    demonstrativo_competencia: ESTADO_INICIAL,
+    demonstrativo_competencia: ESTADO_INICIAL, contas_receber: ESTADO_INICIAL,
   })
   const [modal, setModal] = useState<BaseKey | null>(null)
 
@@ -476,14 +492,15 @@ export default function AdminUploadsPage() {
     // (a armadilha que a v5.7.1 documentou na página da DRE).
     // (v6.1.1: a leitura da Sincronização Monde saiu daqui — o cartão mora no Log de Ingestão.
     // Índices reconferidos: 0 vendas · 1 lanç. · 2 lanç. mov. · 3 tít. em aberto · 4 pessoas ·
-    // 5 demonstrativo competência.)
-    const [vendasRes, lancRes, lancMovRes, titAbertoRes, pessoasRes, demoCompRes] = await Promise.allSettled([
+    // 5 demonstrativo competência · 6 contas a receber (v6.4.0, no fim).)
+    const [vendasRes, lancRes, lancMovRes, titAbertoRes, pessoasRes, demoCompRes, contasReceberRes] = await Promise.allSettled([
       getVendasStatusAction(),
       getLancamentosStatusAction(),
       getLancamentosMovimentacaoStatusAction(),
       getTitulosEmAbertoStatusAction(),
       getPessoasStatusAction(),
       getDemonstrativoCompetenciaStatusAction(),
+      getContasReceberStatusAction(),
     ])
 
     const toStatus = (
@@ -512,6 +529,7 @@ export default function AdminUploadsPage() {
       titulos_em_aberto:         toStatus(titAbertoRes),
       pessoas:                   toStatus(pessoasRes),
       demonstrativo_competencia: statusCompetencia,
+      contas_receber:            toStatus(contasReceberRes),
     })
   }, [])
 
@@ -682,6 +700,7 @@ export default function AdminUploadsPage() {
       case 'lancamentos_movimentacao': { const r = await getLancamentosMovimentacaoStatusAction(); return 'error' in r ? 0 : r.total }
       case 'titulos_em_aberto': { const r = await getTitulosEmAbertoStatusAction(); return 'error' in r ? 0 : r.total }
       case 'demonstrativo_competencia': { const r = await getDemonstrativoCompetenciaStatusAction(); return 'error' in r ? 0 : r.total }
+      case 'contas_receber': { const r = await getContasReceberStatusAction(); return 'error' in r ? 0 : r.total }
       case 'pessoas': return 0 // fluxo antigo não passa por aqui
     }
   }
