@@ -36,7 +36,10 @@ describe('areasDaRota — toda rota de página tem dono', () => {
     ['/financeiro/fluxo-caixa/gerencial',   ['financeiro/gerencial']],
     ['/financeiro/acervo',                  ['financeiro/acervo', 'financeiro/acervo/gestao']],
     ['/financeiro/dre',                     ['financeiro/dre']],
-    ['/admin/uploads',                      ['admin/uploads']],
+    // v6.4.0 — Financeiro · Geral: área PRÓPRIA (migration 0297), à frente da genérica '/financeiro'.
+    ['/financeiro/geral',                   ['financeiro/geral']],
+    ['/financeiro/geral/',                  ['financeiro/geral']],
+    ['/admin/uploads',                    ['admin/uploads']],
     ['/admin/uploads/financeiro',           ['admin/uploads']],
     // v6.1.1 — Upload de Arquivos mora em /admin/ingestao/upload (a rota antiga é só redirect).
     ['/admin/ingestao',                     ['admin/uploads']],
@@ -75,6 +78,23 @@ describe('areasDaRota — toda rota de página tem dono', () => {
       expect(areasDaRota(rota)).not.toContain('admin/design-system')
     }
   })
+  it("v6.4.0: 'financeiro/geral' e a gestão existem no catálogo (migration 0297), no grupo Financeiro e fora da Administração", () => {
+    expect((AREAS as readonly string[]).includes('financeiro/geral')).toBe(true)
+    expect((AREAS as readonly string[]).includes('financeiro/geral/gestao')).toBe(true)
+    expect(AREA_INFO['financeiro/geral']).toEqual({ rotulo: 'Geral', grupo: 'Financeiro', ordem: 36 })
+    expect(AREA_INFO['financeiro/geral/gestao']).toEqual({ rotulo: 'Geral (gestão)', grupo: 'Financeiro', ordem: 37 })
+  })
+  it('v6.4.0: /financeiro/geral NÃO é liberada pelas áreas operacionais do Financeiro (a regra vem antes da genérica)', () => {
+    const donas = areasDaRota('/financeiro/geral')
+    expect(donas).not.toContain('financeiro/fluxo-caixa')
+    expect(donas).not.toContain('financeiro/gerencial')
+    expect(donas).not.toContain('financeiro/geral/gestao')
+    // ...e a genérica segue como era: quem só tem Geral não ganha /financeiro por tabela.
+    expect(areasDaRota('/financeiro')).toEqual(['financeiro/fluxo-caixa', 'financeiro/gerencial'])
+    // O prefixo '/financeiro/geral' não captura rota vizinha: o Gerencial mora em fluxo-caixa/gerencial.
+    expect(areasDaRota('/financeiro/fluxo-caixa/gerencial')).toEqual(['financeiro/gerencial'])
+    expect(areasDaRota('/financeiro/gerencial')).toEqual(['financeiro/fluxo-caixa', 'financeiro/gerencial'])
+  })
   it('Estante e Inventário não se confundem dentro de /gestao-pessoas', () => {
     expect(areasDaRota('/gestao-pessoas/estante')).toEqual([
       'gestao-pessoas/estante', 'gestao-pessoas/estante/gestao',
@@ -108,6 +128,13 @@ describe('rotaInicial — primeira área permitida', () => {
     expect(rotaInicial(['api-externa'])).toBe('/admin/api-externa')
     // v6.3.0: quem só tem a área de Marketing entra DIRETO na página (não cai em /sem-acesso).
     expect(rotaInicial(['marketing/gastos'])).toBe('/marketing/gastos')
+    // v6.4.0 (inv. 12): quem tem SÓ 'financeiro/geral' (a diretoria) entra direto na página —
+    // sozinha, ou junto da gestão (Financeiro/Administrador) — e não cai em /sem-acesso.
+    expect(rotaInicial(['financeiro/geral'])).toBe('/financeiro/geral')
+    expect(rotaInicial(['financeiro/geral', 'financeiro/geral/gestao'])).toBe('/financeiro/geral')
+    // Quem já tinha uma área operacional do Financeiro continua caindo nela (nada muda para eles).
+    expect(rotaInicial(['financeiro/fluxo-caixa', 'financeiro/geral'])).toBe('/financeiro/fluxo-caixa')
+    expect(rotaInicial(['financeiro/gerencial', 'financeiro/geral'])).toBe('/financeiro/fluxo-caixa/gerencial')
     expect(rotaInicial([])).toBeNull()
     expect(rotaInicial(['inexistente'])).toBeNull()
   })
