@@ -3134,6 +3134,31 @@
       "security_definer": true,
       "volatilidade": "VOLATILE"
     },
+    "public.get_fluxo_antecipacoes_mensal()": {
+      "acl": {
+        "authenticated": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        },
+        "verificador": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "7085e77190c678e0acf6264584ac0b58191da5a98732c378cee55278241f5d39",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "json",
+      "security_definer": true,
+      "volatilidade": "STABLE"
+    },
     "public.get_fluxo_caixa_acumulado_v1()": {
       "acl": {
         "authenticated": {
@@ -7675,6 +7700,7 @@
         "public.get_dre_competencia_mensal(integer)",
         "public.get_dre_mensal(integer)",
         "public.get_executiva_kpis(date, date, text, date, date, date, date)",
+        "public.get_fluxo_antecipacoes_mensal()",
         "public.get_fluxo_caixa_kpis_b(text, text)",
         "public.get_fluxo_caixa_mensal_v3()",
         "public.get_fluxo_cobertura()",
@@ -16925,7 +16951,7 @@
       "triggers": {}
     }
   },
-  "ultima_migration": "0298",
+  "ultima_migration": "0299",
   "views": {
     "analytics.mv_ranking_produtos_mensal": {
       "acl": {

@@ -496,6 +496,7 @@ export type Database = {
         }
         Returns: Json
       }
+      get_fluxo_antecipacoes_mensal: { Args: never; Returns: Json }
       get_fluxo_caixa_acumulado_v1: { Args: never; Returns: Json }
       get_fluxo_caixa_acumulado_v1__nucleo: { Args: never; Returns: Json }
       get_fluxo_caixa_kpis_b: {
