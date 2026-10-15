@@ -67,6 +67,14 @@ export const RPCS_INGESTOR = {
     validar:  rpc('validar_carga_operacao'),
     promover: rpc('promover_carga_operacao'),
   },
+  // v6.4.0 (migration 0295, que também concede o EXECUTE a `ingestor`). Quatro nomes novos: a
+  // allowlist derivada passa de 21 para 25 assinaturas.
+  'contas-receber': {
+    limpar:   rpc('limpar_staging_contas_receber'),
+    lote:     rpc('inserir_lote_staging_contas_receber'),
+    validar:  rpc('validar_carga_contas_receber'),
+    promover: rpc('promover_carga_contas_receber'),
+  },
 } as const
 
 export type BaseComPipeline = keyof typeof RPCS_INGESTOR

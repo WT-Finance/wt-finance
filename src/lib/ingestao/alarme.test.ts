@@ -28,6 +28,7 @@ import {
   comoAlarmeIngestao, reenviarPendentesNotificacao,
   type SomaPorAno,
 } from './alarme'
+import { BASES_INGESTAO } from './bases'
 import type { AlarmeIngestao } from '@/lib/email/template'
 
 beforeEach(() => {
@@ -120,6 +121,43 @@ describe('calcularDiffPorAno', () => {
     const r = calcularDiffPorAno('lancamentos-aberto', 'carga-xyz', antes, depois, ANO_CORRENTE)
     expect(r.alarmes[0].cargaId).toBe('carga-xyz')
     expect(r.alarmes[0].base).toBe('lancamentos-aberto')
+  })
+
+  // v6.4.0 — `contas-receber` é POSIÇÃO (estoque): título de vencimento passado muda de estado/valor
+  // legitimamente (liquidação, encargos, marcação), então NÃO alarma "ano fechado alterado".
+  describe('base isenta (contas-receber, exceção declarada) × as demais cinco', () => {
+    const antes: SomaPorAno = {
+      '2024': { linhas: 100, centavos: 500_000 },
+      '2025': { linhas: 50, centavos: 200_000 },
+      '2026': { linhas: 10, centavos: 10_000 },
+    }
+    // ano fechado mudou em contagem (2024) E em soma (2025) + o ano corrente (2026)
+    const depois: SomaPorAno = {
+      '2024': { linhas: 97, centavos: 480_000 },
+      '2025': { linhas: 50, centavos: 215_000 },
+      '2026': { linhas: 40, centavos: 90_000 },
+    }
+
+    it('contas-receber NÃO gera ano_fechado_alterado (nem anosFechadosAlterados), mas por_ano segue calculado', () => {
+      const r = calcularDiffPorAno('contas-receber', 'c1', antes, depois, ANO_CORRENTE)
+      expect(r.alarmes).toEqual([])
+      expect(r.anosFechadosAlterados).toEqual([])
+      expect(r.porAno).toEqual({ '2024': -3, '2025': 0, '2026': 30 })
+    })
+
+    it.each(BASES_INGESTAO.filter((b) => b !== 'contas-receber'))(
+      'a base %s SEGUE alarmando os mesmos anos fechados alterados',
+      (base) => {
+        const r = calcularDiffPorAno(base, 'c1', antes, depois, ANO_CORRENTE)
+        expect(r.anosFechadosAlterados).toEqual([2024, 2025])
+        expect(r.alarmes.map((x) => x.ano)).toEqual([2024, 2025])
+        expect(r.alarmes.every((x) => x.base === base && x.tipo === 'ano_fechado_alterado')).toBe(true)
+      },
+    )
+
+    it('são exatamente 5 as bases que seguem alarmando (a exceção é só contas-receber)', () => {
+      expect(BASES_INGESTAO.filter((b) => b !== 'contas-receber')).toHaveLength(5)
+    })
   })
 })
 

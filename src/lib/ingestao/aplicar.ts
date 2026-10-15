@@ -44,6 +44,7 @@ import type { VendaProdutoCru } from './parsers/vendas-produto'
 import type { DemonstrativoCompetenciaCru } from './parsers/demonstrativo-competencia'
 import type { LancamentoCategoriaCru } from './parsers/lancamentos-categoria'
 import type { LancamentoOperacaoCru } from './parsers/lancamentos-operacao'
+import type { ContaReceberCru } from './parsers/contas-receber'
 
 // `code` é opcional de propósito: um erro que veio do POSTGRES/PostgREST o traz (SQLSTATE ou
 // `PGRST…`); uma falha de transporte (fetch failed, timeout, DNS) o traz vazio — é o que
@@ -194,6 +195,9 @@ const BATCH_LANCAMENTOS_OPERACAO = 1000
 const BATCH_LANCAMENTOS_MOVIMENTACAO = 500
 const BATCH_LANCAMENTOS_ABERTO = 500
 const BATCH_DEMONSTRATIVO = 500
+// Contas a receber: ~39 mil títulos em 2 arquivos; 1.000 por lote mantém o corpo de cada chamada
+// pequeno (11 campos curtos por linha) e o total em ~40 chamadas.
+const BATCH_CONTAS_RECEBER = 1000
 
 // ── Adaptadores `*Cru` → payload da RPC ──────────────────────────────────────────────────────
 //
@@ -401,6 +405,32 @@ export function adaptarLancamentoOperacao(
 }
 
 /**
+ * Contas a receber → `raw.contas_receber_staging` via `inserir_lote_staging_contas_receber`
+ * (migration 0295). As chaves são EXATAMENTE as colunas da staging — a RPC lê `x->>'<coluna>'`, e
+ * chave com outro nome seria NULL em silêncio. Sem renomeação: o parser já emite os nomes da coluna.
+ *
+ * `valor_final` viaja como `number` já arredondado a 2 casas pelo parser (`valorEmReais`, a regra do
+ * Postgres) — a RPC faz `::numeric(18,2)` e o que se grava é idêntico ao que o checksum somou.
+ * `arquivo_origem` é por LINHA (a base aceita N arquivos) e é a chave do checksum por arquivo.
+ * Lista fechada: nenhum campo além destes 11 existe no objeto do parser, então nenhum outro vaza.
+ */
+export function adaptarContaReceber(cru: ContaReceberCru): Record<string, unknown> {
+  return {
+    arquivo_origem:   cru.arquivo_origem,
+    linha_origem:     cru.linha_origem,
+    numero:           cru.numero,
+    emissao:          cru.emissao,
+    pessoa:           cru.pessoa,
+    descricao:        cru.descricao,
+    vencimento:       cru.vencimento,
+    liquidacao:       cru.liquidacao,
+    valor_final:      cru.valor_final,
+    conferido:        cru.conferido,
+    operacao_propria: cru.operacao_propria,
+  }
+}
+
+/**
  * Só linhas com o mínimo que `analytics.fato_lancamento_operacao` exige: `valor`, `tipo`
  * (`CHECK IN ('Entrada','Saída')`) e `operacao` são `NOT NULL` (migration 0026). As linhas
  * placeholder do scrape (`"nada para mostrar"`, `"carregando..."` — ver
@@ -452,6 +482,33 @@ function checksumParaRpc(c: Checksum, chave: Record<string, unknown>): Record<st
  *  trivial (contrato do checksum, cabeçalho da migration 0278). */
 export function serializarChecksumsVendas(checksums: readonly Checksum[]): Record<string, unknown>[] {
   return checksums.map((c) => checksumParaRpc(c, { arquivo_origem: c.chave[0] }))
+}
+
+/**
+ * Contas a receber: um checksum POR ARQUIVO, `{escopo:'arquivo', chave:{arquivo_origem}, linhas,
+ * centavos}` — todos os campos obrigatórios (a RPC reprova sem `linhas`/`centavos` com
+ * CHECKSUM_INVALIDO, e arquivo gravado sem checksum com CHECKSUM_AUSENTE). `chave.arquivo_origem` é o
+ * MESMO texto gravado por linha. Escopo diferente de `arquivo`, ou contagem não declarada, PARA aqui
+ * em vez de mandar à RPC um checksum que ela recusaria (ou, pior, um que não conferisse a contagem).
+ */
+export function serializarChecksumsContasReceber(checksums: readonly Checksum[]): Record<string, unknown>[] {
+  return checksums.map((c) => {
+    if (c.escopo !== 'arquivo' || c.chave[0] === undefined) {
+      throw new CargaRejeitada(
+        'serializar_checksum',
+        `Checksum de Contas a receber com escopo "${c.escopo}" — esta base só tem checksum "arquivo" ` +
+        '(parsers/contas-receber.ts), com o nome do arquivo na chave.',
+      )
+    }
+    if (c.linhasDeclaradas === null) {
+      throw new CargaRejeitada(
+        'serializar_checksum',
+        `O checksum do arquivo "${c.chave[0]}" não declara a contagem de títulos — a linha de total ` +
+        'do export é obrigatória nesta base.',
+      )
+    }
+    return checksumParaRpc(c, { arquivo_origem: c.chave[0] })
+  })
 }
 
 /**
@@ -916,6 +973,86 @@ async function aplicarTitulosEmAberto(
 }
 
 /**
+ * Contas a receber (v6.4.0) — pipeline ATÔMICO, no molde de Aberto:
+ *
+ *   `limpar_staging_contas_receber` (1x) → `inserir_lote_staging_contas_receber` (por lote, de TODOS
+ *   os arquivos) → `validar_carga_contas_receber` → `promover_carga_contas_receber(p_checksums, p_carga_id)`.
+ *
+ * A promoção confere UM checksum por arquivo contra o gravado e grava a foto da posição
+ * (`financeiro.contas_receber_foto*`) na MESMA transação — se qualquer coisa falha, a base e as
+ * fotos anteriores ficam de pé. O `foto` que ela devolve não é exposto: é informação de auditoria
+ * que já mora na tabela.
+ *
+ * A separação de erro segue a de Operação: erro que VEIO DO POSTGRES (`code` = SQLSTATE/PGRST) é
+ * `CargaRejeitada` ("a base anterior foi preservada" é verdade — transação única); falha de
+ * TRANSPORTE (sem `code`) é `PromocaoIncerta` — o servidor pode ter commitado e a resposta se
+ * perdido, e o retry com o mesmo `carga_id` cai no replay de `ingestao.promocao`. Aqui a diferença
+ * pesa mais que em Aberto: a promoção grava a foto, e dizer "base preservada" sem saber seria mentira.
+ */
+async function aplicarContasReceber(
+  linhas: readonly ContaReceberCru[],
+  opcoes: OpcoesAplicacao,
+): Promise<ResultadoAplicacao> {
+  const rpc = await rpcDe()
+  const cargaId = exigirCargaId(opcoes, 'contas-receber')
+  const payload = linhas.map(adaptarContaReceber)
+
+  await aplicarEmLotes({
+    rpc,
+    truncar: 'limpar_staging_contas_receber',
+    inserir: 'inserir_lote_staging_contas_receber',
+    payload,
+    tamanhoDoLote: BATCH_CONTAS_RECEBER,
+    etapaInserir: 'inserir_lote_staging_contas_receber',
+    onProgresso: opcoes.onProgresso,
+  })
+
+  const valRes = await rpc('validar_carga_contas_receber')
+  if (valRes.error) {
+    throw new CargaRejeitada(
+      'validar_carga_contas_receber',
+      `Erro na validação da carga: ${valRes.error.message}. A base anterior foi preservada.`,
+    )
+  }
+  const validacao = parseRpc(cargaValidacaoSchema, valRes, 'validar_carga_contas_receber')
+  if (!validacao) {
+    throw new CargaRejeitada(
+      'validar_carga_contas_receber',
+      'A validação retornou em formato inesperado. A base anterior foi preservada.',
+    )
+  }
+  if (!validacao.ok) {
+    const msgs = validacao.erros.length ? validacao.erros : ['Validação da carga falhou.']
+    throw new CargaRejeitada('validar_carga_contas_receber', `${msgs.join(' ')} A base anterior foi preservada.`)
+  }
+
+  const checksumsRpc = serializarChecksumsContasReceber(opcoes.checksums ?? [])
+  const promRes = await rpc('promover_carga_contas_receber', { p_checksums: checksumsRpc, p_carga_id: cargaId })
+  if (promRes.error) {
+    if (codigoVeioDoPostgres(promRes.error.code)) {
+      throw new CargaRejeitada(
+        'promover_carga_contas_receber',
+        `Erro ao promover a carga (a base anterior foi preservada — o pipeline é uma transação ` +
+        `única): ${promRes.error.message}`,
+      )
+    }
+    throw new PromocaoIncerta(
+      'promover_carga_contas_receber',
+      `Erro ao chamar a promoção da carga — estado incerto: conferir ingestao.carga e ` +
+      `ingestao.promocao antes de reenviar (a promoção pode ter sido aplicada e a resposta se ` +
+      `perdido): ${promRes.error.message}`,
+    )
+  }
+  const retorno = lerRetornoPromocao(promRes.data)
+  return {
+    linhas: lerNumeroOuNulo(promRes.data, 'linhas') ?? linhas.length,
+    avisos: retorno.avisos,
+    checksumsConferidos: retorno.checksumsConferidos,
+    checksumsNaoConferiveis: retorno.checksumsNaoConferiveis,
+  }
+}
+
+/**
  * Lançamentos por Operação — pipeline ATÔMICO (M5), mudança de FORMA (anexo §6):
  *
  *   `limpar_staging_operacao` (1x) → `inserir_lote_staging_operacao` (por lote, TODAS as linhas)
@@ -1030,6 +1167,8 @@ export async function aplicarCarga(
       return aplicarTitulosEmAberto(linhas as readonly LancamentoCategoriaCru[], opcoes)
     case 'lancamentos-operacao':
       return aplicarLancamentosOperacao(linhas as readonly LancamentoOperacaoCru[], opcoes)
+    case 'contas-receber':
+      return aplicarContasReceber(linhas as readonly ContaReceberCru[], opcoes)
     default: {
       const exaustivo: never = base
       throw new CargaRejeitada('base_desconhecida', `Base de ingestão não reconhecida: ${String(exaustivo)}`)

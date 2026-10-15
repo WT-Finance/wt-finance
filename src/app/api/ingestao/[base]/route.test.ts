@@ -116,7 +116,7 @@ describe('POST /api/ingestao/{base} — origem amarrada à credencial (errata 4(
 describe('POST /api/ingestao/{base} — `puladas` só em lancamentos-operacao (errata 4(b))', () => {
   const PULADAS = [{ operacao: 'W - Delta', ids: ['id-1'], motivo: 'nome ambíguo no dropdown' }]
 
-  it.each(['vendas-produto', 'demonstrativo-competencia', 'lancamentos-movimentacao', 'lancamentos-aberto'])(
+  it.each(['vendas-produto', 'demonstrativo-competencia', 'lancamentos-movimentacao', 'lancamentos-aberto', 'contas-receber'])(
     '%s com "puladas" (mesmo []) ⇒ 422 FORMATO_INVALIDO, logado; nada é processado', async (base) => {
       autenticarIngestaoMock.mockResolvedValue(AUTH_CHAVE)
       for (const puladas of [PULADAS, []]) {

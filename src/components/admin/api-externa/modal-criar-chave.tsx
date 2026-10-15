@@ -8,7 +8,7 @@ import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/compone
 import ModalCentral from '@/components/shared/modal-central'
 import { Input } from '@/components/ui/field'
 import Checkbox from '@/components/ui/checkbox'
-import { BASES_INGESTAO, ROTULO_BASE, type BaseIngestao } from '@/lib/ingestao/bases'
+import { BASES_COM_ESCOPO_DE_CHAVE, ROTULO_BASE, type BaseIngestao } from '@/lib/ingestao/bases'
 
 // v5.4.0/M2 (Round6, decisão do Yan 31/07: "retirar a whitelist de tipos da
 // chave de API, cada chave de API deve ter acesso a todos os tipos expostos,
@@ -100,7 +100,7 @@ export function ModalCriarChave({
               Sem nenhuma marcada, a chave serve só à API de Solicitações.
             </p>
             <div className="space-y-2">
-              {BASES_INGESTAO.map(base => {
+              {BASES_COM_ESCOPO_DE_CHAVE.map(base => {
                 const id = `chave-base-${base}`
                 return (
                   <div key={base} className="flex items-center gap-2">

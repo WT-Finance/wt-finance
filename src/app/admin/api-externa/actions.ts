@@ -8,7 +8,7 @@ import { requireAreaAction } from '@/lib/auth/sessao'
 import { gerarSegredo, hashSegredo } from '@/lib/api-externa/segredo'
 import { listarLogApi } from '@/lib/api-externa/rpc'
 import type { ResultadoAcao, ResultadoCriarChave, LogChamada } from '@/components/admin/api-externa/tipos'
-import { ehBaseIngestao, type BaseIngestao } from '@/lib/ingestao/bases'
+import { ehBaseIngestao, BASES_COM_ESCOPO_DE_CHAVE, type BaseIngestao } from '@/lib/ingestao/bases'
 
 // v5.4.0/M2 — server actions de Chaves de API. Guard de superfície
 // (requireAreaAction('api-externa'), v6.1.1/M3 — antes 'solicitacoes') + RPC com o cliente DE SESSÃO — o banco
@@ -78,9 +78,12 @@ export async function criarChaveApi(input: {
   const plataforma = input.plataforma.trim()
   if (!plataforma) return { ok: false, erro: 'Informe a referência.' }
   // Validação server-side (nunca confia no client): só bases reais de
-  // BASES_INGESTAO, deduplicadas — a RPC 0274 tem CHECK espelhado, mas
-  // recusar aqui evita a viagem ao banco por um valor forjado/duplicado.
-  const escopoBases = [...new Set((input.escopoBases ?? []).filter(ehBaseIngestao))]
+  // BASES_INGESTAO que uma chave pode cobrir (`BASES_COM_ESCOPO_DE_CHAVE`: sem `contas-receber`,
+  // que não tem RPA), deduplicadas — a RPC 0274 tem CHECK espelhado, mas recusar aqui evita a
+  // viagem ao banco por um valor forjado/duplicado.
+  const escopoBases = [...new Set((input.escopoBases ?? []).filter(
+    (b): b is BaseIngestao => ehBaseIngestao(b) && BASES_COM_ESCOPO_DE_CHAVE.includes(b),
+  ))]
 
   const admin = getAdminClient()
   const email = `integracao-${slugPlataforma(plataforma)}@janus.internal`

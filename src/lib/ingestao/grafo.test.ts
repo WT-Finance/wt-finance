@@ -30,6 +30,13 @@ describe('ARESTAS_GRAFO_INGESTAO', () => {
     expect(tocam).toEqual([])
   })
 
+  it('contas-receber é isolada — nenhuma aresta a toca e não há pré-requisito, nem não-bloqueante (v6.4.0)', () => {
+    const tocam = ARESTAS_GRAFO_INGESTAO.filter((a) => a.de === 'contas-receber' || a.para === 'contas-receber')
+    expect(tocam).toEqual([])
+    expect(preRequisitosBloqueantes('contas-receber')).toEqual([])
+    expect(avaliarDependenciaDeCarga('contas-receber', new Map(), '2026-10-15')).toEqual({ ok: true })
+  })
+
   it('nenhuma base tem aresta de volta para si mesma (nenhum ciclo)', () => {
     // DFS a partir de cada base pelas arestas declaradas — se alguma alcançar a si mesma de
     // volta, há um ciclo (o grafo do §5 é, por definição do contrato, um DAG).
