@@ -20,7 +20,7 @@ import { BASES_INGESTAO, BASES_COM_ESCOPO_DE_CHAVE, BASES_MULTIARQUIVO } from '.
 // v6.4.0 (`contas-receber`, a sexta base):
 //   • os CHECKs de `ingestao.carga` e `ingestao.promocao` NÃO podem ser ampliados por migration
 //     aditiva (é DROP + ADD CONSTRAINT) — a ampliação mora no PATCH destrutivo
-//     `supabase/patches/contas_receber_checks_ingestao.sql`, que o Yan aplica em TTY. O teste lê a lista
+//     `supabase/migrations/0298_contas_receber_checks_ingestao.sql` (nasceu em supabase/patches/; o Yan aplica em TTY). O teste lê a lista
 //     do patch (comentários SQL removidos antes: o DOWN, comentado, ainda traz as 5 bases). Quando o
 //     patch virar migration numerada, apontar `PATCH` para ela.
 //   • `contas-receber` NÃO entra no escopo de chave de API nem na expectativa do vigia — não há RPA para
@@ -32,7 +32,7 @@ const PASTA_MIGRATIONS = join(RAIZ, 'supabase/migrations')
 const SQL = readFileSync(join(PASTA_MIGRATIONS, '0274_role_ingestor_e_escopo_api_chave.sql'), 'utf8')
 const SQL_0280 = readFileSync(join(PASTA_MIGRATIONS, '0280_ingestao_execucao_alarmes_vigia.sql'), 'utf8')
 const SQL_PATCH = semComentariosSql(
-  readFileSync(join(RAIZ, 'supabase/patches/contas_receber_checks_ingestao.sql'), 'utf8'),
+  readFileSync(join(RAIZ, 'supabase/migrations/0298_contas_receber_checks_ingestao.sql'), 'utf8'),
 )
 
 /** Bases SEM RPA: fora do CHECK de escopo de chave (0274/0289) e da expectativa do vigia (0280). */

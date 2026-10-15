@@ -13478,7 +13478,7 @@
         "carga_chave_id_fkey": "FOREIGN KEY (chave_id) REFERENCES app.api_chave(id)",
         "carga_pkey": "PRIMARY KEY (carga_id)",
         "carga_usuario_id_fkey": "FOREIGN KEY (usuario_id) REFERENCES auth.users(id)",
-        "ingestao_carga_base_valida": "CHECK (base = ANY (ARRAY['demonstrativo-competencia'::text, 'vendas-produto'::text, 'lancamentos-movimentacao'::text, 'lancamentos-aberto'::text, 'lancamentos-operacao'::text]))",
+        "ingestao_carga_base_valida": "CHECK (base = ANY (ARRAY['demonstrativo-competencia'::text, 'vendas-produto'::text, 'lancamentos-movimentacao'::text, 'lancamentos-aberto'::text, 'lancamentos-operacao'::text, 'contas-receber'::text]))",
         "ingestao_carga_status_valido": "CHECK (status = ANY (ARRAY['aberta'::text, 'aplicada'::text, 'rejeitada'::text, 'erro'::text]))"
       },
       "dono": "postgres",
@@ -13732,7 +13732,7 @@
       },
       "constraints": {
         "ingestao_promocao_base_carga_uniq": "UNIQUE (base, carga_id)",
-        "ingestao_promocao_base_valida": "CHECK (base = ANY (ARRAY['demonstrativo-competencia'::text, 'vendas-produto'::text, 'lancamentos-movimentacao'::text, 'lancamentos-aberto'::text, 'lancamentos-operacao'::text]))",
+        "ingestao_promocao_base_valida": "CHECK (base = ANY (ARRAY['demonstrativo-competencia'::text, 'vendas-produto'::text, 'lancamentos-movimentacao'::text, 'lancamentos-aberto'::text, 'lancamentos-operacao'::text, 'contas-receber'::text]))",
         "promocao_pkey": "PRIMARY KEY (id)"
       },
       "dono": "postgres",
@@ -16925,7 +16925,7 @@
       "triggers": {}
     }
   },
-  "ultima_migration": "0297",
+  "ultima_migration": "0298",
   "views": {
     "analytics.mv_ranking_produtos_mensal": {
       "acl": {

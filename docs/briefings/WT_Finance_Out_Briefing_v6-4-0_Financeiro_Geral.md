@@ -2,7 +2,7 @@
 
 **Rota A** · briefing `docs/briefings/briefing-v6-4-0-financeiro-geral.md` · contrato técnico
 `docs/briefings/spec-v6-4-0-contratos.md` · validação e decisões `docs/briefings/plano-v6-4-0-validacao-briefing.md` ·
-ADR-0183 · migrations **0295–0297 APLICADAS** em 15/10/2026 (gate VERDE) · **patch destrutivo pendente de TTY** ·
+ADR-0183 · migrations **0295–0297 APLICADAS** em 15/10/2026 (gate VERDE) · **0298 destrutiva APLICADA pelo Yan em TTY** (15/10, ~15h30, gate VERDE) ·
 branch `feat/v6-4-0-financeiro-geral`.
 
 ## 1. Resumo
@@ -26,11 +26,9 @@ Duas fontes novas:
 - **Registro de antecipações**: substitui a planilha. Fica sob o diário, com desfazer, e já carrega as 38
   linhas históricas (oráculo do inv. 7 ao centavo).
 
-Dentro do que só a sessão podia fazer, a versão está **completa**. Duas coisas dependem do Yan antes de a base
-de contas a receber funcionar ponta a ponta:
-
-1. aplicar o patch dos CHECKs (§6);
-2. fazer a primeira carga real pelo card.
+Dentro do que só a sessão podia fazer, a versão está **completa**. A 0298 (CHECKs de base, destrutiva por
+classificação) foi aplicada pelo Yan em TTY em 15/10. Falta a **primeira carga real** pelo card para a base de
+contas a receber funcionar ponta a ponta (§6).
 
 ## 2. Decisões
 
@@ -67,7 +65,8 @@ Antes da M0 rodou uma **M-1** (investigação da API v3, `docs/auditoria/v6-4-0-
 **Decisões técnicas e desvios** (todas registradas no código):
 
 - **D3 — CHECKs de base.** Ampliá-los é destrutivo pelo classificador (`ALTER TABLE … DROP CONSTRAINT`).
-  - O patch fica em `supabase/patches/contas_receber_checks_ingestao.sql`.
+  - O patch nasceu em `supabase/patches/` e, na hora de aplicar, foi movido para
+    `supabase/migrations/0298_contas_receber_checks_ingestao.sql`, aplicada pelo Yan em TTY.
   - Os outros dois CHECKs (escopo de chave de API e expectativa do vigia) ficam em 5 bases, com exceção
     declarada no teste de paridade.
 - **Foto de prazos:** gancho fail-soft no servidor depois de aplicar o Aberto. É a única mudança no caminho de
@@ -119,7 +118,8 @@ Antes da M0 rodou uma **M-1** (investigação da API v3, `docs/auditoria/v6-4-0-
 - `supabase/migrations/0295_contas_receber_base.sql`;
 - `0296_antecipacoes.sql`;
 - `0297_financeiro_geral_leitura.sql`;
-- `supabase/patches/contas_receber_checks_ingestao.sql` (**não aplicado**);
+- `supabase/migrations/0298_contas_receber_checks_ingestao.sql` (destrutiva por classificação; **aplicada pelo Yan
+  em TTY**, 15/10);
 - `src/types/database.ts` (regenerado);
 - `supabase/baseline/schema-v6.json` (última migration 0297).
 
@@ -186,8 +186,9 @@ Antes da M0 rodou uma **M-1** (investigação da API v3, `docs/auditoria/v6-4-0-
 
 ## 5. Não verificado pela sessão
 
-- **Carga real da base de contas a receber ponta a ponta** (card → servidor → banco). Bloqueada pelo patch
-  dos CHECKs: até ele ser aplicado, abrir carga falha fechado (CHECK 23514), com a base intacta.
+- **Carga real da base de contas a receber ponta a ponta** (card → servidor → banco). Depois da 0298, a
+  promoção completa com dado sintético foi provada contra o banco vivo em transação revertida (gravou e
+  reverteu, sem CHECK). A carga real pelo card não foi feita pela sessão.
   - Os casos de contrato de Recebíveis passam vazios (`carga: null`). Faixas, concentração, evolução e
     comparativo **não foram exercitados contra dado real**, só com dados sintéticos no ensaio.
 - **Conferência visual.** Não houve credencial de teste humana, e o MCP do navegador não sobe em sessão de
@@ -202,19 +203,16 @@ Antes da M0 rodou uma **M-1** (investigação da API v3, `docs/auditoria/v6-4-0-
 
 ## 6. Pendências — o que só o Yan tem
 
-> 🔴 **1. Aplicar o patch destrutivo dos CHECKs de base** — sem ele a carga de Contas a receber não abre.
+> ✅ **1. Patch destrutivo dos CHECKs de base — APLICADO** (Yan, TTY, 15/10, gate VERDE). A sessão conferiu
+> depois:
 >
-> Copiar `supabase/patches/contas_receber_checks_ingestao.sql` para
-> `supabase/migrations/0298_contas_receber_checks_ingestao.sql` (conferir antes que 0298 está livre).
-> Repontar `SQL_PATCH` em `src/lib/ingestao/bases-paridade.test.ts` para o arquivo novo, no mesmo commit.
-> Aplicar **fora do horário das RPAs** (`lock_timeout` 5 s):
+> - as duas constraints com as 6 bases no catálogo;
+> - 0298 local = remoto;
+> - baseline regenerado (última migration 0298);
+> - paridade + baseline 34/34;
+> - promoção da base nova contra o banco vivo em transação revertida.
 >
-> ```bash
-> npm run db:migrate -- --destrutiva     # TTY: confirmar
-> npm run db:baseline                      # e commitar o JSON
-> ```
->
-> Ordem segura: patch → merge. Se o merge vier antes, o card aparece e falha fechado (sem tocar a base).
+> O teste de paridade aponta para a 0298.
 
 **Demais pendências:**
 

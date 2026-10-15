@@ -4,7 +4,7 @@
 // repete esta lista em SQL; `bases-paridade.test.ts` prova que as duas pontas são idênticas.
 //
 // `contas-receber` (v6.4.0) entra no FIM da lista de propósito: os CHECKs de `ingestao.carga` e
-// `ingestao.promocao` (patch `supabase/patches/contas_receber_checks_ingestao.sql`) repetem a lista
+// `ingestao.promocao` (migration `0298_contas_receber_checks_ingestao.sql`, destrutiva por classificação) repetem a lista
 // NA MESMA ORDEM, e o teste de paridade compara a ordem.
 export const BASES_INGESTAO = [
   'demonstrativo-competencia',
