@@ -238,6 +238,30 @@ Taxa de Antecipação (Realizado) por conta. Só as contas das empresas são nom
 5. **M4:** autorizar a leitura da planilha "Histórico de Antecipações" (caminho acima) ou entregá-la no repo
    de fixtures, para a carga inicial e o oráculo do inv. 7.
 
+### Decisões do Yan (15/10/2026) — GATE 0 fechado
+
+1. **Custos financeiros = custos + líquido.**
+   - Tabela de custos por grupo: Cartão; Antecipação; Juros e IOF; Tarifas (Taxas e Tarifas Bancárias,
+     Tarifa de Remessa, Anuidade).
+   - Abaixo, câmbio (Dia D/Dia C) e receitas financeiras (Acréscimos Cobrados, Desconto Obtido).
+   - Fecha no Resultado Financeiro, igual ao bloco FIN da DRE. A Taxa do Cartão **entra** como custo.
+   - Recorte pelo bloco FIN vivo. Categoria nova no FIN sem grupo vai para uma bandeja visível.
+2. **Prejuízos = bruto, com a reversão ao lado.**
+   - Card e série principais: Prejuízos (categoria da tabela curada; 2026: −205.629,09).
+   - Contexto: recuperado (Reversão de Perdas Financeiras, +80.119,24) e o líquido (−125.509,85).
+   - **"Por natureza" sai**; no lugar, prejuízo por mês.
+3. **Prazos médios = clientes × fornecedores, saldo do Aberto.**
+   - PMR = a receber de clientes (grupo Receita de Vendas) ÷ entrada de clientes (`ENT_H`).
+   - PMP = repasse a pagar (grupo Repasse) ÷ pagamento a fornecedor (`PAG_H`).
+   - Saldo das cargas do Aberto: "histórico desde 25/09/2026", crescendo a cada carga. Despesas fora.
+4. **Acesso em dois níveis, molde do Acervo.**
+   - `financeiro/geral` (leitura): Diretoria, Financeiro, Administrador e Máquina · verificação.
+   - `financeiro/geral/gestao`, rótulo "Financeiro · Geral (gestão)" (registrar antecipações): Financeiro e
+     Administrador, mais Máquina · verificação só a área (regra do teste; o EXECUTE das RPCs de escrita fica fora).
+   - Gestor fora.
+5. **Planilha de antecipações.** O Yan entrega o arquivo em `~/projects/arquivo-worktrees-janus/fixtures-ingestao/`
+   (fora do git) antes da M4. A carga lê só a tabela: conta, data, antecipado, líquido, desconto.
+
 ## Reprodução
 
 As consultas estão inline acima. Cálculo de paridade: soma de `linhas[t='cat'].meses` do `get_dre_mensal`
