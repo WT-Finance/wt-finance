@@ -23,6 +23,10 @@ financeiros, Prazos médios), base nova **contas a receber** (upload manual, N a
   Banco na **0298**, livre **0299**. ADR-0183; ADR livre **0184**.
 - Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v6-4-0_Financeiro_Geral.md`.
 
+> **Próxima versão decidida — v6.4.1** (abrir com `/nova-versao v6-4-1` depois do merge do #303): âmbar das
+> antecipações (valor líquido) dentro das entradas efetivadas do gráfico "Fluxo de Caixa Mensal". Decisões e
+> medição no out-briefing da v6.4.0, §8.
+>
 > 🔴 **Yan — próximos passos:**
 >
 > 1. Primeira carga pelo card "Contas a receber", com os 2 arquivos juntos. Esperado: 21 inadimplentes / R$ 199.767,74.

@@ -297,6 +297,20 @@ Verificados sem achado:
 
 ## 8. Backlog gerado
 
+- **v6.4.1 (decidido pelo Yan em 15/10, entra depois do merge do #303):** no gráfico "Fluxo de Caixa Mensal"
+  da página Fluxo de Caixa, a barra de **entradas efetivadas** passa a destacar em **âmbar** a parte vinda de
+  antecipação de recebíveis.
+  - Valor = **líquido** do registro de antecipações, no mês da `data`.
+  - Tooltip: "Entradas efetivadas R$ X · das quais antecipação R$ Y (Z%)", com a nota "segundo o registro de
+    antecipações".
+  - Precisa de uma RPC aditiva que leia `financeiro.antecipacao` pela área `financeiro/fluxo-caixa` (hoje só
+    `financeiro/geral` lê).
+  - **Medição que sustenta a leitura** (15/10, só leitura): nos 25/25 meses com antecipação, as entradas
+    realizadas na própria conta (Asaas/Blimboo) são ≥ o líquido antecipado. Exemplos:
+    - abr/26 Asaas: líquido 700,3 mil, entradas na conta 2,54 mi, total do mês 7,21 mi;
+    - abr/25 Blimboo: 654,7 mil × 826,4 mil.
+  - Ressalva: o Monde não liga título à antecipação, então o recorte vem do registro, não de marcação do Monde.
+
 - **Reconstruir a série de prazos desde 25/09** a partir dos crus do Aberto no Storage.
 - **Retenção das fotos de contas a receber** (decisão do Yan).
 - **Investigar a DRE de caixa × despesa paga com cartão.** A M-1 achou que o relatório de Movimentação omite o
