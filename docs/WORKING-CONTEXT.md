@@ -9,7 +9,27 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-15 (pós-merge da v6.4.0, em produção desde 16:11).
+Última atualização: 2026-10-15 (fechamento da v6.4.1, PR draft aberto).
+
+---
+
+## Em voo — v6.4.1 "Antecipações em âmbar no Fluxo de Caixa Mensal" (PR draft, aguardando merge)
+
+O gráfico "Fluxo de Caixa Mensal" mostra, em âmbar, o **líquido** antecipado de cada mês dentro das entradas
+efetivadas, segundo o registro de antecipações. Branch `feat/v6-4-1-antecipacoes-fluxo`.
+
+- Migration **0299 APLICADA** em 15/10 (aditiva: RPC `get_fluxo_antecipacoes_mensal()`, gate
+  `financeiro/fluxo-caixa`, só o líquido). Banco na **0299**, livre **0300**. Sem ADR; ADR livre **0184**.
+- Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v6-4-1_Antecipacoes_Fluxo.md`.
+- O `COMMENT ON FUNCTION` da 0299 ainda cita `antecipado`. O corpo está certo e travado por contrato; corrigir
+  na próxima migration que tocar a função.
+
+> 🔴 **Yan:**
+>
+> 1. Conferir no preview: abr/26 com R$ 700,3 mil em âmbar dentro de R$ 7,21 mi; tooltip "das quais
+>    antecipação"; a legenda nova.
+> 2. Decidir se mantém o âmbar `--warning`, cujo contraste contra o verde fica abaixo de 3:1 (out-briefing §7.3).
+> 3. Mergear o PR e depois rodar `/pos-merge`.
 
 ---
 
@@ -20,29 +40,9 @@ financeiros, Prazos médios), base nova **contas a receber** (upload manual, N a
 **registro de antecipações** sob o diário (38 linhas históricas carregadas).
 
 - Migrations **0295–0298 APLICADAS** em 15/10. A 0298 (CHECKs de base, destrutiva) foi aplicada pelo Yan em TTY.
-  Banco na **0298**, livre **0299**. ADR-0183; ADR livre **0184**.
+  ADR-0183.
 - Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v6-4-0_Financeiro_Geral.md`.
 
-> **Próxima versão decidida — v6.4.1** (abrir com `/nova-versao v6-4-1`): âmbar das antecipações (valor
-> líquido) dentro das entradas efetivadas do gráfico "Fluxo de Caixa Mensal". Decisões e medição no
-> out-briefing da v6.4.0, §8.
->
-> 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.4.0** (a sessão não alcança o checkout
-> compartilhado, protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-4-0`).
-> Nada a salvar: a branch não tem commit fora do main, e as fixtures gitignoradas da worktree são cópias das que
-> estão no arquivo de resgate.
->
-> ```bash
-> cd ~/projects/wt-finance && git pull --ff-only
-> git worktree remove .claude/worktrees/feat-v6-4-0-financeiro-geral --force
-> git worktree prune
-> git branch -D feat/v6-4-0-financeiro-geral docs/pos-merge-v6-4-0
-> ```
->
-> Se o `pull` abortar por `docs/briefings/briefing-v6-4-0-financeiro-geral.md` untracked na raiz: é o caso
-> previsto do ritual. Confira com `git show origin/main:docs/briefings/briefing-v6-4-0-financeiro-geral.md | diff - docs/briefings/briefing-v6-4-0-financeiro-geral.md`;
-> se não houver diferença, mova a cópia da raiz para `/tmp` e repita o `pull`.
->
 > 🔴 **Yan — próximos passos:**
 >
 > 1. Primeira carga pelo card "Contas a receber", com os 2 arquivos juntos. Esperado: 21 inadimplentes / R$ 199.767,74.

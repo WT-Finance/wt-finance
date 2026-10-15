@@ -33,6 +33,7 @@ import {
   resumoMarketingSchema, fornecedoresMarketingSchema, lancamentosMarketingSchema,
 } from './marketing/schemas'
 import { proporcaoReceitaMarketingSchema } from './marketing/schemas-proporcao'
+import { antecipacoesMensalSchema } from './fluxo/antecipacao-mensal'
 import { montarPonte } from './dre/ponte-regimes'
 import { montarDecomposicao } from './dre/decomposicao-variacao'
 import { LINHAS_CAIXA, LINHAS_COMPETENCIA } from './dre/linhas-resumo'
@@ -3557,4 +3558,100 @@ describe.skipIf(!ON || !DB_URL)('contrato RBAC — Financeiro · Geral: usuário
       if (hist.ok) exigirParseGeral(antecipacaoHistoricoSchema, hist.valor, 'antecipacao_historico (como usuário com a gestão)')
     })
   }, 30_000)
+})
+
+// ══ v6.4.1 (0299) — Fluxo de Caixa Mensal: antecipações em âmbar (get_fluxo_antecipacoes_mensal) ═════
+// O que este bloco prova (via REST com o `verificador`, que tem EXECUTE nela — 0299 — e em
+// `get_geral_antecipacoes`, 0297):
+//   1. SHAPE — a resposta passa por `antecipacoesMensalSchema` (o que o gráfico do Fluxo usa), com meses
+//      em ordem ESTRITAMENTE crescente e únicos (a mescla com a série mensal casa por `mes`), `n` inteiro
+//      > 0 e `liquido` > 0; mais um caso POSITIVO (a base viva tem registro — sem ele a paridade abaixo
+//      passaria 0=0).
+//   2. DOIS NÚMEROS VIZINHOS (skill contrato-rpc-front §5): o âmbar do Fluxo e o card de antecipações da
+//      página Geral leem o MESMO registro (`financeiro.antecipacao`) por RPCs diferentes, gated por áreas
+//      diferentes. Para cada ano presente na série, Σ `liquido` dos meses do ano ≡
+//      `get_geral_antecipacoes(ano).total.liquido` e Σ `n` ≡ `total.n`, em CENTAVOS inteiros. Se alguém
+//      "otimizar" uma das pontas (filtro, fuso do `to_char`, conta excluída), é aqui que estoura — e não
+//      na tela da diretoria.
+//   3. FACE FORA — o valor de face (`antecipado`) NÃO sai: líquido + face revelaria o desconto mensal a
+//      quem só tem `financeiro/fluxo-caixa` (achado do revisor-db). Lista FECHADA de chaves por item,
+//      sobre o JSON CRU (o schema é `.passthrough()` e deixaria uma chave extra passar em silêncio).
+//   4. NEGAÇÃO — anon (HTTP 401/403 + 42501).
+// Sem PII: a RPC devolve só mês + valores agregados + contagem.
+
+const RPCS_FLUXO_ANTEC = [
+  { fn: 'get_fluxo_antecipacoes_mensal' },
+] as const
+
+// Uma leitura só, reaproveitada pelos casos: o JSON cru (lista fechada de chaves) e o parseado.
+let cacheFluxoAntec: ReturnType<typeof carregarFluxoAntec> | undefined
+async function carregarFluxoAntec() {
+  // O corpo da resposta é um ARRAY (não objeto): o helper `rpc` o tipa como Record por conveniência.
+  const cru = (await rpc('get_fluxo_antecipacoes_mensal', {})) as unknown as Array<Record<string, unknown>>
+  return { cru, serie: exigirParseGeral(antecipacoesMensalSchema, cru, 'fluxo antecipações mensal') }
+}
+const dadosFluxoAntec = () => (cacheFluxoAntec ??= carregarFluxoAntec())
+
+describe.skipIf(!ON)('contrato RPC — Fluxo de Caixa: antecipações por mês (v6.4.1, 0299)', () => {
+  it('forma: passa em antecipacoesMensalSchema; meses estritamente crescentes e únicos; n inteiro > 0; liquido > 0', async () => {
+    const { cru, serie } = await dadosFluxoAntec()
+    expect(Array.isArray(cru), 'a RPC deveria devolver um array (nunca null: json_agg vazio é normalizado para [])').toBe(true)
+    expect(serie.length, 'o schema não pode perder nem inventar linha').toBe(cru.length)
+    const meses = serie.map(r => r.mes)
+    expect(new Set(meses).size, 'mês repetido na série').toBe(meses.length)
+    expect(meses.every((m, i) => i === 0 || m > meses[i - 1]), 'meses fora de ordem estritamente crescente').toBe(true)
+    for (const r of serie) {
+      expect(Number.isInteger(r.n), `${r.mes}: n não é inteiro`).toBe(true)
+      expect(r.n, `${r.mes}: n deveria ser > 0 (mês sem registro nem aparece)`).toBeGreaterThan(0)
+      expect(centavos(r.liquido), `${r.mes}: liquido deveria ser > 0`).toBeGreaterThan(0)
+    }
+  }, 30_000)
+
+  it('caso POSITIVO: a base viva tem antecipação registrada em algum mês (sem isto a paridade com o Geral passaria 0=0)', async () => {
+    const { serie } = await dadosFluxoAntec()
+    expect(serie.length, 'série vazia — registro de antecipações vazio ou RPC filtrando tudo?').toBeGreaterThan(0)
+  }, 30_000)
+
+  // INVARIANTE — dois números vizinhos: o âmbar do Fluxo ≡ o total de antecipações da página Geral.
+  it('paridade com a página Geral: por ano, Σ liquido dos meses ≡ get_geral_antecipacoes(ano).total.liquido e Σ n ≡ total.n (centavos)', async () => {
+    const { serie } = await dadosFluxoAntec()
+    const anos = [...new Set(serie.map(r => Number(r.mes.slice(0, 4))))].sort((a, b) => a - b)
+    const divergencias: string[] = []
+    for (const ano of anos) {
+      const doAno = serie.filter(r => r.mes.startsWith(`${ano}-`))
+      const geral = exigirParseGeral(antecipacoesSchema, await rpc('get_geral_antecipacoes', { p_ano: ano }), `antecipações ${ano}`)
+      const liquido = doAno.reduce((s, r) => s + centavos(r.liquido), 0)
+      const n = doAno.reduce((s, r) => s + r.n, 0)
+      if (liquido !== centavos(geral.total.liquido)) divergencias.push(`${ano}: Σ liquido do Fluxo ${liquido} ≠ Geral ${centavos(geral.total.liquido)} (centavos)`)
+      if (n !== geral.total.n) divergencias.push(`${ano}: Σ n do Fluxo ${n} ≠ Geral ${geral.total.n}`)
+    }
+    expect(divergencias, `o Fluxo discorda da página Geral:\n${divergencias.join('\n')}`).toEqual([])
+  }, 60_000)
+
+  it('o valor de FACE não sai: lista fechada de chaves {liquido, mes, n} por item (nenhum `antecipado`)', async () => {
+    const { cru } = await dadosFluxoAntec()
+    expect(cru.length, 'série vazia — o caso não provaria nada').toBeGreaterThan(0)
+    for (const item of cru) {
+      expect('antecipado' in item, `${String(item.mes)}: a face (antecipado) vazou no retorno`).toBe(false)
+      expect(Object.keys(item).sort(), `${String(item.mes)}: chave fora do contrato`).toEqual(['liquido', 'mes', 'n'])
+    }
+  }, 30_000)
+})
+
+// ── NEGAÇÃO: anon (sem JWT) ──────────────────────────────────────────────────────────────────────
+// REVOKE EXECUTE de PUBLIC/anon (0299) → erro de permissão (42501), que para o papel `anon` vira HTTP 401
+// (403 para `authenticated`). Aceita-se as duas faixas; o que se EXIGE é o código do Postgres no corpo.
+describe.skipIf(!ON || !ANON)('contrato RBAC — Fluxo de Caixa: antecipações por mês, anon negado (v6.4.1)', () => {
+  it.each(RPCS_FLUXO_ANTEC)('$fn: anon → erro de permissão 42501 (HTTP 401/403)', async ({ fn }) => {
+    const res = await fetch(`${HOST}/rest/v1/rpc/${fn}`, {
+      method: 'POST',
+      headers: { apikey: ANON as string, Authorization: `Bearer ${ANON as string}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    })
+    const texto = await res.text()
+    expect([401, 403], `${fn}: anon recebeu HTTP ${res.status}`).toContain(res.status)
+    let codigo = ''
+    try { codigo = String((JSON.parse(texto) as { code?: unknown }).code) } catch { /* corpo não-JSON: cai no expect abaixo */ }
+    expect(codigo, `${fn}: HTTP ${res.status}, código ${codigo}`).toBe('42501')
+  })
 })

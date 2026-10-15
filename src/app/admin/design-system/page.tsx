@@ -441,6 +441,7 @@ export default async function DesignSystemPage() {
           { name: 'fluxoColors.entrada (--positive)', hex: '#5F7A3D', usage: 'Entradas/recebimentos (cash-flow canônico, ADR-0103)' },
           { name: 'fluxoColors.saida (--negative)',   hex: '#A35442', usage: 'Saídas/pagamentos (cash-flow canônico, ADR-0103)' },
           { name: 'fluxoColors.resultado', hex: '#2D2A26', usage: 'Linha de resultado (--text-primary)' },
+          { name: 'fluxoColors.antecipacao (--chart-antecipacao)', hex: '#D9A23F', usage: 'Antecipação dentro das entradas efetivadas (--warning)' },
           { name: '--setor-lazer',         hex: '#378ADD', usage: 'Setor Lazer / Trips' },
           { name: '--setor-weddings',      hex: '#BA7517', usage: 'Setor Weddings' },
           { name: '--setor-corporativo',   hex: '#0F6E56', usage: 'Setor Corporativo' },
