@@ -74,6 +74,20 @@ Antes da M0 rodou uma **M-1** (investigação da API v3, `docs/auditoria/v6-4-0-
   outra base, uma exceção declarada ao inv. 9.
   - A série começa em 15/10 (dia da aplicação), não em 25/09.
   - Reconstruir desde 25/09 pelos crus do Storage = backlog.
+- **Inv. 9, medido** (`git diff --name-status 4de6b60..HEAD`, arquivos pré-existentes modificados):
+  - **Intocados:** `get_dre_mensal`, `dre_categoria_map`, editor da DRE e telas existentes. A 0297 só **lê**
+    `fato_fluxo`/mapa.
+  - **Fora da página, das bases e do card, e só como consequência da base nova:**
+    - `src/lib/ingestao/carga.ts`: multiarquivo generalizado de `vendas-produto` para uma lista, mais o gancho
+      da foto;
+    - `alarme.ts`: isenção declarada;
+    - `src/app/admin/api-externa/actions.ts` + `modal-criar-chave.tsx`: o escopo de chave de API passa a vir
+      de `BASES_COM_ESCOPO_DE_CHAVE`, para não oferecer a base nova que o banco recusa;
+    - `modal-reprocesso.tsx`: case novo, porque o `switch` sem default quebraria o `tsc`;
+    - `supabase/seed/seed.ts`: `ORDEM_CARGA`, porque o grafo lançaria em runtime;
+    - `src/app/financeiro/page.tsx`: redirect conhece a área nova;
+    - nav e `areas.ts`.
+  - Nenhum altera comportamento das 5 bases antigas: os testes de carga, paridade e oráculo delas seguem verdes.
 - **Antecipação com `bigserial`, não IDENTITY.** O `reverter_diario` só reinsere colunas não-identity; com
   IDENTITY, desfazer uma exclusão duas vezes duplicaria o registro. O ensaio provou que o 2º desfazer é recusado.
 - **Antecipação:** data futura recusada, piso 2000-01-01; mais de 2 casas recusado; lock por registro;
