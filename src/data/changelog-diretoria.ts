@@ -35,6 +35,18 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '6.4.1',
+    data: '2026-10-15T16:42', // horário real de autoria; reconciliar ao merge no /pos-merge
+    itens: [
+      {
+        tipo: 'melhoria',
+        texto:
+          'O gráfico de fluxo de caixa mensal passa a mostrar, em âmbar, quanto das entradas de cada mês veio ' +
+          'de antecipação de recebíveis, segundo o registro de antecipações.',
+      },
+    ],
+  },
+  {
     versao: '6.4.0',
     data: '2026-10-15T16:11', // horário real do merge (PR #303), reconciliado no /pos-merge
     itens: [

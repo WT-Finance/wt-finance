@@ -6,6 +6,30 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [6.4.1] — 2026-10-15
+
+PATCH · **Antecipações em âmbar no gráfico "Fluxo de Caixa Mensal".** Out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v6-4-1_Antecipacoes_Fluxo.md`; spec
+`docs/briefings/spec-v6-4-1-antecipacoes-fluxo.md`. Migration **0299** (aditiva, aplicada em 15/10). Sem ADR.
+
+### Adicionado
+
+- **RPC `get_fluxo_antecipacoes_mensal()`** (0299): o **líquido** das antecipações registradas
+  (`financeiro.antecipacao`) por mês da `data`, todas as contas, `[{mes, liquido, n}]`; gate
+  `financeiro/fluxo-caixa` inline, `SECURITY DEFINER`, `search_path` vazio, EXECUTE para `verificador`. O valor
+  de face **não** sai (líquido + face revelaria o desconto mensal a quem só tem fluxo-caixa).
+- **Segmento âmbar** dentro da barra "Entradas efetivadas" do gráfico (`/financeiro/fluxo-caixa`): dois
+  segmentos empilhados (antecipação na base, o restante em verde no topo). Tooltip "Entradas efetivadas R$ X ·
+  das quais antecipação R$ Y (Z%)", com a nota "segundo o registro de antecipações". O âmbar é limitado ao total
+  das entradas do mês, e o tooltip avisa quando o registro excede. Item novo na legenda. Se a RPC falhar, o
+  gráfico rende sem o âmbar e mostra "Antecipações indisponíveis no momento".
+- Módulo puro `src/lib/fluxo/antecipacao-mensal.ts` (schema + `mesclarAntecipacoes`) com testes.
+- Token `--chart-antecipacao` (= `--warning`) e `fluxoColors.antecipacao`, registrados na página de design system.
+- 5 casos de contrato: forma, caso positivo, paridade por ano com `get_geral_antecipacoes` (líquido e n), lista
+  fechada de chaves (face fora) e anon negado.
+
+---
+
 ## [6.4.0] — 2026-10-15
 
 MINOR · **Financeiro · Geral: página executiva para a diretoria, com a base de Contas a receber e o registro
