@@ -79,8 +79,16 @@ function FluxoTooltip({ active, payload, label }: TooltipProps) {
       {payload.map(p => {
         if (p.name === SERIE_ANTECIPACAO) return null
         if (p.name === SERIE_ENTRADA_SEM_ANTECIPACAO) {
-          const ponto = p.payload
-          if (!ponto) return null
+          // O ponto inteiro vem em qualquer item do payload; sem ele, a linha não some — cai no valor da série.
+          const ponto = p.payload ?? payload.find(x => x.payload)?.payload
+          if (!ponto) {
+            return (
+              <div key="entrada_efetivada" className="flex justify-between gap-4 mb-1">
+                <span style={{ color: p.color }}>{SERIES_LABELS.entrada_efetivada}</span>
+                <span className="font-medium text-zinc-700">{fmtMi(Math.abs(p.value))}</span>
+              </div>
+            )
+          }
           return (
             <div key="entrada_efetivada" className="mb-1">
               <div className="flex justify-between gap-4">
@@ -123,13 +131,15 @@ function AntecipacaoDetalhe({ ponto }: { ponto: ChartPoint }) {
               {ponto.pctAntecipacao !== null && ` (${fmtAxisPct(ponto.pctAntecipacao * 100, 1)})`}
             </span>
           </div>
-          <p className="text-zinc-400">segundo o registro de antecipações</p>
+          <p className="text-zinc-500">segundo o registro de antecipações</p>
         </>
       )}
       {ponto.antecipacaoExcedeu && (
-        <p className="mt-0.5 text-zinc-500">
+        <p className="mt-0.5 max-w-[240px] whitespace-normal text-zinc-500">
           O registro ({fmtMi(ponto.antecipacaoLiquidaRegistrada)}) excede as entradas efetivadas do mês;
-          a parte em âmbar foi limitada ao total.
+          {ponto.antecipacao > 0
+            ? ' a parte em âmbar foi limitada ao total.'
+            : ' sem entradas efetivadas no mês, não há parte em âmbar.'}
         </p>
       )}
     </div>
@@ -382,7 +392,7 @@ export default function FluxoMensalChart({
       </ResponsiveContainer>
       <FluxoLegend />
       {antecipacoesIndisponiveis && (
-        <p className="mt-1 text-center text-2xs text-zinc-400">
+        <p className="mt-1 text-center text-2xs text-zinc-500">
           Antecipações indisponíveis no momento
         </p>
       )}

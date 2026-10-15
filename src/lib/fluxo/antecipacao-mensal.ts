@@ -3,8 +3,9 @@ import { z } from 'zod'
 // Antecipações de recebíveis por mês no gráfico "Fluxo de Caixa Mensal" (v6.4.1).
 //
 // A RPC `get_fluxo_antecipacoes_mensal()` (0299, gate `financeiro/fluxo-caixa`) devolve, por
-// mês da `data` da antecipação, o valor LÍQUIDO (o que de fato entrou) e o ANTECIPADO
-// (bruto), sobre todas as contas — fonte única: o registro `financeiro.antecipacao`. Este
+// mês da `data` da antecipação, o valor LÍQUIDO (o que de fato entrou) e a quantidade de
+// registros, sobre todas as contas — fonte única: o registro `financeiro.antecipacao`. O valor
+// de face NÃO sai (líquido + face revelaria o desconto a quem só tem fluxo-caixa). Este
 // módulo é PURO (sem I/O, sem React): valida o retorno e casa o registro com a série mensal
 // do fluxo (`get_fluxo_caixa_mensal_v3`), decidindo quanto da barra de "Entradas
 // efetivadas" vira âmbar.

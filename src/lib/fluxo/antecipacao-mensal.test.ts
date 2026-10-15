@@ -73,6 +73,14 @@ describe('mesclarAntecipacoes', () => {
     expect(r.pctAntecipacao).toBeNull()
   })
 
+  it('entrada efetivada negativa: âmbar 0, barra preserva o negativo, flag liga, pct null', () => {
+    const [r] = mesclarAntecipacoes([linha('2026-05', -200)], [antec('2026-05', 100)])
+    expect(r.antecipacao).toBe(0)
+    expect(r.entrada_efetivada_sem_antecipacao).toBe(-200)
+    expect(r.antecipacaoExcedeu).toBe(true)
+    expect(r.pctAntecipacao).toBeNull()
+  })
+
   it('mês só previsto sem registro: tudo 0, sem flag, pct null', () => {
     const [r] = mesclarAntecipacoes([linha('2026-12', 0)], [])
     expect(r.antecipacao).toBe(0)
