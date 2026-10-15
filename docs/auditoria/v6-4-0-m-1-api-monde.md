@@ -14,6 +14,16 @@ Scripts de sondagem e payloads crus ficaram **fora do repositório** (§8). Nenh
 payload, nome de pessoa, documento, conta bancária ou portador de cartão aparece neste relatório: tudo é
 contagem, soma ou nome de categoria/campo.
 
+> **Decisão do Yan (15/10/2026, após esta M-1):** a v6.4.0 segue com o **upload manual** do relatório
+> Contas a pagar e a receber, como o briefing já previa. A via API (§6) fica registrada como alternativa
+> para uma versão futura, sem mudança nos invariantes 3–5, na M1 nem na M3. O que esta medição ainda
+> informa ao GATE 1, sem decidir por ele:
+>
+> - a classificação a pagar/receber (o export não traz a natureza);
+> - os 67 títulos de comissão a receber de fornecedor (166 × 117 vencidos, §4.7);
+> - a janela de vencimento do export (perde o inadimplente de 2025);
+> - a coluna `Operação Própria`.
+
 ## 0. Resposta curta
 
 | # | Base | Cobertura pela API | Recomendação |
