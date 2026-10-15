@@ -7,7 +7,8 @@ Arquivos entregues pelo Yan em `~/projects/arquivo-worktrees-janus/fixtures-inge
 
 | Arquivo | sha256 (prefixo) | Uso |
 |---|---|---|
-| `Contas a pagar e a receber 25-26.xlsx` | `ebcd58393ecaa11e` | base de contas a receber (M3) |
+| `Contas a receber 25-26.xlsx` (entregue primeiro como `Contas a pagar e a receber 25-26.xlsx`, mesmo sha256) | `ebcd58393ecaa11e` | base de contas a receber (M3), vencimentos 2025+ |
+| `Contas a receber 24.xlsx` (entregue depois da P1) | `3916bd8a1e0d6a54` | base de contas a receber (M3), vencimentos 2024 |
 | `Histórico de Antecipações.xlsx` | `dbbf07d04fb111cd` | carga inicial das antecipações (M4) |
 
 Nenhum valor de `Pessoa`, `Observações`, `Pendente com:`, `Documento`, `Conta (Previsão)`, `Descrição` ou
@@ -41,7 +42,7 @@ Nenhum valor de `Pessoa`, `Observações`, `Pendente com:`, `Documento`, `Conta 
 | (c) valor | `Valor Final` | número em 28.603/28.603; `Valor ≠ Valor Final` em 23.562 | ✅ |
 | (d) nome | `Pessoa` | texto em 28.603/28.603 | ✅ |
 | a receber = todo crédito | inclui comissão de fornecedor | 828 "Fatura Fornecedor" com vencimento ≥ 2026 = `vendor_invoice` de crédito | ✅ |
-| Emissão | inválida vira nula, contada no log | **16** com data zero (amostra: 5) | ✅ (regra vale) |
+| Emissão | inválida vira nula, contada no log | **15** com data zero (amostra: 5) | ✅ (regra vale) |
 | Datas | — | meia-noite de Brasília (03:00 UTC) em 100% | ✅ (coerção canônica) |
 | Situação | — | liquidados: 2025 12.205 · 2026 11.554 · 2027 14; em aberto: 2025 15 · 2026 2.350 · 2027 2.267 · 2028–2031 197 · 2049 1 | — |
 | Números | únicos | 28.603 distintos | ✅ |
@@ -81,6 +82,40 @@ Consequências para a M3, informativas:
 - `Conferido` aceita {vazio, Sim, Pendente, Enviado para o banco, Inadimplente}. Valor fora disso rejeita a carga.
 - Fixture do oráculo: registrar o arquivo no `scripts/ingestao/fixtures-manifest.json` com um nome canônico
   (proposta `contas-receber-cru.xlsx`) e o sha256 completo.
+
+## Decisões do Yan (15/10/2026) — GATE 1 fechado
+
+- **P1:** o export é feito **por faixa de ano**, porque o Monde limita a pesquisa a 30 mil linhas. Entregue o
+  arquivo de 2024 em separado. A base de contas a receber aceita **N arquivos** por carga, como Vendas
+  (divergência D5 do plano: generalizar o multiarquivo de `carga.ts`).
+
+  Conferência do arquivo de 2024 (`Contas a receber 24.xlsx`):
+
+  | Medida | 2024 | 2025–26 |
+  |---|---:|---:|
+  | Títulos | 10.354 | 28.603 |
+  | Linha de total (`Número` · `Valor Final`) | 10.354 · 23.925.307,37 | 28.603 · 73.062.152,05 |
+  | Fecha com a Σ das linhas | ✅ | ✅ |
+  | Vencimentos | 01/01–31/12/2024 | 01/01/2025–2049 |
+  | Em aberto / inadimplentes | 0 / 0 | 4.831 / 21 |
+  | Emissão com data zero | 0 | 15 |
+  | `Conferido` | vazio 10.349 · Pendente 6 | (acima) |
+  | Mesmo cabeçalho de 17 colunas | ✅ | ✅ |
+
+  **Números em comum entre os dois arquivos: 0.** O checksum é **por arquivo**: cada um traz a própria linha
+  de total. A união tem 38.957 títulos.
+
+  Recorte-padrão do card de upload: **um arquivo por faixa de vencimento que caiba em 30 mil linhas**, sem
+  lacuna entre as faixas, a partir de 01/01/2024.
+  - Lacuna ou sobreposição entre faixas não é detectável pelo checksum (cada arquivo fecha sozinho).
+  - A M3 implementa uma guarda: **número repetido entre arquivos rejeita a carga**.
+  - A M3 também alerta sobre **lacuna de vencimento entre as faixas**.
+- **P2/P3:** **mantém `Descrição` e `Operação Própria`.** A lista fechada do inv. 5 fica a do briefing:
+  `Número`, `Emissão`, `Pessoa`, `Descrição`, `Vencimento`, `Liquidação`, `Valor Final`, `Conferido`,
+  `Operação Própria`.
+  - As duas contêm nomes de pessoas em parte das linhas. Ficam no raw, sob a mesma proteção de `Pessoa`
+    (área `financeiro/geral`, nunca em relatório commitado).
+  - `Descrição` **não** é a categoria: é a descrição do título.
 
 ## Planilha de antecipações (insumo da M4)
 
