@@ -9,7 +9,32 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-13 (pós-merge da v6.3.1, em produção desde 11:32).
+Última atualização: 2026-10-15 (fechamento da v6.4.0, PR aberto; aguardando o Yan).
+
+---
+
+## Em voo — v6.4.0 "Financeiro · Geral" (branch `feat/v6-4-0-financeiro-geral`, PR draft)
+
+Página `/financeiro/geral` (faixa de 5 indicadores + Recebíveis, Antecipações, Perdas e prejuízos, Custos
+financeiros, Prazos médios), base nova **contas a receber** (upload manual, N arquivos por faixa de vencimento) e
+**registro de antecipações** sob o diário (38 linhas históricas carregadas).
+
+- Migrations **0295–0297 APLICADAS** em 15/10. Banco na **0297**, livre **0298**. ADR-0183; ADR livre **0184**.
+- Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v6-4-0_Financeiro_Geral.md`.
+
+> 🔴 **Yan — patch destrutivo antes do merge** (sem ele a carga de Contas a receber falha fechada):
+>
+> 1. Copiar `supabase/patches/contas_receber_checks_ingestao.sql` → `supabase/migrations/0298_contas_receber_checks_ingestao.sql`.
+> 2. Repontar `SQL_PATCH` em `src/lib/ingestao/bases-paridade.test.ts` para ele.
+> 3. Fora do horário das RPAs: `npm run db:migrate -- --destrutiva` (TTY), depois `npm run db:baseline`, e commitar.
+>
+> 🔴 **Yan — depois do patch:**
+>
+> 1. Primeira carga pelo card "Contas a receber", com os 2 arquivos juntos. Esperado: 21 inadimplentes / R$ 199.767,74.
+> 2. Conferência no preview (roteiro no out-briefing §6).
+> 3. Decisões registradas no out-briefing §6.4: retenção das fotos, desfazer de terceiro, trava otimista,
+>    gestão sem leitura, posição da subaba.
+> 4. Avisar quem mantém a planilha de antecipações que ela se aposenta.
 
 ---
 

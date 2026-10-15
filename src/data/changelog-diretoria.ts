@@ -35,6 +35,30 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '6.4.0',
+    data: '2026-10-15T15:03', // horário real de autoria — reconciliar ao merge no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'A diretoria passa a ter no Janus uma visão geral das finanças: inadimplência, antecipações, ' +
+          'prejuízos, custos financeiros e prazos.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'O Financeiro passa a registrar as antecipações direto no Janus, com histórico de quem alterou e ' +
+          'possibilidade de desfazer, e a planilha usada até aqui se aposenta.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'O Janus ganha uma base de contas a receber com a marcação de inadimplência feita pelo Financeiro, ' +
+          'e passa a guardar uma foto da carteira a cada atualização para mostrar a evolução ao longo do tempo.',
+      },
+    ],
+  },
+  {
     versao: '6.3.1',
     data: '2026-10-13T11:32', // horário real do merge (PR #300), reconciliado no /pos-merge
     itens: [

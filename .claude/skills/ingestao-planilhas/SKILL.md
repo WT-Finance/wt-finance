@@ -1,6 +1,6 @@
 ---
 name: ingestao-planilhas
-description: Ingestão de planilhas/Excel no Janus — desde a v6.0.0 as 5 bases financeiras (Demonstrativo, Vendas, Movimentação, Aberto, Operação) parseiam no SERVIDOR via API Route (`/api/ingestao/{base}`, checksum do arquivo como gate); Pessoas é a única que ainda parseia no cliente + Web Worker + Server Action (Server Action só quando apenas linhas já parseadas viajam). Leitura de datas e números pelo valor NATIVO da célula (cellDates/raw: true), coerção canônica única em @/lib/carga/coercao.ts (toNum/toIsoDate/toCentavos — o lint wt/no-coercao-reimpl bloqueia reimplementação), parser único de Vendas e pipeline atômico de carga. Use ao mexer em upload, parser, importação, coerção de número/data vindos de arquivo ou input do usuário, ou quando uma soma do cliente for comparada com uma soma do banco.
+description: Ingestão de planilhas/Excel no Janus — desde a v6.0.0 as bases financeiras vivas (Demonstrativo, Vendas, Movimentação, Aberto, Operação; a sexta, Contas a receber, desde a v6.4.0) parseiam no SERVIDOR via API Route (`/api/ingestao/{base}`, checksum do arquivo como gate); Pessoas é a única que ainda parseia no cliente + Web Worker + Server Action (Server Action só quando apenas linhas já parseadas viajam). Leitura de datas e números pelo valor NATIVO da célula (cellDates/raw: true), coerção canônica única em @/lib/carga/coercao.ts (toNum/toIsoDate/toCentavos — o lint wt/no-coercao-reimpl bloqueia reimplementação), parser único de Vendas e pipeline atômico de carga. Use ao mexer em upload, parser, importação, coerção de número/data vindos de arquivo ou input do usuário, ou quando uma soma do cliente for comparada com uma soma do banco.
 ---
 
 # Ingestão de planilhas (Janus)
@@ -25,8 +25,8 @@ v4.7 (PEND-001) quando uma Server Action de upload quebrava silenciosamente.
 ⚠️ **O gatilho da regra é o ARQUIVO chegar ao servidor — não a palavra "upload"** (precisão
 acrescentada na v5.8.0, onde a redação genérica anterior induziu o plano ao caminho errado).
 
-**Desde a v6.0.0, as 5 bases financeiras vivas (Demonstrativo, Vendas, Movimentação, Aberto,
-Operação) migraram para API Route** (`POST /api/ingestao/{base}`, §8 adiante): o navegador sobe o
+**Desde a v6.0.0, as bases financeiras vivas (Demonstrativo, Vendas, Movimentação, Aberto,
+Operação — seis com Contas a receber, v6.4.0) migraram para API Route** (`POST /api/ingestao/{base}`, §8 adiante): o navegador sobe o
 `File` cru por signed upload URL e quem parseia é o servidor, com `@e965/xlsx` em runtime Node
 puro — exatamente o caso que esta regra sempre existiu para prever. **Pessoas é a única que
 continua no caminho antigo** (decisão 11 do briefing v6.0.0: fica fora da fundação, parada mas
@@ -37,7 +37,7 @@ Escolha assim:
 
 | O que atravessa a rede | Caminho | Precedente |
 |---|---|---|
-| o `File`/buffer | **API Route** `runtime = 'nodejs'` | `src/app/api/ingestao/{base}/route.ts` (5 bases, v6.0.0) · `src/app/api/gerencial/import/route.ts` |
+| o `File`/buffer | **API Route** `runtime = 'nodejs'` | `src/app/api/ingestao/{base}/route.ts` (6 bases) · `src/app/api/gerencial/import/route.ts` |
 | arrays já parseados no cliente | **Server Action** em lotes | `src/app/admin/ingestao/upload/actions.ts` (só **Pessoas**) |
 
 ## 2. Parse pesado no cliente → Web Worker, nunca a main thread
@@ -65,7 +65,7 @@ regra — o parse funcionava perfeitamente em dev com arquivos pequenos e só qu
 volume de produção.
 
 **Desde a v6.0.0, este caminho (parse no navegador + Web Worker) vale só para Pessoas.** As outras
-cinco bases parseiam no servidor (§8) — o navegador delas só calcula sha256 e sobe o arquivo cru.
+seis bases parseiam no servidor (§8) — o navegador delas só calcula sha256 e sobe o arquivo cru.
 
 ## 3. Célula de planilha: ler o valor NATIVO — vale para data E para dinheiro
 
@@ -337,7 +337,8 @@ numa função separada: é o que permite testar o arquivo caractere a caractere 
 
 ## 8. Ingestão v6.0.0: parser único por base no SERVIDOR, checksum do arquivo como gate
 
-Desde a v6.0.0 as cinco bases vivas (Demonstrativo, Vendas, Movimentação, Aberto, Operação) entram
+Desde a v6.0.0 as bases vivas (Demonstrativo, Vendas, Movimentação, Aberto, Operação; **Contas a receber**
+desde a v6.4.0 — seis ao todo) entram
 por `POST /api/ingestao/{base}` (contrato: `docs/contratos/ingestao-v1.md`) — o navegador sobe o
 **cru** por signed upload URL, o servidor parseia (núcleo `*Rows` de `src/lib/ingestao/parsers/`,
 compartilhado com o card de `/admin/ingestao/upload`) e a carga inteira roda numa transação. Cada base tem
@@ -400,6 +401,34 @@ Lições permanentes, detalhadas nos anexos `docs/briefings/anexo-v6-0-0-m{3,4,5
   `mapearColunas`/`camposFaltando` do parser do servidor. Mudou `COL_MAP`/`OBRIGATORIOS` de um
   parser? A sonda reprova até o texto acompanhar. (Até a v6.1.2 o card lia as listas dos parsers
   ANTIGOS do navegador e ficou errado em 5 de 6 bases por três versões sem gate nenhum perceber.)
+- **Base `contas-receber` (v6.4.0) — a sexta; relatório "Contas a receber" do Monde, base de POSIÇÃO.**
+  Parser `parsers/contas-receber.ts`, RPCs `*_contas_receber` (0295), oráculo com os 2 exports reais.
+  - **N arquivos por carga, um por faixa de vencimento** (o Monde limita a pesquisa a 30 mil linhas;
+    `BASES_MULTIARQUIVO` = vendas + contas-receber). **Checksum POR ARQUIVO pela linha de total**: `Número` =
+    contagem de títulos, `Valor Final` = Σ, em centavos, tolerância zero. **Número repetido entre arquivos
+    reprova a carga** (cada arquivo fecha sozinho; sobreposição de faixa só esta guarda vê). Um arquivo misto
+    (pagar + receber) é reprovado pelo próprio total, que vem com sinal.
+  - **`Conferido` em domínio fechado** (vazio, Sim, Pendente, Enviado para o banco, Inadimplente); valor
+    fora reprova NOMEANDO o valor. Inadimplência = só essa marcação (decisão de produto).
+  - **Lista fechada de 9 colunas gravadas** (Número, Emissão, Pessoa, Descrição, Vencimento, Liquidação,
+    Valor Final, Conferido, Operação Própria); `Observações`, `Pendente com:`, `Documento` e `Conta
+    (Previsão)` nunca entram. `Pessoa`, `Descrição` e `Operação Própria` têm nomes de pessoas: ficam só no
+    raw, e nenhuma mensagem de erro as reproduz.
+  - **Foto por carga na MESMA transação da promoção** (`contas_receber_foto_carga` + `_foto`): o estado
+    anterior não se reconstrói depois.
+  - ⚠️ **Sem negativos NÃO é "todos positivos".** A M1 contou só `< 0` e o contrato nasceu com "Valor Final
+    > 0". O oráculo com o arquivo real achou **611 títulos legítimos de valor ZERO** (faturas zeradas por
+    compensação) — a regra errada teria reprovado a carga de produção. Ao afirmar domínio de valor,
+    conte **`< 0`, `= 0` e `> 0` separados** e cite os três no relatório do GATE. A regra virou "< 0 reprova".
+  - ⚠️ **A guarda de faixa de datas (errata 1, piso 2015) também anula emissão antiga LEGÍTIMA** (2000–2014),
+    além da data zero do Monde. O oráculo conta as duas causas **separadas** (15 datas zero + 8 emissões
+    antigas = 23 nulas, linha preservada): somar tudo num "datas inválidas" esconde o que a errata faz.
+  - **O alarme de "ano fechado alterado" não vale para base de POSIÇÃO** (estoque): a carga seguinte troca o
+    conjunto inteiro, e um título quitado "altera" um ano fechado sem nenhum erro. `contas-receber` é
+    isenta (`BASES_ISENTAS_DE_ANO_FECHADO`, `alarme.ts`); base nova de posição nasce na mesma lista.
+  - **Dependência humana**: ampliar os CHECKs de `base` de `ingestao.carga`/`promocao` é o patch destrutivo
+    `supabase/patches/contas_receber_checks_ingestao.sql` (skill `banco-e-rpc` §5); até ele, a carga da base
+    falha FECHADA. `api_chave` e `expectativa` seguem com 5 bases (exceção declarada em `bases.ts`).
 
 ## 9. Entrega pelas RPAs (v6.1.0, errata 4, ADR-0179)
 
@@ -419,7 +448,8 @@ sessão não executa PowerShell, então a sonda e a 1ª execução do Yan são a
   retorno se perdeu, e a remoção sai sem alarme (achado ALTO do `revisor`, fechado pela 0288:
   `operacoes_antes` no resultado da promoção, guardado em `ingestao.promocao` e devolvido no replay). A
   leitura prévia fica só para a CONFERÊNCIA, que não promove. `null` = **não medido**, nunca "nenhuma".
-  ⚠️ O mesmo buraco existe hoje no `somaPorAno` ("ano fechado alterado", as cinco bases) — backlog.
+  ⚠️ O mesmo buraco existe hoje no `somaPorAno` ("ano fechado alterado", as cinco bases de fluxo; a sexta,
+  `contas-receber`, é isenta por ser posição — bullet da base, §8) — backlog.
 - **Default que aponta para produção é o inofensivo** (repetida da v6.0.1): o cliente nasce em
   conferência, manda `confirmar:false` EXPLÍCITO (o default do servidor é `true`) e falha fatal se a
   resposta contradiz o modo pedido. Exemplo de comando em documentação também é "default": nenhuma

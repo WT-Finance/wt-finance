@@ -55,6 +55,11 @@ consulta (pergunta em uma linha, se mudou algum achado).
   origem. Idem para a nota de `DOWN` do header: citar a fonte errada induz a mesma perda na
   volta. (Precedente v5.9.0: `app.solic_json` nasceu na 0130 e ganhou a chave `origem` na
   0217 — reverter/reescrever pela 0130 apagaria o selo "via integração".)
+- **Ampliar a lista de um `CHECK` existente** (ex.: base nova de ingestão) é DESTRUTIVA pelo classificador
+  (`ALTER TABLE … DROP CONSTRAINT`). O desenho certo: tudo o mais aditivo na migration; o par `DROP`/`ADD`
+  num **patch em `supabase/patches/`** aplicado pelo humano em TTY (nunca em `migrations/` antes da hora);
+  até lá a funcionalidade **falha FECHADA** (nada gravado) e o header declara a dependência. Migration
+  aditiva que traz o `DROP CONSTRAINT` embutido = achado. (v6.4.0, `contas_receber_checks_ingestao.sql`.)
 - **Numeração colide com outra worktree?** Conferir `ls ../*/supabase/migrations/ | tail -3`
   em TODAS as worktrees irmãs, não só na do escopo. O CLI casa pelo **prefixo numérico**:
   número repetido entre branches faz a segunda a aplicar ser tratada como "já aplicada" e
@@ -104,6 +109,13 @@ consulta (pergunta em uma linha, se mudou algum achado).
   para um valor não previsto, e **CHECK que avalia NULL é considerado SATISFEITO** pelo
   Postgres: acrescentar um valor ao enum sem escrever o ramo passaria a aceitar qualquer
   combinação de campos — fail-**OPEN** num lugar que parece defesa. (v5.6.0, `mov_destino_por_tipo`.)
+- **Tabela sob o diário (`fn_diario_alteracoes`) com desfazer de EXCLUSÃO tem PK `bigserial`, NÃO
+  `GENERATED … IDENTITY`?** O ramo D de `reverter_diario` (0268) só reinsere colunas `is_identity='NO'`:
+  com IDENTITY a linha volta com id novo e um 2º desfazer a DUPLICA (infla todo total). Com `bigserial` o
+  2º desfazer é recusado. (v6.4.0, 0296 — provado em ensaio revertido.)
+- **RPC de lote que recebe linhas de arquivo com dado pessoal valida os campos `NOT NULL` ANTES do
+  `INSERT`** e cita só posição + nome do campo? Violação de `NOT NULL` (23502) vaza a linha inteira no
+  `DETAIL`. (v6.4.0, 0295, `LOTE_LINHA_INVALIDA`.)
 - Contrato de CHECK/enum espelhado no TS (mapa que decide o que a UI mostra) tem **teste de
   paridade** lendo o SQL, não só comentário "as duas pontas mudam juntas"?
 - Tipos: `bigint` p/ ID, `text`, `timestamptz` (nunca `timestamp`), `numeric` p/ dinheiro.
