@@ -223,8 +223,10 @@ Guard de contagem exata.
    - A migration grava **uma** foto inicial (INSERT aditivo).
    - `serie` = última foto de cada dia.
 
-**Grants do `verificador`:** as 5 `get_geral_*` e `antecipacao_listar`/`_historico` (leitura), por
-assinatura, via `scripts/credencial/derivar-allowlist.mjs` depois dos casos de contrato.
+**Grants do `verificador`:** só as 5 `get_geral_*`, por assinatura (0297), e o derivador
+(`scripts/credencial/derivar-allowlist.mjs`) confirma depois dos casos de contrato.
+`antecipacao_listar` e `antecipacao_historico` **não** foram concedidas (decisão de 15/10): os casos de contrato as
+exercitam com a identidade de um usuário real por `request.jwt.claims`, então o grant não é necessário.
 
 ## 4. App
 
