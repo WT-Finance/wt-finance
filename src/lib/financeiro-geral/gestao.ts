@@ -33,6 +33,9 @@ export type LeituraValor =
 export function lerValorDigitado(texto: string): LeituraValor {
   const bruto = texto.trim()
   if (bruto === '') return { ok: false, motivo: 'vazio' }
+  // Só o que um valor em reais pode conter: o `toNum` aceitaria notação científica ("1e5") e hexadecimal
+  // ("0x10") — números para o JavaScript, mas não para quem digita um valor em R$.
+  if (!/^[\d.,\sR$()-]+$/.test(bruto)) return { ok: false, motivo: 'ilegivel' }
   // Aqui a vírgula é o separador DECIMAL (campo em pt-BR). O `toNum` lê "100,555" como milhar US
   // (100555) — uma 3ª casa digitada sem querer viraria um valor 1000× maior. Vírgula seguida de 3+
   // dígitos até o fim, sem ponto depois, é recusada em vez de reinterpretada.
@@ -153,6 +156,19 @@ export function traduzirErroAntecipacao(msg: string): { texto: string; conhecido
   if (msg.includes('USUARIO_INATIVO')) return { texto: 'Seu acesso foi desativado. Recarregue a página.', conhecido: true }
   if (msg.includes('AUTH_NECESSARIA')) return { texto: 'Sua sessão expirou. Entre de novo.', conhecido: true }
   return { texto: 'Não foi possível concluir. Tente novamente.', conhecido: false }
+}
+
+/** Frase para quando a server action LANÇA em vez de devolver `ok: false` (sessão/permissão do
+ *  `requireAreaAction`, rede caída). Sem ela a UI ficaria presa em "Salvando…"/"Carregando…". */
+export const FRASE_FALHA_ACAO = 'Não foi possível concluir. Recarregue a página e tente de novo.'
+
+/** O erro lançado por uma server action → frase para a tela. Sessão expirada tem frase própria (a mesma
+ *  de `traduzirErroAntecipacao`); qualquer outra falha — inclusive a mensagem sanitizada do Next em
+ *  produção — vira a frase genérica. */
+export function mensagemDeFalhaDaAcao(erro: unknown): string {
+  const msg = erro instanceof Error ? erro.message : typeof erro === 'string' ? erro : ''
+  if (msg.includes('AUTH_NECESSARIA')) return traduzirErroAntecipacao('AUTH_NECESSARIA').texto
+  return FRASE_FALHA_ACAO
 }
 
 // ── Histórico ──────────────────────────────────────────────────────────────────────────────────

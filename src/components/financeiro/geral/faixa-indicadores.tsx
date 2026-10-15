@@ -6,7 +6,7 @@ import { Tile } from './comum'
 
 export default function FaixaIndicadores({ indicadores }: { indicadores: readonly IndicadorTopo[] }) {
   return (
-    <section aria-label="Indicadores" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+    <section aria-label="Indicadores" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
       {indicadores.map(i => (
         <Tile
           key={i.chave}

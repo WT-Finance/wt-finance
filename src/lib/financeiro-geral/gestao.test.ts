@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { fmtBRL2 } from '@/lib/fmt'
 import {
-  centavosParaReais, dataIsoValida, descontoEmCentavos, descontoFormatado, lerValorDigitado,
-  podeDesfazerEntrada, podeGerirAntecipacoes, registroDaEntrada, rotuloOperacao,
+  FRASE_FALHA_ACAO, centavosParaReais, dataIsoValida, descontoEmCentavos, descontoFormatado, lerValorDigitado,
+  mensagemDeFalhaDaAcao, podeDesfazerEntrada, podeGerirAntecipacoes, registroDaEntrada, rotuloOperacao,
   traduzirErroAntecipacao, validarFormulario,
 } from './gestao'
 import { antecipacaoHistoricoSchema, antecipacaoListarSchema, salvarAntecipacaoSchema } from './schemas'
@@ -41,6 +41,13 @@ describe('lerValorDigitado — pt-BR normalizado no envio (padrão v6.2.1, toNum
     expect(lerValorDigitado('10,005')).toEqual({ ok: false, motivo: 'casas' })
     expect(lerValorDigitado('10.5555')).toEqual({ ok: false, motivo: 'casas' })
   })
+
+  it.each(['1e5', '1E5', '0x10', '1_000', '10 reais', '12abc', '+10'])(
+    'recusa o que não é um valor em reais (notação científica, hexa, letras): "%s"',
+    (txt) => {
+      expect(lerValorDigitado(txt)).toEqual({ ok: false, motivo: 'ilegivel' })
+    },
+  )
 
   it('"100,555" NÃO vira 100.555 (milhar US): uma 3ª casa sem querer não multiplica o valor por 1000', () => {
     expect(lerValorDigitado('100,555')).toEqual({ ok: false, motivo: 'casas' })
@@ -134,6 +141,17 @@ describe('traduzirErroAntecipacao — "CODIGO: texto" vira só o texto', () => {
     const r = traduzirErroAntecipacao('relation "financeiro.antecipacao" does not exist')
     expect(r.conhecido).toBe(false)
     expect(r.texto).not.toMatch(/relation/)
+  })
+})
+
+describe('mensagemDeFalhaDaAcao — a action LANÇOU (sessão, permissão, rede)', () => {
+  it('sessão expirada tem frase própria; o resto vira a frase genérica', () => {
+    expect(mensagemDeFalhaDaAcao(new Error('AUTH_NECESSARIA'))).toBe('Sua sessão expirou. Entre de novo.')
+    expect(mensagemDeFalhaDaAcao(new Error('PERMISSAO_NEGADA'))).toBe(FRASE_FALHA_ACAO)
+    expect(mensagemDeFalhaDaAcao(new Error('TROCA_SENHA_OBRIGATORIA'))).toBe(FRASE_FALHA_ACAO)
+    expect(mensagemDeFalhaDaAcao(new TypeError('Failed to fetch'))).toBe(FRASE_FALHA_ACAO)
+    expect(mensagemDeFalhaDaAcao(undefined)).toBe(FRASE_FALHA_ACAO)
+    expect(FRASE_FALHA_ACAO).toBe('Não foi possível concluir. Recarregue a página e tente de novo.')
   })
 })
 

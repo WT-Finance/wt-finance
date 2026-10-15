@@ -5,6 +5,7 @@ import ModalCentral from '@/components/shared/modal-central'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import type { ResultadoAcao } from '@/app/financeiro/geral/actions'
+import { mensagemDeFalhaDaAcao } from '@/lib/financeiro-geral/gestao'
 
 // Confirmação de uma ação do painel de antecipações (excluir, desfazer). Diferente do `ConfirmModal`
 // compartilhado, que fecha ao resolver sem olhar o retorno: aqui o resultado É lido — se a action
@@ -31,8 +32,17 @@ export default function ConfirmarAcaoModal({
   async function confirmar() {
     setErro(null)
     setProcessando(true)
-    const res = await onConfirmar()
-    setProcessando(false)
+    // A action pode LANÇAR (sessão expirada, permissão, rede): sem try/finally o botão ficaria preso em
+    // "Aguarde…". `onConcluido` fica fora do try — erro dele não é falha da action.
+    let res: ResultadoAcao
+    try {
+      res = await onConfirmar()
+    } catch (e) {
+      setErro(mensagemDeFalhaDaAcao(e))
+      return
+    } finally {
+      setProcessando(false)
+    }
     if (!res.ok) { setErro(res.erro); return }
     onConcluido(res.mensagem)
   }

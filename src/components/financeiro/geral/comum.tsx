@@ -75,7 +75,10 @@ export function Tile({ rotulo, valor, escopo, apoio = [], variacao, referencia, 
       )}
       {estado === 'ok' && (
         <>
-          <p className="mt-2 whitespace-nowrap text-lg font-extrabold leading-none tabular-nums text-text-primary">
+          <p
+            className="mt-2 min-w-0 truncate whitespace-nowrap text-lg font-extrabold leading-none tabular-nums text-text-primary"
+            title={valor ?? undefined}
+          >
             {valor ?? '—'}
           </p>
           {variacao && <TextoVariacao variacao={variacao} referencia={referencia} />}
@@ -122,5 +125,5 @@ export function MetaSecao({ regime, recorte, carimbo, ajudaRotulo, ajudaTexto, a
 /** Casca branca para o estado de erro/vazio de uma seção inteira. Altura mínima: o balão do "?" abre
  *  para baixo dentro da cortina (que corta o que passa dela) e precisa de espaço mesmo sem dado. */
 export function CascaEstado({ children }: { children: ReactNode }) {
-  return <div className="min-h-[168px] rounded-xl bg-white px-5 py-4 shadow-sm">{children}</div>
+  return <div className="min-h-[260px] rounded-xl bg-white px-5 py-4 shadow-sm">{children}</div>
 }

@@ -60,6 +60,9 @@ export const AREA_INFO: Record<Area, { rotulo: string; grupo: string; ordem: num
   // antecipações (painel + RPCs de escrita da 0296). Diferença do Acervo: a gestão NÃO inclui a
   // leitura — as RPCs de leitura exigem 'financeiro/geral' e quem registra (Financeiro,
   // Administrador) já a recebe. A página, a regra de rota e a subaba usam só a de leitura.
+  // ATENÇÃO ao conceder pelo editor de roles: 'financeiro/geral/gestao' SÓ TEM EFEITO junto com
+  // 'financeiro/geral' — sozinha, a pessoa não abre a página e não vê o botão. (AREA_INFO não tem campo de
+  // descrição/ajuda e o rótulo espelha app.rbac_areas — por isso o aviso fica aqui, não no rótulo.)
   'financeiro/geral':         { rotulo: 'Geral',                         grupo: 'Financeiro', ordem: 36 },
   'financeiro/geral/gestao':  { rotulo: 'Geral (gestão)',                grupo: 'Financeiro', ordem: 37 },
   // Metas em DOIS níveis (v5.0.0): a CHAVE 'metas' (nome histórico) = GESTÃO/Cadastro (definir/

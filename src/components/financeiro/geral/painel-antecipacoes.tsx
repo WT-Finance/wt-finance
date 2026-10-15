@@ -7,12 +7,12 @@ import ListDrawer from '@/components/shared/list-drawer'
 import Button from '@/components/ui/button'
 import ErroCarregamento from '@/components/shared/erro-carregamento'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
-import { PILL, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
+import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import {
   desfazerAntecipacao, excluirAntecipacao, historicoAntecipacoes, listarAntecipacoes,
   type ResultadoLeitura,
 } from '@/app/financeiro/geral/actions'
-import { podeDesfazerEntrada, registroDaEntrada, rotuloOperacao } from '@/lib/financeiro-geral/gestao'
+import { mensagemDeFalhaDaAcao, podeDesfazerEntrada, registroDaEntrada, rotuloOperacao } from '@/lib/financeiro-geral/gestao'
 import type { EntradaHistorico, ListaAntecipacoes, RegistroAntecipacao } from '@/lib/financeiro-geral/schemas'
 import { fmtBRL2, fmtDataHoraSP, fmtDate } from '@/lib/fmt'
 import ConfirmarAcaoModal from './confirmar-acao-modal'
@@ -66,8 +66,16 @@ export default function PainelAntecipacoes({ hoje, onFechar }: Props) {
   useEffect(() => {
     let cancelado = false
     void (async () => {
-      const [lista, historico] = await Promise.all([listarAntecipacoes(), historicoAntecipacoes(20)])
-      if (!cancelado) setCarga({ versao, lista, historico })
+      try {
+        const [lista, historico] = await Promise.all([listarAntecipacoes(), historicoAntecipacoes(20)])
+        if (!cancelado) setCarga({ versao, lista, historico })
+      } catch (e) {
+        // A action pode LANÇAR (sessão expirada, permissão, rede): vira erro na tela, não "Carregando…"
+        // eterno nem rejeição não tratada.
+        if (cancelado) return
+        const erro = mensagemDeFalhaDaAcao(e)
+        setCarga({ versao, lista: { ok: false, erro }, historico: { ok: false, erro } })
+      }
     })()
     return () => { cancelado = true }
   }, [versao])
@@ -180,7 +188,7 @@ export default function PainelAntecipacoes({ hoje, onFechar }: Props) {
                         <button
                           type="button"
                           onClick={() => setConfirmacao({ tipo: 'desfazer', entrada: e })}
-                          className="foco-neutro inline-flex shrink-0 items-center gap-1 rounded-full border border-zinc-200 px-2.5 py-0.5 text-2xs font-medium text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50"
+                          className={`${PILL} ${PILL_NEUTRO} shrink-0`}
                         >
                           <Undo2 size={12} aria-hidden /> Desfazer
                         </button>

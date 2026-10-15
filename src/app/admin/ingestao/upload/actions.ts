@@ -251,8 +251,9 @@ export async function getDemonstrativoCompetenciaStatusAction(): Promise<
 // Contas a receber (v6.4.0) — só STATUS (a carga é `POST /api/ingestao/contas-receber`). Não há RPC
 // `status_*` para esta base: o card mostra a contagem e a data da ÚLTIMA CARGA APLICADA
 // (`ingestao_carga_ultima`, a mesma fonte do Log de Ingestão). A base é substituída inteira a cada
-// carga, então `linhas` da carga = linhas na base. Falha de leitura vira erro (o card mostra "—"),
-// nunca um "0" que pareça base vazia.
+// carga, então `linhas` da carga = linhas na base. Falha de leitura vira `{ error }` aqui; como nas outras
+// bases, quem decide o que mostrar é a página — `statusAntesDoUpload` (upload/page.tsx) usa 0 no "antes"
+// quando a leitura falha — e a conferência do servidor, no envio, degrada com aviso.
 // ---------------------------------------------------------------------------
 
 export async function getContasReceberStatusAction(): Promise<

@@ -42,8 +42,8 @@ export interface LinhaFaixa {
   pct: number | null
 }
 
-/** As 5 faixas SEMPRE, na ordem do atraso, com zero onde a RPC não trouxe a faixa (ela só emite as
- *  que têm título). Faixa ausente é "nenhum título", e aqui isso É zero de verdade — o universo (os
+/** As 5 faixas SEMPRE, na ordem do atraso. A RPC (0297) já emite as 5, com zero onde não há título; a
+ *  função continua tolerante — faixa ausente vira zero. Isso É zero de verdade: o universo (os
  *  marcados) é fechado, ao contrário do histórico das fotos, que nunca ganha zero fabricado. */
 export function faixasCompletas(r: Pick<Recebiveis['inadimplente'], 'faixas' | 'valor'>): LinhaFaixa[] {
   return FAIXAS_ATRASO.map(faixa => {

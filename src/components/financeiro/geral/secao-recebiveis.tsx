@@ -28,14 +28,14 @@ import { CascaEstado, MetaSecao, TD, TD_NUM, TD_TOTAL, TH_DIR, TH_ESQ, Tile } fr
 //  • As faixas de atraso (1–30 … 90+) são sobre os títulos MARCADOS; "a vencer" é a carteira.
 //  • A marcação dos demais títulos em aberto aparece só como CONTEXTO.
 //  • Nome do devedor só no top 10 desta seção (a faixa do topo diz "10 maiores = X%" sem nome).
-// A evolução usa a última foto de cada mês e começa na v6.4 ("histórico desde"): nunca fabrica zero antes.
+// A evolução usa a última foto de cada mês e começa na 1ª carga da base ("histórico desde"): nunca fabrica zero antes.
 
 const AJUDA =
   'Posição dos contas a receber na data da última carga (não muda com os anos escolhidos). Inadimplente = títulos ' +
   'marcados como Inadimplente pelo Financeiro e ainda não liquidados; as faixas de atraso contam os dias entre o ' +
   'vencimento e a data da carga, só desses títulos. A vencer = títulos em aberto com vencimento depois da carga. ' +
   'A marcação dos demais títulos em aberto é contexto. Recuperado = títulos que estavam marcados e foram liquidados no ano. ' +
-  'A evolução usa a última carga de cada mês e começa na v6.4.'
+  'A evolução usa a última carga de cada mês e começa a partir da primeira carga desta base.'
 
 const NOME_SEM_PESSOA = '(sem nome)'
 

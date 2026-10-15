@@ -133,7 +133,7 @@ export default function SecaoCustos({ leituras, anos }: Props) {
                           type="button"
                           onClick={() => alternar(l.chave)}
                           aria-expanded={aberto}
-                          className="foco-neutro inline-flex items-center gap-1 rounded text-left hover:text-zinc-900"
+                          className="foco-neutro -my-1 inline-flex items-center gap-1 rounded py-1 text-left hover:text-zinc-900"
                         >
                           {aberto ? <ChevronDown size={13} aria-hidden /> : <ChevronRight size={13} aria-hidden />}
                           {l.rotulo}

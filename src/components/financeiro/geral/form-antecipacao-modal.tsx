@@ -6,7 +6,7 @@ import Button from '@/components/ui/button'
 import { Input, Select } from '@/components/ui/field'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import { salvarAntecipacao } from '@/app/financeiro/geral/actions'
-import { DATA_PISO, descontoEmCentavos, descontoFormatado, lerValorDigitado, validarFormulario } from '@/lib/financeiro-geral/gestao'
+import { DATA_PISO, descontoEmCentavos, descontoFormatado, lerValorDigitado, mensagemDeFalhaDaAcao, validarFormulario } from '@/lib/financeiro-geral/gestao'
 import type { RegistroAntecipacao } from '@/lib/financeiro-geral/schemas'
 import { numBRL2 } from '@/lib/fmt'
 
@@ -61,14 +61,23 @@ export default function FormAntecipacaoModal({ estado, contas, hoje, onFechar, o
     if (!v.ok) { setErro(v.erro); return }
     setErro(null)
     setSalvando(true)
-    const res = await salvarAntecipacao({
-      id: base ? base.id : null,
-      contaId: v.entrada.contaId,
-      data: v.entrada.data,
-      valorAntecipado: v.entrada.valorAntecipado,
-      valorLiquido: v.entrada.valorLiquido,
-    })
-    setSalvando(false)
+    // A action pode LANÇAR (sessão expirada, permissão, rede): sem try/finally o botão ficaria preso em
+    // "Salvando…". `onSalvo` fica fora do try — erro dele não é falha da action.
+    let res: Awaited<ReturnType<typeof salvarAntecipacao>>
+    try {
+      res = await salvarAntecipacao({
+        id: base ? base.id : null,
+        contaId: v.entrada.contaId,
+        data: v.entrada.data,
+        valorAntecipado: v.entrada.valorAntecipado,
+        valorLiquido: v.entrada.valorLiquido,
+      })
+    } catch (e) {
+      setErro(mensagemDeFalhaDaAcao(e))
+      return
+    } finally {
+      setSalvando(false)
+    }
     if (!res.ok) { setErro(res.erro); return }
     onSalvo(res.mensagem)
   }
