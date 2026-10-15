@@ -36,7 +36,8 @@ Valor de referência para a conferência visual: em **abr/26**, R$ 700,3 mil em 
 - **Degradação.** A página busca a RPC numa promise própria. Se ela falhar, o gráfico rende como antes,
   sem o âmbar, com a nota "Antecipações indisponíveis no momento".
 - **Gráfico.** A barra de entradas efetivadas virou dois segmentos empilhados (`stackId="entrada"`), na
-  mesma coluna de 5 px: âmbar na base, o restante em verde no topo, com o raio. As outras três barras não
+  mesma coluna de 5 px: o restante em verde na base e o âmbar no topo, com o raio (ordem pedida pelo Yan no
+  fechamento; no mês sem antecipação o verde herda o raio, via `shape`). As outras três barras não
   mudam.
 - **Cor.** Token semântico `--chart-antecipacao: var(--warning)` e `fluxoColors.antecipacao` (arquivo-ímã,
   escrito pelo orquestrador). A cor também foi registrada na página de design system.

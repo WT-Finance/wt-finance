@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from 'react'
 import {
-  ResponsiveContainer, ComposedChart, Bar,
+  ResponsiveContainer, ComposedChart, Bar, Rectangle,
   XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Line, Legend,
+  type BarShapeProps,
 } from 'recharts'
 import { fmtMi, fmtAxisPct } from '@/lib/fmt'
 import SliderHorizonte from '@/components/shared/slider-horizonte'
@@ -144,6 +145,13 @@ function AntecipacaoDetalhe({ ponto }: { ponto: ChartPoint }) {
       )}
     </div>
   )
+}
+
+/** Base verde da pilha de entradas: arredonda o topo só quando não há âmbar por cima. */
+function BaseEntradaEfetivada(props: BarShapeProps) {
+  const ponto = props.payload as ChartPoint | undefined
+  const semAmbar = !ponto || ponto.antecipacao <= 0
+  return <Rectangle {...props} radius={semAmbar ? [2, 2, 0, 0] : 0} />
 }
 
 // ── Legend ────────────────────────────────────────────────────────────────────
@@ -324,24 +332,25 @@ export default function FluxoMensalChart({
           <Tooltip content={<FluxoTooltip />} />
           <ReferenceLine y={0} stroke="var(--chart-grid)" />
 
-          {/* v6.4.1: "Entradas efetivadas" = DOIS segmentos na MESMA coluna (stackId). Base âmbar =
-              parte vinda de antecipação (sem raio); topo verde = o resto, com o raio de sempre.
-              Com 100% âmbar o topo some (altura 0) — o arredondamento some junto, sem prejuízo.
+          {/* v6.4.1: "Entradas efetivadas" = DOIS segmentos na MESMA coluna (stackId). Base verde =
+              o resto; topo âmbar = parte vinda de antecipação, com o raio (pedido do Yan: âmbar em
+              cima). No mês sem antecipação o âmbar tem altura 0 e o verde herda o raio (shape).
               As outras 3 barras seguem fora da pilha (cada uma na sua coluna). */}
-          <Bar
-            dataKey="antecipacao"
-            name="antecipacao"
-            stackId="entrada"
-            fill={fluxoColors.antecipacao}
-            fillOpacity={1}
-            barSize={5}
-            isAnimationActive={false}
-          />
           <Bar
             dataKey="entrada_efetivada_sem_antecipacao"
             name="entrada_efetivada_sem_antecipacao"
             stackId="entrada"
             fill="var(--positive)"
+            fillOpacity={1}
+            barSize={5}
+            isAnimationActive={false}
+            shape={BaseEntradaEfetivada}
+          />
+          <Bar
+            dataKey="antecipacao"
+            name="antecipacao"
+            stackId="entrada"
+            fill={fluxoColors.antecipacao}
             fillOpacity={1}
             radius={[2, 2, 0, 0]}
             barSize={5}

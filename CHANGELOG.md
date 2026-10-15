@@ -19,7 +19,7 @@ PATCH · **Antecipações em âmbar no gráfico "Fluxo de Caixa Mensal".** Out-b
   `financeiro/fluxo-caixa` inline, `SECURITY DEFINER`, `search_path` vazio, EXECUTE para `verificador`. O valor
   de face **não** sai (líquido + face revelaria o desconto mensal a quem só tem fluxo-caixa).
 - **Segmento âmbar** dentro da barra "Entradas efetivadas" do gráfico (`/financeiro/fluxo-caixa`): dois
-  segmentos empilhados (antecipação na base, o restante em verde no topo). Tooltip "Entradas efetivadas R$ X ·
+  segmentos empilhados (o restante em verde na base, a antecipação em âmbar no topo). Tooltip "Entradas efetivadas R$ X ·
   das quais antecipação R$ Y (Z%)", com a nota "segundo o registro de antecipações". O âmbar é limitado ao total
   das entradas do mês, e o tooltip avisa quando o registro excede. Item novo na legenda. Se a RPC falhar, o
   gráfico rende sem o âmbar e mostra "Antecipações indisponíveis no momento".
