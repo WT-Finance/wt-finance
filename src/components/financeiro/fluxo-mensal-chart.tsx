@@ -5,9 +5,15 @@ import {
   ResponsiveContainer, ComposedChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Line, Legend,
 } from 'recharts'
-import { fmtMi } from '@/lib/fmt'
+import { fmtMi, fmtAxisPct } from '@/lib/fmt'
 import SliderHorizonte from '@/components/shared/slider-horizonte'
+import { fluxoColors } from '@/components/charts'
 import { fatiarJanelaMensal } from '@/lib/fluxo/janela-mensal'
+import {
+  mesclarAntecipacoes,
+  type AntecipacaoMensalRow,
+  type AntecipacaoMesclada,
+} from '@/lib/fluxo/antecipacao-mensal'
 
 export interface FluxoMensalV3Row {
   mes:                string   // 'YYYY-MM'
@@ -52,9 +58,16 @@ const SERIES_LABELS: Record<string, string> = {
   resultado_mensal:    'Resultado mensal',
 }
 
+// v6.4.1: a barra de entradas efetivadas são DOIS segmentos empilhados (âmbar = antecipação,
+// verde = o resto). O tooltip NÃO lista os dois como séries: o segmento verde vira a linha
+// "Entradas efetivadas" com o TOTAL (lido do ponto inteiro), e o âmbar aparece como detalhe
+// "das quais antecipação" — nunca como uma série separada.
+const SERIE_ANTECIPACAO = 'antecipacao'
+const SERIE_ENTRADA_SEM_ANTECIPACAO = 'entrada_efetivada_sem_antecipacao'
+
 interface TooltipProps {
   active?:  boolean
-  payload?: Array<{ name: string; value: number; color: string }>
+  payload?: Array<{ name: string; value: number; color: string; payload?: ChartPoint }>
   label?:   string
 }
 
@@ -63,12 +76,62 @@ function FluxoTooltip({ active, payload, label }: TooltipProps) {
   return (
     <div className="bg-white border border-zinc-200 rounded-lg shadow-md p-3 text-xs min-w-[190px]">
       <p className="font-semibold text-zinc-700 mb-2">{label}</p>
-      {payload.map(p => (
-        <div key={p.name} className="flex justify-between gap-4 mb-1">
-          <span style={{ color: p.color }}>{SERIES_LABELS[p.name] ?? p.name}</span>
-          <span className="font-medium text-zinc-700">{fmtMi(Math.abs(p.value))}</span>
-        </div>
-      ))}
+      {payload.map(p => {
+        if (p.name === SERIE_ANTECIPACAO) return null
+        if (p.name === SERIE_ENTRADA_SEM_ANTECIPACAO) {
+          const ponto = p.payload
+          if (!ponto) return null
+          return (
+            <div key="entrada_efetivada" className="mb-1">
+              <div className="flex justify-between gap-4">
+                <span style={{ color: p.color }}>{SERIES_LABELS.entrada_efetivada}</span>
+                <span className="font-medium text-zinc-700">{fmtMi(Math.abs(ponto.entrada_efetivada))}</span>
+              </div>
+              <AntecipacaoDetalhe ponto={ponto} />
+            </div>
+          )
+        }
+        return (
+          <div key={p.name} className="flex justify-between gap-4 mb-1">
+            <span style={{ color: p.color }}>{SERIES_LABELS[p.name] ?? p.name}</span>
+            <span className="font-medium text-zinc-700">{fmtMi(Math.abs(p.value))}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/** "das quais antecipação R$ Y (Z%)" + a fonte do recorte; avisa quando o registro excede. */
+function AntecipacaoDetalhe({ ponto }: { ponto: ChartPoint }) {
+  const temRegistro = ponto.antecipacaoLiquidaRegistrada > 0
+  if (ponto.antecipacao <= 0 && !temRegistro) return null
+  return (
+    <div className="mt-0.5 pl-3 text-2xs text-zinc-500">
+      {ponto.antecipacao > 0 && (
+        <>
+          <div className="flex items-center justify-between gap-4">
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="w-2 h-2 rounded-sm inline-block shrink-0"
+                style={{ background: fluxoColors.antecipacao }}
+              />
+              das quais antecipação
+            </span>
+            <span className="font-medium text-zinc-700">
+              {fmtMi(ponto.antecipacao)}
+              {ponto.pctAntecipacao !== null && ` (${fmtAxisPct(ponto.pctAntecipacao * 100, 1)})`}
+            </span>
+          </div>
+          <p className="text-zinc-400">segundo o registro de antecipações</p>
+        </>
+      )}
+      {ponto.antecipacaoExcedeu && (
+        <p className="mt-0.5 text-zinc-500">
+          O registro ({fmtMi(ponto.antecipacaoLiquidaRegistrada)}) excede as entradas efetivadas do mês;
+          a parte em âmbar foi limitada ao total.
+        </p>
+      )}
     </div>
   )
 }
@@ -78,7 +141,8 @@ function FluxoTooltip({ active, payload, label }: TooltipProps) {
 function FluxoLegend() {
   const items = [
     { label: 'Entradas efetivadas',  color: 'var(--positive)',     opacity: 1,    type: 'rect' as const },
-    { label: 'Entradas previstas',   color: 'var(--positive)',     opacity: 0.45, type: 'rect' as const },
+    { label: 'Antecipação (dentro das entradas efetivadas)', color: fluxoColors.antecipacao, opacity: 1, type: 'rect' as const },
+    { label: 'Entradas previstas',  color: 'var(--positive)',     opacity: 0.45, type: 'rect' as const },
     { label: 'Saídas efetivadas',    color: 'var(--negative)',     opacity: 1,    type: 'rect' as const },
     { label: 'Saídas previstas',     color: 'var(--negative)',     opacity: 0.45, type: 'rect' as const },
     { label: 'Resultado mensal',     color: 'var(--text-primary)', opacity: 1,    type: 'line' as const },
@@ -111,9 +175,10 @@ function FluxoLegend() {
 
 // ── Data transform ────────────────────────────────────────────────────────────
 
-interface ChartPoint {
+interface ChartPoint extends AntecipacaoMesclada {
   mes:                 string
   label:               string
+  /** TOTAL das entradas efetivadas (= antecipação + segmento verde). */
   entrada_efetivada:   number
   entrada_prevista:    number
   saida_efetivada_val: number
@@ -127,7 +192,7 @@ interface ChartPoint {
 // resultado, então o eixo deixou de mostrar valor ABSOLUTO. Antes o sinal vinha da
 // direção da barra; agora só o rótulo pode dizer que é negativo, e um "R$ 4 Mi"
 // abaixo do zero seria leitura errada.
-function toChartPoints(rows: readonly FluxoMensalV3Row[]): ChartPoint[] {
+function toChartPoints(rows: ReadonlyArray<FluxoMensalV3Row & AntecipacaoMesclada>): ChartPoint[] {
   return rows.map(r => ({
     mes:                 r.mes,
     label:               fmtMesLabel(r.mes),
@@ -136,6 +201,11 @@ function toChartPoints(rows: readonly FluxoMensalV3Row[]): ChartPoint[] {
     saida_efetivada_val: r.saida_efetivada,
     saida_prevista_val:  r.saida_prevista,
     resultado_mensal:    r.resultado_mensal,
+    antecipacao:                       r.antecipacao,
+    entrada_efetivada_sem_antecipacao: r.entrada_efetivada_sem_antecipacao,
+    antecipacaoLiquidaRegistrada:      r.antecipacaoLiquidaRegistrada,
+    antecipacaoExcedeu:                r.antecipacaoExcedeu,
+    pctAntecipacao:                    r.pctAntecipacao,
   }))
 }
 
@@ -154,9 +224,17 @@ interface Props {
   /** Mês corrente 'YYYY-MM' — vem do SERVIDOR (`hojeSP()`), para o slider ancorar
    *  sem depender do relógio do cliente (e sem divergir na hidratação). */
   mesHoje: string
+  /** Antecipações por mês (RPC 0299), já validadas. Vazio = sem âmbar (barra toda verde). */
+  antecipacoes?: readonly AntecipacaoMensalRow[]
+  /** A RPC de antecipações falhou/divergiu: o gráfico segue sem âmbar e avisa. */
+  antecipacoesIndisponiveis?: boolean
 }
 
-export default function FluxoMensalChart({ rows, mesHoje }: Props) {
+const SEM_ANTECIPACOES: readonly AntecipacaoMensalRow[] = []
+
+export default function FluxoMensalChart({
+  rows, mesHoje, antecipacoes = SEM_ANTECIPACOES, antecipacoesIndisponiveis = false,
+}: Props) {
   const [atras,  setAtras]  = useState(JANELA_PADRAO_ATRAS)
   const [frente, setFrente] = useState(JANELA_PADRAO_FRENTE)
 
@@ -164,9 +242,14 @@ export default function FluxoMensalChart({ rows, mesHoje }: Props) {
   // UMA vez, e o slider fatia aqui: arrastar não refetcha. Diferente do acumulado de
   // Weddings, aqui cada linha já é o valor do próprio mês, então recortar não rebaseia
   // nada (ver o cabeçalho de @/lib/fluxo/janela-mensal).
+  // v6.4.1: a mescla com o registro de antecipações é feita na série LARGA (antes do
+  // fatiamento) — mês do registro fora da janela da RPC mensal é ignorado pela própria mescla.
   const ordenadas = useMemo(
-    () => [...rows].sort((a, b) => a.mes.localeCompare(b.mes)),
-    [rows],
+    () => mesclarAntecipacoes(
+      [...rows].sort((a, b) => a.mes.localeCompare(b.mes)),
+      antecipacoes,
+    ),
+    [rows, antecipacoes],
   )
   const janela = useMemo(
     () => fatiarJanelaMensal(ordenadas, mesHoje, atras, frente),
@@ -231,9 +314,23 @@ export default function FluxoMensalChart({ rows, mesHoje }: Props) {
           <Tooltip content={<FluxoTooltip />} />
           <ReferenceLine y={0} stroke="var(--chart-grid)" />
 
+          {/* v6.4.1: "Entradas efetivadas" = DOIS segmentos na MESMA coluna (stackId). Base âmbar =
+              parte vinda de antecipação (sem raio); topo verde = o resto, com o raio de sempre.
+              Com 100% âmbar o topo some (altura 0) — o arredondamento some junto, sem prejuízo.
+              As outras 3 barras seguem fora da pilha (cada uma na sua coluna). */}
           <Bar
-            dataKey="entrada_efetivada"
-            name="entrada_efetivada"
+            dataKey="antecipacao"
+            name="antecipacao"
+            stackId="entrada"
+            fill={fluxoColors.antecipacao}
+            fillOpacity={1}
+            barSize={5}
+            isAnimationActive={false}
+          />
+          <Bar
+            dataKey="entrada_efetivada_sem_antecipacao"
+            name="entrada_efetivada_sem_antecipacao"
+            stackId="entrada"
             fill="var(--positive)"
             fillOpacity={1}
             radius={[2, 2, 0, 0]}
@@ -284,6 +381,11 @@ export default function FluxoMensalChart({ rows, mesHoje }: Props) {
         </ComposedChart>
       </ResponsiveContainer>
       <FluxoLegend />
+      {antecipacoesIndisponiveis && (
+        <p className="mt-1 text-center text-2xs text-zinc-400">
+          Antecipações indisponíveis no momento
+        </p>
+      )}
 
       {/* Slider de janela — mesmo primitivo e mesma régua do card de Weddings, com o
           trilho NEUTRO (o default): esta tela já tem o slider de "Horizonte de tempo"

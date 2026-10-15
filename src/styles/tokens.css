@@ -130,6 +130,11 @@
      --negative) segue como semântica do drawer de operação e do Financeiro. */
   --chart-fluxo-entrada: #0091B3;  /* Pantone 632 — entradas/recebimentos */
   --chart-fluxo-saida:   #D9A23F;  /* mostarda — saídas/pagamentos */
+  /* v6.4.1: parte das ENTRADAS EFETIVADAS vinda de antecipação de recebíveis (registro de antecipações,
+     valor líquido), empilhada dentro da barra verde do "Fluxo de Caixa Mensal". Âmbar da família
+     --warning, porque antecipar recebíveis é sinal de pressão de caixa. Página sem [data-theme]
+     de Weddings: não colide com --chart-fluxo-saida (mesma família, outro gráfico). */
+  --chart-antecipacao:   var(--warning);
 
   /* Cores identitárias de setor macro — alinhadas aos gráficos executivos (v4.8) */
   --setor-lazer:       #378ADD;   /* Trips / Lazer */

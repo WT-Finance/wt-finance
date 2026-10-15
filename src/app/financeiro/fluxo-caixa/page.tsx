@@ -26,6 +26,7 @@ import {
   type RunwaySemanal as RunwaySemanalData,
   type CoberturaData, type PrevistoDiario,
 } from '@/lib/fluxo/rpc-fluxo'
+import { antecipacoesMensalSchema } from '@/lib/fluxo/antecipacao-mensal'
 
 interface SearchParams {
   preset?: string
@@ -123,6 +124,20 @@ export default async function FluxoCaixaPage({
   // v6.0.0/M7: carimbo de carga das duas bases que alimentam `financeiro.fato_fluxo`
   // (Movimentação + Aberto) buscado em PARALELO com o estágio de RPCs de dado — sem serializar
   // um round-trip novo à frente do resto (`Promise.all` por fora do `allSettled` existente).
+  // v6.4.1: antecipações por mês (0299) — o âmbar dentro das "Entradas efetivadas" do gráfico
+  // mensal. Buscada em PARALELO com o resto, mas FORA do `allSettled` de propósito: lá uma
+  // falha vira `empty` (data null, sem erro), que o schema leria como "sem antecipação" — e
+  // a degradação precisa ser DISTINTA de "não há antecipação" (o gráfico avisa que o recorte
+  // está indisponível). `Promise.resolve` + `.then(ok, falha)` porque o retorno do `.rpc()` é
+  // thenable, sem `.catch`.
+  const antecipacoesPromise: Promise<RpcResult> = Promise.resolve(rpc('get_fluxo_antecipacoes_mensal')).then(
+    r => r,
+    (e: unknown): RpcResult => ({
+      data: null,
+      error: { message: e instanceof Error ? e.message : 'falha ao buscar antecipações' },
+    }),
+  )
+
   const [
     [
       fluxoMensalRes,
@@ -139,6 +154,7 @@ export default async function FluxoCaixaPage({
     ],
     ultimaCargaMovimentacao,
     ultimaCargaAberto,
+    antecipacoesRes,
   ] = await Promise.all([
     Promise.allSettled([
       rpc('get_fluxo_caixa_mensal_v3'),
@@ -155,9 +171,14 @@ export default async function FluxoCaixaPage({
     ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : empty)),
     buscarUltimaCargaDaBase('lancamentos-movimentacao'),
     buscarUltimaCargaDaBase('lancamentos-aberto'),
+    antecipacoesPromise,
   ])
 
   const fluxoMensalRows    = unwrapRpc<FluxoMensalV3Row[]>(fluxoMensalRes, 'get_fluxo_caixa_mensal_v3') ?? []
+
+  // Erro de RPC ou shape fora do contrato → `null` (parseRpc loga e degrada): o gráfico segue
+  // SEM o âmbar e mostra a nota "indisponível". "Sem antecipação" (`[]`) é outro estado.
+  const antecipacoesMensais = parseRpc(antecipacoesMensalSchema, antecipacoesRes, 'get_fluxo_antecipacoes_mensal')
   const fluxoAcumuladoRows = unwrapRpc<FluxoAcumuladoRow[]>(fluxoAcumuladoRes, 'get_fluxo_caixa_acumulado_v1') ?? []
 
   const kpis = unwrapRpc<KpisB>(kpisRes, 'get_fluxo_caixa_kpis_b') ?? {
@@ -307,7 +328,12 @@ export default async function FluxoCaixaPage({
             {/* `mesHoje` vem do SERVIDOR: o slider do gráfico ancora no mês corrente
                 de São Paulo sem depender do relógio do cliente (e sem risco de
                 divergência na hidratação). */}
-            <FluxoMensalChart rows={fluxoMensalRows} mesHoje={hojeSP().slice(0, 7)} />
+            <FluxoMensalChart
+              rows={fluxoMensalRows}
+              mesHoje={hojeSP().slice(0, 7)}
+              antecipacoes={antecipacoesMensais ?? []}
+              antecipacoesIndisponiveis={antecipacoesMensais === null}
+            />
 
             {/* Acumulado chart — oculto via flag (v5.2.0, checkpoint); código mantido */}
             {MOSTRAR_ACUMULADO && (

@@ -45,6 +45,7 @@ export const fluxoColors = {
   saida:             'var(--negative)',      // terracota — saídas/pagamentos
   resultado:         'var(--text-primary)',  // linha de resultado
   resultadoNegativo: 'var(--danger)',        // ponto de resultado < 0
+  antecipacao:       'var(--chart-antecipacao)', // âmbar — parte das entradas efetivadas vinda de antecipação (v6.4.1)
 } as const
 
 /**
