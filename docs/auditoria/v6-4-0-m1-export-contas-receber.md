@@ -42,7 +42,7 @@ Nenhum valor de `Pessoa`, `Observações`, `Pendente com:`, `Documento`, `Conta 
 | (c) valor | `Valor Final` | número em 28.603/28.603; `Valor ≠ Valor Final` em 23.562 | ✅ |
 | (d) nome | `Pessoa` | texto em 28.603/28.603 | ✅ |
 | a receber = todo crédito | inclui comissão de fornecedor | 828 "Fatura Fornecedor" com vencimento ≥ 2026 = `vendor_invoice` de crédito | ✅ |
-| Emissão | inválida vira nula, contada no log | **15** com data zero (amostra: 5) | ✅ (regra vale) |
+| Emissão | inválida vira nula, contada no log | **15** com data zero (amostra: 5); o parser também anula, pela errata 1 (piso 2015), **7** emissões de 2000–2006 neste arquivo e **1** de 2014 no de 2024 — 23 no total, linha preservada | ✅ (regra vale) |
 | Datas | — | meia-noite de Brasília (03:00 UTC) em 100% | ✅ (coerção canônica) |
 | Situação | — | liquidados: 2025 12.205 · 2026 11.554 · 2027 14; em aberto: 2025 15 · 2026 2.350 · 2027 2.267 · 2028–2031 197 · 2049 1 | — |
 | Números | únicos | 28.603 distintos | ✅ |

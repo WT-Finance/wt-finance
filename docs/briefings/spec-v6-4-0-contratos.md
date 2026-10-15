@@ -39,7 +39,7 @@ Fixtures reais: `~/projects/arquivo-worktrees-janus/fixtures-ingestao/Contas a r
 - `Emissão` com data zero ou inválida ⇒ `null`, contado em aviso (não rejeita).
 - `Conferido` ∈ {vazio→`null`, `Sim`, `Pendente`, `Enviado para o banco`, `Inadimplente`}. Valor fora
   disso ⇒ a carga reprova.
-- Todo `Valor Final` > 0. Um arquivo misto pagar + receber traz o total **com sinal** e não fecha.
+- `Valor Final` ≥ 0 (zero é legítimo: 216 títulos em 2024 e 395 em 2025–26, faturas zeradas por compensação; corrigido em 15/10 depois que o oráculo pegou o erro da M1). Negativo reprova: um arquivo misto pagar + receber traz o total **com sinal** e não fecha.
 - **Aviso de lacuna:** com as faixas `[min,max]` de vencimento de cada arquivo ordenadas, buraco de mais
   de 1 dia entre o fim de uma e o início da próxima ⇒ aviso (não bloqueia).
 - Datas: valor nativo da célula; meia-noite de Brasília = 03:00 UTC. Coerção só por `@/lib/carga/coercao.ts`.
@@ -62,7 +62,7 @@ Fixtures reais: `~/projects/arquivo-worktrees-janus/fixtures-ingestao/Contas a r
   - `limpar_staging_contas_receber()`;
   - `inserir_lote_staging_contas_receber(p_linhas jsonb)`;
   - `validar_carga_contas_receber()`, que devolve `{ok,total,erros}`. Reprova: staging vazia, número
-    repetido, `conferido` fora do domínio, `valor_final` ≤ 0;
+    repetido, `conferido` fora do domínio, `valor_final` < 0;
   - `promover_carga_contas_receber(p_checksums jsonb, p_carga_id uuid)`:
     - advisory lock **4017060**;
     - replay por `ingestao.promocao`;
