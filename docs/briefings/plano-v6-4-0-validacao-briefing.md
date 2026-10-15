@@ -154,3 +154,28 @@ Missões e gates do briefing §8/§9. Commit por missão com `git add` de arquiv
 - **"A receber" = todo título de crédito**, inclusive comissão a receber de fornecedor (faturas de fornecedor
   de crédito; na M-1, 67 dos vencidos). Se o filtro "a receber" do Monde não trouxer esses títulos, a M1
   aponta a diferença.
+
+## Estado (15/10/2026, fim da fase de gates de medição)
+
+**Concluídos:** M-1 (API, `7a97798`), M0 · GATE 0 (`69aa910` + decisões `38f12ac`) e M1 · GATE 1 (`9d94b3a`,
+`e08bb20`).
+
+**Insumos em `~/projects/arquivo-worktrees-janus/fixtures-ingestao/`** (fora do git):
+
+- `Contas a receber 24.xlsx` (`3916bd8a…`, 10.354 títulos, total 23.925.307,37);
+- `Contas a receber 25-26.xlsx` (`ebcd5839…`, 28.603 títulos, total 73.062.152,05);
+- `Histórico de Antecipações.xlsx` (`dbbf07d0…`, 38 linhas = inv. 7).
+
+**Próximo, re-ancorável:** **M2 · GATE 2**, o mockup na rota real `/financeiro/geral` com fixture (página,
+estados vazio e de erro por seção, largura estreita, painel de antecipações) → PARA para o Yan.
+
+Antes da M2, ler as skills `ui-design-system`, `tabela-densa`, `graficos` e `react-padroes`, e as decisões
+acima. Valem também D7 (pills locais do Marketing, sem mover) e D8 (nome "Geral" × "Visão Geral" da DRE).
+
+**Decisões que mudam a M3:**
+
+- N arquivos por carga, com checksum por arquivo;
+- número repetido entre arquivos rejeita a carga; lacuna de vencimento entre faixas gera alerta;
+- `Conferido` ∈ {vazio, Sim, Pendente, Enviado para o banco, Inadimplente};
+- lista fechada com 9 colunas;
+- um arquivo misto (pagar + receber) é rejeitado pelo total com sinal.

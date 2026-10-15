@@ -97,7 +97,7 @@ Consequências para a M3, informativas:
   | Linha de total (`Número` · `Valor Final`) | 10.354 · 23.925.307,37 | 28.603 · 73.062.152,05 |
   | Fecha com a Σ das linhas | ✅ | ✅ |
   | Vencimentos | 01/01–31/12/2024 | 01/01/2025–2049 |
-  | Em aberto / inadimplentes | 0 / 0 | 4.831 / 21 |
+  | Em aberto / inadimplentes | 0 / 0 | 4.830 / 21 |
   | Emissão com data zero | 0 | 15 |
   | `Conferido` | vazio 10.349 · Pendente 6 | (acima) |
   | Mesmo cabeçalho de 17 colunas | ✅ | ✅ |
