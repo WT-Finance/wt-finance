@@ -1,154 +1,113 @@
 import { describe, expect, it } from 'vitest'
 import { fmtBRL2 } from '@/lib/fmt'
 import { faixaDoTopo } from './faixa-topo'
-import {
-  antecipacoesSchema, custosFinanceirosSchema, prazosSchema, prejuizosSchema, recebiveisSchema,
-} from './schemas'
+import { fixtureGeral } from './fixture'
+import { recebiveisSchema } from './schemas'
 import type { DadosGeral } from './tipos'
 
-const meses = (total: number) => [total, ...Array.from({ length: 11 }, () => 0)]
-const serie = (total: number) => ({ meses: meses(total), total })
-const rel = (ano: number) => ({
-  ano, relacao: ano === 2026 ? 'corrente' : 'fechado', mes_corrente: ano === 2026 ? 10 : null,
-})
-const MES = { volume: 0, liquido: 0, desconto: 0, n: 0 }
+const HOJE = '2026-10-26'
+const normal = (anos: number[] = [2025, 2026]) => fixtureGeral('normal', HOJE, anos)
 
-const recebiveis = recebiveisSchema.parse({
-  carga: { carga_id: 'c1', data_posicao: '2026-10-15', gravado_em: '2026-10-15T13:00:00-03:00' },
-  a_vencer: { n: 100, valor: 900000 },
-  inadimplente: { n: 20, valor: 195708.79, faixas: [{ faixa: '90+', n: 20, valor: 195708.79 }] },
-  marcacao_em_aberto: [],
-  concentracao: { top: [], valor_top: 120000, pct_top: 61.3 },
-  recuperado_ano: { ano: 2026, n: 1, valor: 1228.64 },
-  comparativo: { data_posicao: '2026-09-25', inadimplente_n: 18, inadimplente_valor: 150000, a_vencer_valor: 800000 },
-  evolucao: [],
-  historico_desde: '2026-09-25',
-})
-
-const ant = (ano: number, volume = 1343423.51) => antecipacoesSchema.parse({
-  ...rel(ano),
-  meses: Array.from({ length: 12 }, () => MES),
-  total: { volume, liquido: volume * 0.97, desconto: volume * 0.03, n: 14, desconto_pct: 3 },
-  ano_anterior_ytd: { volume: 1000000, desconto: 30000, n: 10 },
-  por_conta: [], ultima_data: '2026-10-05', dias_desde_ultima: 10,
-  maior_intervalo_ano: null, atualizado_em: null,
-})
-const prej = (ano: number) => prejuizosSchema.parse({
-  ...rel(ano), prejuizo: serie(-205629.09), reversao: serie(80119.24), liquido: serie(-125509.85),
-  ano_anterior_ytd: { prejuizo: -150000, reversao: 0, liquido: -150000 }, bandeja: [], atualizado_em: null,
-})
-const cust = (ano: number) => custosFinanceirosSchema.parse({
-  ...rel(ano), grupos: [], custos: serie(-180), fin: serie(-150), receita_bruta: serie(9000),
-  ano_anterior_ytd: { custos: -120, fin: -90, receita_bruta: 8000 }, atualizado_em: null,
-})
-const prazos = prazosSchema.parse({
-  atual: {
-    data: '2026-10-15', saldo_receber: 1, saldo_pagar: 1, entrada_12m: 1, pagamento_12m: 1,
-    janela_de: '2025-10-01', janela_ate: '2026-09-30', pmr: 40, pmp: 52.5, folga: 12.5,
-  },
-  serie: [], historico_desde: '2026-09-25',
-})
-
-const dados = (over: Partial<DadosGeral> = {}): DadosGeral => ({
-  anos: [2025, 2026], anosDisponiveis: [2024, 2025, 2026], hoje: '2026-10-15',
-  recebiveis: { ok: true, dados: recebiveis },
-  prazos: { ok: true, dados: prazos },
-  antecipacoes: [2025, 2026].map(ano => ({ ano, leitura: { ok: true as const, dados: ant(ano, ano === 2026 ? 1343423.51 : 5) } })),
-  prejuizos: [2025, 2026].map(ano => ({ ano, leitura: { ok: true as const, dados: prej(ano) } })),
-  custos: [2025, 2026].map(ano => ({ ano, leitura: { ok: true as const, dados: cust(ano) } })),
-  podeGerir: false,
-  ...over,
-})
-
-describe('faixaDoTopo — os 5 indicadores', () => {
-  it('cinco, na ordem das seções', () => {
-    expect(faixaDoTopo(dados()).map(i => i.chave)).toEqual(['inadimplencia', 'antecipacoes', 'prejuizos', 'custos', 'prazos'])
+describe('faixaDoTopo — os 3 indicadores', () => {
+  it('três, na ordem das seções, sem tiles de custos nem de prazos', () => {
+    const f = faixaDoTopo(normal())
+    expect(f.map(i => i.chave)).toEqual(['inadimplencia', 'prejuizos', 'antecipacoes'])
+    expect(f.map(i => i.estado)).toEqual(['ok', 'ok', 'ok'])
   })
 
-  it('Inadimplência: SÓ a marcação, na posição da carga, "10 maiores = X%" sem nome, Δ contra a carga do mês anterior', () => {
-    const i = faixaDoTopo(dados())[0]
-    expect(i.estado).toBe('ok')
-    expect(i.valor).toBe(fmtBRL2(195708.79))
+  it('Inadimplência: valor da marcação, na carga, "% dos vencidos", Δ contra a referência da semana', () => {
+    const i = faixaDoTopo(normal())[0]
+    expect(i.valor).toBe(fmtBRL2(199767.74))
     expect(i.escopo).toBe('na carga de 15/10')
-    expect(i.apoio).toEqual(['20 títulos marcados', '10 maiores = 61,3%'])
-    expect(i.referencia).toBe('vs carga de 25/09')
-    expect(i.variacao?.pct).toBeCloseTo(((195708.79 - 150000) / 150000) * 100, 6)
-    expect(i.variacao?.sentido).toBe('desfavoravel') // inadimplência subiu
-    expect(JSON.stringify(i)).not.toMatch(/Cliente|pessoa/i)
+    expect(i.apoio[0]).toBe('21 títulos marcados')
+    expect(i.apoio[1]).toMatch(/dos vencidos$/)
+    expect(i.referencia).toBe('vs 08/10')
+    expect(i.variacao?.pct).toBeCloseTo(((199767.74 - 181420.3) / 181420.3) * 100, 6)
+    expect(i.variacao?.sentido).toBe('desfavoravel') // inadimplência subiu: menor é melhor
+    // Sem nome de pessoa na faixa
+    expect(JSON.stringify(i)).not.toMatch(/Devedor|Pessoa/)
   })
 
-  it('Inadimplência sem carga: estado vazio com explicação (não zero)', () => {
-    const semBase = recebiveisSchema.parse({
-      ...recebiveis, carga: null, a_vencer: { n: 0, valor: 0 }, inadimplente: { n: 0, valor: 0, faixas: [] },
-      concentracao: { top: [], valor_top: 0, pct_top: null }, comparativo: null, historico_desde: null,
-    })
-    const i = faixaDoTopo(dados({ recebiveis: { ok: true, dados: semBase } }))[0]
-    expect(i).toMatchObject({ estado: 'vazio', valor: null })
-    expect(i.mensagem).toMatch(/ainda não teve carga/)
-  })
-
-  it('Inadimplência sem comparativo (1ª carga): sem Δ nem referência', () => {
-    const r = recebiveisSchema.parse({ ...recebiveis, comparativo: null })
-    const i = faixaDoTopo(dados({ recebiveis: { ok: true, dados: r } }))[0]
+  it('Inadimplência sem referência da semana (1ª carga): sem Δ nem rótulo', () => {
+    const d = normal()
+    if (!d.recebiveis.ok) throw new Error('fixture')
+    const r = recebiveisSchema.parse({ ...d.recebiveis.dados, referencia_semana: null })
+    const i = faixaDoTopo({ ...d, recebiveis: { ok: true, dados: r } })[0]
+    expect(i.estado).toBe('ok')
     expect(i.variacao).toBeNull()
     expect(i.referencia).toBeNull()
   })
 
-  it('fluxo usa o ano MAIS RECENTE selecionado, com "*" no parcial e o Δ no mesmo recorte do ano anterior', () => {
-    const [, a, p, c] = faixaDoTopo(dados())
-    expect(a.escopo).toBe('2026*')
-    expect(a.valor).toBe(fmtBRL2(1343423.51))
-    expect(a.referencia).toBe('vs 2025 (jan–out)')
-    expect(a.apoio).toEqual(['14 antecipações', 'Última há 10 dias'])
-    expect(a.variacao?.sentido).toBeNull() // volume antecipado: sem juízo
-    expect(p.valor).toBe(fmtBRL2(-205629.09))
-    expect(p.apoio).toEqual([`Recuperado ${fmtBRL2(80119.24)}`, `Líquido ${fmtBRL2(-125509.85)}`])
-    expect(p.variacao?.sentido).toBe('desfavoravel')
-    expect(c.valor).toBe(fmtBRL2(-180))
-    expect(c.apoio).toHaveLength(1)
-    expect(c.apoio[0]).toMatch(/2,0% da RB$/) // −2,0%: custo negativo sobre RB positiva
-    expect(c.variacao?.sentido).toBe('desfavoravel')
+  it('Inadimplência sem carga: estado vazio com explicação (não zero)', () => {
+    const i = faixaDoTopo(fixtureGeral('vazio', HOJE, [2026]))[0]
+    expect(i).toMatchObject({ estado: 'vazio', valor: null })
+    expect(i.mensagem).toMatch(/ainda não teve carga/)
   })
 
-  it('selecionando só ano fechado: sem "*" e a referência é o ano anterior inteiro', () => {
-    const d = dados({
-      anos: [2025],
-      antecipacoes: [{ ano: 2025, leitura: { ok: true, dados: ant(2025) } }],
-      prejuizos: [{ ano: 2025, leitura: { ok: true, dados: prej(2025) } }],
-      custos: [{ ano: 2025, leitura: { ok: true, dados: cust(2025) } }],
-    })
-    const [, a] = faixaDoTopo(d)
-    expect(a.escopo).toBe('2025')
-    expect(a.referencia).toBe('vs 2024')
+  it('Prejuízos: o bruto do ano CORRENTE, com "*" e o Δ no mesmo recorte do ano anterior', () => {
+    const p = faixaDoTopo(normal())[1]
+    expect(p.valor).toBe(fmtBRL2(-224574.79))
+    expect(p.escopo).toBe('2026*')
+    expect(p.referencia).toBe('vs 2025 (jan–out)')
+    expect(p.variacao?.sentido).toBe('desfavoravel') // prejuízo cresceu
+    expect(p.apoio).toEqual(['123 lançamentos'])
   })
 
-  it('Prazos: o destaque é a folga, com PMR e PMP de apoio e a janela no escopo', () => {
-    const i = faixaDoTopo(dados())[4]
-    expect(i.valor).toBe('+12,5 dias')
-    expect(i.apoio).toEqual(['PMR 40,0 dias', 'PMP 52,5 dias'])
-    expect(i.escopo).toContain('janela de 12 meses')
+  it('Prejuízos não depende das pills: só o ano passado selecionado ainda mostra o ano CORRENTE (nunca o anterior)', () => {
+    expect(faixaDoTopo(normal([2024, 2025, 2026]))[1].escopo).toBe('2026*')
+    const so2025 = faixaDoTopo(normal([2025]))[1]
+    expect(so2025.estado).toBe('ok')
+    expect(so2025.escopo).toBe('2026*')
+    expect(so2025.valor).toBe(fmtBRL2(-224574.79))
+  })
+
+  it('Prejuízos: a leitura do ano corrente FALHOU → erro (não usa o anterior)', () => {
+    const d = normal()
+    const corrente = { ...d.corrente, prejuizos: { ano: 2026, leitura: { ok: false as const } } }
+    expect(faixaDoTopo({ ...d, corrente })[1].estado).toBe('erro')
+  })
+
+  it('Antecipações: dias sem antecipação, data da última e o maior intervalo do ano corrente', () => {
+    const a = faixaDoTopo(normal())[2]
+    expect(a.valor).toBe('35 dias')
+    expect(a.escopo).toBe('sem antecipar')
+    expect(a.apoio).toEqual(['Última em 21/09/2026', 'Maior intervalo de 2026: 117 dias'])
+    expect(a.variacao).toBeNull()
+  })
+
+  it('Antecipações não depende das pills: só ano passado selecionado ainda mostra os dias e o maior intervalo do ano corrente', () => {
+    const a = faixaDoTopo(normal([2024]))[2]
+    expect(a.estado).toBe('ok')
+    expect(a.valor).toBe('35 dias')
+    expect(a.apoio).toEqual(['Última em 21/09/2026', 'Maior intervalo de 2026: 117 dias'])
+  })
+
+  it('Antecipações no próprio dia: "hoje"', () => {
+    const d = fixtureGeral('normal', '2026-09-21', [2026])
+    const a = faixaDoTopo(d)[2]
+    expect(a.valor).toBe('hoje')
+    expect(a.escopo).toBe('última antecipação')
   })
 
   it('cada indicador degrada SOZINHO: uma leitura falha não derruba as outras', () => {
-    const d = dados({
-      recebiveis: { ok: false },
-      custos: [{ ano: 2025, leitura: { ok: true, dados: cust(2025) } }, { ano: 2026, leitura: { ok: false } }],
-    })
+    const d: DadosGeral = { ...normal(), recebiveis: { ok: false } }
     const f = faixaDoTopo(d)
-    expect(f.map(i => i.estado)).toEqual(['erro', 'ok', 'ok', 'erro', 'ok'])
+    expect(f.map(i => i.estado)).toEqual(['erro', 'ok', 'ok'])
     expect(f[0].valor).toBeNull()
   })
 
-  it('o ano mais recente falhou: não usa o anterior em silêncio (erro, não número de outro ano)', () => {
-    const d = dados({
-      prejuizos: [{ ano: 2025, leitura: { ok: true, dados: prej(2025) } }, { ano: 2026, leitura: { ok: false } }],
-    })
-    expect(faixaDoTopo(d)[2].estado).toBe('erro')
+  it('estado erro da fixture: os três em erro; estado vazio: nenhum número inventado', () => {
+    expect(faixaDoTopo(fixtureGeral('erro', HOJE, [2025, 2026])).map(i => i.estado)).toEqual(['erro', 'erro', 'erro'])
+    const v = faixaDoTopo(fixtureGeral('vazio', HOJE, [2025, 2026]))
+    expect(v.map(i => i.estado)).toEqual(['vazio', 'ok', 'vazio'])
+    expect(v[0].valor).toBeNull()
+    expect(v[2].valor).toBeNull()
   })
 
-  it('prazos sem foto: vazio; leitura vazia de fluxo (lista []): erro', () => {
-    const semFoto = prazosSchema.parse({ atual: null, serie: null, historico_desde: null })
-    expect(faixaDoTopo(dados({ prazos: { ok: true, dados: semFoto } }))[4].estado).toBe('vazio')
-    expect(faixaDoTopo(dados({ antecipacoes: [] }))[1].estado).toBe('erro')
+  it('leitura de antecipações do ano corrente falhou: erro (as pills não interferem)', () => {
+    const d = normal()
+    const corrente = { ...d.corrente, antecipacoes: { ano: 2026, leitura: { ok: false as const } } }
+    expect(faixaDoTopo({ ...d, corrente })[2].estado).toBe('erro')
+    expect(faixaDoTopo({ ...d, antecipacoes: [] })[2].estado).toBe('ok')
   })
 })

@@ -28,7 +28,7 @@ const PALAVRA: Record<Sentido, { texto: string; classe: string }> = {
 
 /** "−50,0% desfavorável · vs 2025 (jan–out)". A palavra vai escrita ao lado (a cor nunca vai sozinha) e a
  *  tinta é a `-deep` (passa AA em corpo pequeno — skill `ui-design-system` §1.3). Sem juízo: só o número. */
-export function TextoVariacao({ variacao, referencia }: { variacao: Variacao; referencia?: string | null }) {
+function TextoVariacao({ variacao, referencia }: { variacao: Variacao; referencia?: string | null }) {
   const palavra = variacao.sentido ? PALAVRA[variacao.sentido] : null
   return (
     <p className="mt-0.5 flex flex-wrap gap-x-1.5 text-2xs text-[var(--text-subtle)]">

@@ -36,55 +36,27 @@ function lista<T extends z.ZodType>(item: T) {
 
 const serieMensal = z.object({ meses: meses12, total: z.number() })
 
-// ── get_geral_custos_financeiros(p_ano) ─────────────────────────────────────────────────────────
-
-export const GRUPOS_CUSTO = ['cartao', 'antecipacao', 'juros_iof', 'tarifas'] as const
-export const GRUPOS_OUTROS = ['cambio', 'receitas_financeiras', 'nao_classificado'] as const
-
-export const custosFinanceirosSchema = z.object({
-  ano: inteiro,
-  relacao,
-  mes_corrente: mesCorrente,
-  grupos: lista(z.object({
-    // `string`, não enum: um grupo que a UI não conhece cai no rótulo cru em vez de derrubar a seção.
-    grupo: z.string(),
-    tipo: z.enum(['custo', 'outros']),
-    meses: meses12,
-    total: z.number(),
-    categorias: lista(z.object({
-      categoria_id: inteiro,
-      rotulo: z.string(),
-      meses: meses12,
-      total: z.number(),
-    })),
-  })),
-  custos: serieMensal,
-  fin: serieMensal,
-  receita_bruta: serieMensal,
-  ano_anterior_ytd: z.object({
-    custos: z.number().nullable(),
-    fin: z.number().nullable(),
-    receita_bruta: z.number().nullable(),
-  }).nullable().optional(),
-  atualizado_em: carimbo.nullable(),
-})
-export type CustosFinanceiros = z.infer<typeof custosFinanceirosSchema>
-export type GrupoCustos = CustosFinanceiros['grupos'][number]
-
 // ── get_geral_prejuizos(p_ano) ──────────────────────────────────────────────────────────────────
 
+// v6.5.0: a página é só BRUTO. `reversao`/`liquido` saem do contrato do front (a RPC ainda os emite
+// até a poda do GATE 2 — chave extra é descartada pelo `z.object`). Entra `por_pessoa`: a lista
+// COMPLETA do ano (sem corte), agregada pela pessoa do lançamento no Monde (`fato_fluxo.pessoa`,
+// aparada de espaço/tab/CR/LF/`\xa0`); o corte "top N + demais" e a soma de vários anos são do módulo
+// puro `prejuizos.ts`, para Σ por pessoa ≡ Σ da série valer por construção (inv. 2).
 export const prejuizosSchema = z.object({
   ano: inteiro,
   relacao,
   mes_corrente: mesCorrente,
   prejuizo: serieMensal,
-  reversao: serieMensal,
-  liquido: serieMensal,
   ano_anterior_ytd: z.object({
     prejuizo: z.number().nullable(),
-    reversao: z.number().nullable(),
-    liquido: z.number().nullable(),
   }).nullable().optional(),
+  por_pessoa: lista(z.object({
+    // NULL = lançamento sem pessoa: a UI mostra "(sem pessoa)", nunca descarta (inv. 4).
+    pessoa: z.string().nullable(),
+    n: inteiro,
+    valor: z.number(),
+  })),
   bandeja: lista(z.object({
     categoria_id: inteiro,
     rotulo: z.string(),
@@ -93,12 +65,24 @@ export const prejuizosSchema = z.object({
   atualizado_em: carimbo.nullable(),
 })
 export type Prejuizos = z.infer<typeof prejuizosSchema>
+export type PrejuizoPessoa = Prejuizos['por_pessoa'][number]
 
 // ── get_geral_recebiveis() ──────────────────────────────────────────────────────────────────────
 
+// v6.5.0 (contrato da "Recebíveis e inadimplência"): o funil em aberto ⊃ vencido ⊃ inadimplente, todos
+// da MESMA foto (a última carga), com `valor_final`:
+//  • em aberto    = `liquidacao IS NULL`;
+//  • vencido      = em aberto com `vencimento < data_posicao`;
+//  • inadimplente = em aberto com `conferido = 'Inadimplente'` (a MARCAÇÃO, não o atraso). Marcado com
+//    vencimento futuro CONTINUA contando (inv. 3): cai na faixa 'nao_vencido' (rótulo "a vencer"), e a
+//    seção avisa. Por isso o funil não é forçado: inadimplente ⊂ vencido vale só fora dessa faixa.
+// As chaves da v6.4.0 que a página deixou de usar (`a_vencer`, `marcacao_em_aberto`, `concentracao`,
+// `recuperado_ano`, `comparativo`, `evolucao` mensal) saem do contrato do front; a RPC as emite até a
+// poda do GATE 2.
+
 export const FAIXAS_ATRASO = ['nao_vencido', '1-30', '31-60', '61-90', '90+'] as const
-/** Na ordem em que a RPC os devolve (0297): Inadimplente, Pendente, Enviado para o banco, Sim (e null por último). */
-export const MARCACOES = ['Inadimplente', 'Pendente', 'Enviado para o banco', 'Sim'] as const
+
+const contagem = z.object({ n: inteiro, valor: z.number() })
 
 export const recebiveisSchema = z.object({
   // `null` = a base nova ainda não teve carga (estado normal, não erro).
@@ -107,57 +91,55 @@ export const recebiveisSchema = z.object({
     data_posicao: dataIso,
     gravado_em: carimbo,
   }).nullable(),
-  a_vencer: z.object({ n: inteiro, valor: z.number() }),
+  em_aberto: contagem,
+  vencido: contagem,
   inadimplente: z.object({
     n: inteiro,
     valor: z.number(),
+    // Sobre os INADIMPLENTES; dias = data_posicao − vencimento. Σ faixas ≡ inadimplente (inv. 2).
     faixas: lista(z.object({
       faixa: z.enum(FAIXAS_ATRASO),
       n: inteiro,
       valor: z.number(),
     })),
   }),
-  marcacao_em_aberto: lista(z.object({
-    // CHECK do banco: vazio→NULL, Sim, Pendente, Enviado para o banco, Inadimplente.
-    conferido: z.enum(MARCACOES).nullable(),
-    n: inteiro,
-    valor: z.number(),
-  })),
-  concentracao: z.object({
+  // Inadimplentes agregados por DEVEDOR (`pessoa` aparada de espaço/tab/CR/LF/`\xa0`; NULL = sem nome),
+  // em valor decrescente. `top` traz no máximo 10; `demais` fecha a conta: Σ top + demais ≡ inadimplente.
+  devedores: z.object({
     top: lista(z.object({
-      // `pessoa` é texto NULLABLE no raw (célula vazia no export): a UI mostra "(sem nome)".
       pessoa: z.string().nullable(),
       n: inteiro,
       valor: z.number(),
+      // Maior atraso entre os títulos do devedor, em dias (≤ 0 = ainda não venceu; NULL = sem vencimento).
+      maior_atraso: inteiro.nullable(),
     })),
-    valor_top: z.number(),
-    // NULL quando não há inadimplente (denominador zero).
-    pct_top: z.number().nullable(),
+    demais: z.object({ devedores: inteiro, n: inteiro, valor: z.number() }),
   }),
-  recuperado_ano: z.object({
-    ano: inteiro.nullable(),
-    n: inteiro,
-    valor: z.number(),
-  }),
-  comparativo: z.object({
+  // Referência do Δ dos três cards: a ÚLTIMA foto ANTERIOR à semana (seg–dom) da posição atual. Se a
+  // semana passada não teve carga, é a mais recente antes dela — a tela diz "vs DD/MM", nunca finge que
+  // é a semana anterior. `null` = não há foto anterior (o Δ some; não é erro).
+  referencia_semana: z.object({
     data_posicao: dataIso,
-    inadimplente_n: inteiro,
-    inadimplente_valor: z.number(),
-    a_vencer_valor: z.number(),
+    em_aberto: contagem,
+    vencido: contagem,
+    inadimplente: contagem,
   }).nullable(),
-  evolucao: lista(z.object({
-    mes: z.string().regex(/^\d{4}-\d{2}$/),
-    data_posicao: dataIso,
+  // Última foto de CADA semana com carga (seg–dom), crescente. Semana SEM carga não vem — a UI a mostra
+  // como lacuna, nunca zero (inv. 4). A semana da posição atual é parcial (a UI marca).
+  evolucao_semanal: lista(z.object({
+    semana: dataIso,        // a segunda-feira da semana
+    data_posicao: dataIso,  // a foto que representa a semana
     inadimplente_n: inteiro,
     inadimplente_valor: z.number(),
-    a_vencer_valor: z.number(),
+    vencido_valor: z.number(),
   })),
   // Data da 1ª foto (o histórico começa na v6.4 — nunca fabrica zero antes dela).
   historico_desde: dataIso.nullable(),
 })
 export type Recebiveis = z.infer<typeof recebiveisSchema>
 export type FaixaAtraso = (typeof FAIXAS_ATRASO)[number]
-export type Marcacao = (typeof MARCACOES)[number]
+export type Devedor = Recebiveis['devedores']['top'][number]
+export type SemanaInadimplente = Recebiveis['evolucao_semanal'][number]
 
 // ── get_geral_antecipacoes(p_ano) ───────────────────────────────────────────────────────────────
 
@@ -193,6 +175,9 @@ export const antecipacoesSchema = z.object({
   // GLOBAL (todas as contas, todos os anos): a RPC devolve o mesmo valor em cada ano lido.
   ultima_data: dataIso.nullable(),
   dias_desde_ultima: inteiro.nullable(),
+  // v6.5.0: maior intervalo entre antecipações que TERMINA dentro do ano — inclui o que atravessa a
+  // virada (última do ano anterior → primeira do ano) e, no ano corrente, o intervalo EM CURSO (última →
+  // hoje). Assim o card nunca mostra um "maior intervalo" menor que os dias sem antecipação.
   maior_intervalo_ano: z.object({
     dias: inteiro,
     de: dataIso,
@@ -201,33 +186,6 @@ export const antecipacoesSchema = z.object({
   atualizado_em: carimbo.nullable(),
 })
 export type Antecipacoes = z.infer<typeof antecipacoesSchema>
-
-// ── get_geral_prazos() ──────────────────────────────────────────────────────────────────────────
-
-export const prazosSchema = z.object({
-  // `null` = nenhuma foto de prazos ainda (a migration grava uma inicial, então é raro).
-  atual: z.object({
-    data: dataIso,
-    saldo_receber: z.number(),
-    saldo_pagar: z.number(),
-    entrada_12m: z.number(),
-    pagamento_12m: z.number(),
-    janela_de: dataIso,
-    janela_ate: dataIso,
-    // NULL quando o denominador (entrada/pagamento dos 12 meses) é zero.
-    pmr: z.number().nullable(),
-    pmp: z.number().nullable(),
-    folga: z.number().nullable(),
-  }).nullable(),
-  serie: lista(z.object({
-    data: dataIso,
-    pmr: z.number().nullable(),
-    pmp: z.number().nullable(),
-    folga: z.number().nullable(),
-  })),
-  historico_desde: dataIso.nullable(),
-})
-export type Prazos = z.infer<typeof prazosSchema>
 
 // ── Gestão das antecipações (0296): antecipacao_listar / antecipacao_historico ────────────────
 

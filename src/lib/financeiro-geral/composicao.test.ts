@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  anosQueFalharam, dadosCarregados, dadosOuNull, escalaEixo, serieMensalMultiAno, valoresDaSerie,
+  anosQueFalharam, dadosCarregados, dadosOuNull, escalaEixo, leituraDoAnoCorrente, serieMensalMultiAno,
+  valoresDaSerie,
 } from './composicao'
 import type { LeituraAno } from './tipos'
 
@@ -76,6 +77,21 @@ describe('auxiliares', () => {
     expect(anosQueFalharam(ls)).toEqual([2026])
     expect(dadosOuNull({ ok: false })).toBeNull()
     expect(dadosOuNull({ ok: true, dados: 7 })).toBe(7)
+  })
+})
+
+describe('leituraDoAnoCorrente — a RPC decide; falhou ≠ não selecionada', () => {
+  it('acha a leitura carregada com relacao "corrente"', () => {
+    const l = leituraDoAnoCorrente([fechado(2025, cheio(1)), corrente(2026, 10, cheio(2))], '2026-10-26')
+    expect(l?.ano).toBe(2026)
+  })
+  it('leitura do ano de hoje que FALHOU é devolvida (a UI mostra erro, não "não selecionado")', () => {
+    const l = leituraDoAnoCorrente([fechado(2025, cheio(1)), falha(2026)], '2026-10-26')
+    expect(l).toEqual({ ano: 2026, leitura: { ok: false } })
+  })
+  it('ano corrente fora da seleção → null', () => {
+    expect(leituraDoAnoCorrente([fechado(2024, cheio(1)), fechado(2025, cheio(1))], '2026-10-26')).toBeNull()
+    expect(leituraDoAnoCorrente([], '2026-10-26')).toBeNull()
   })
 })
 

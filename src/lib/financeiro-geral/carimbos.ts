@@ -25,14 +25,12 @@ export function carimboDoFluxo(leituras: readonly { atualizado_em: string | null
   return carimboMaisRecente(leituras.map(l => l.atualizado_em))
 }
 
-/** "Última atualização" do cabeçalho: antecipações (último registro), fato_fluxo (prejuízos e custos) e
- *  a gravação da última carga de contas a receber. Prazos entra pela foto (data pura, sem hora) e fica
- *  fora: misturar data pura com timestamptz inventaria uma hora. */
+/** "Última atualização" do cabeçalho: antecipações (último registro), fato_fluxo (prejuízos) e a
+ *  gravação da última carga de contas a receber. */
 export function carimboGeral(d: DadosGeral): string | null {
   return carimboMaisRecente([
     d.recebiveis.ok ? d.recebiveis.dados.carga?.gravado_em : null,
     carimboDoFluxo(dadosCarregados(d.antecipacoes).map(x => x.dados)),
     carimboDoFluxo(dadosCarregados(d.prejuizos).map(x => x.dados)),
-    carimboDoFluxo(dadosCarregados(d.custos).map(x => x.dados)),
   ])
 }
