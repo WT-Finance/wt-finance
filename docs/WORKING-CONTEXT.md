@@ -9,30 +9,29 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-26 (v6.5.0 aberta; M1 entregue, aguardando o GATE 1).
+Última atualização: 2026-10-26 (fechamento da v6.5.0, PR draft aberto).
 
 ---
 
-## Em voo — v6.5.0 "Financeiro · Geral v2" (branch `feat/v6-5-0-financeiro-geral-v2`, sem PR ainda)
+## Em voo — v6.5.0 "Financeiro · Geral v2" (PR draft, aguardando merge)
 
-Briefing `docs/briefings/briefing-v6-5-0-financeiro-geral-v2.md`; medição `docs/auditoria/v6-5-0-m0-financeiro-geral-v2.md`.
+Branch `feat/v6-5-0-financeiro-geral-v2`. Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v6-5-0_Financeiro_Geral_v2.md`.
 
-- **M0 feita (GATE 0).** O briefing dizia que Custos financeiros e Prazos médios "já saíram": **falso**. O Yan decidiu
-  **remover tudo, inclusive a série de prazos** (3 fotos; exportar antes do DROP).
-- **M1 feita: mockup na rota real** (`/financeiro/geral`, componentes de produção + `fixture.ts`; `?estado=vazio|erro`).
-  Cinco seções: Vendas (casca) · Recebíveis e inadimplência · Perdas e prejuízos · Antecipações · Cartões (casca).
-  Gráfico mensal compartilhado com Marketing (`shared/grafico-mensal-por-ano.tsx`). Custos e Prazos já saíram da página.
-- Decisões do Yan no GATE 0: prejuízo por pessoa = **uma tabela somando os anos**; nomes de pessoa **podem** aparecer;
-  "maior intervalo" ficou com o orquestrador: conta todo intervalo que TERMINA no ano, inclusive o da virada e o em curso.
-- Técnico: **sem RPC nova**. As 3 RPCs (`json`) ganham chaves por `CREATE OR REPLACE` aditivo (não quebra o front no ar);
-  as chaves velhas e as RPCs de custos/prazos caem na destrutiva do GATE 2, **depois do deploy** (a ingestão em produção
-  chama `registrar_foto_prazos` até lá). Aditiva = **0301**. `rpc-contrato.test.ts` já está no contrato novo: o bloco
-  Geral fica **vermelho até a 0301** (esperado). `get_geral_custos_financeiros`/`get_geral_prazos` ficam numa lista de
-  "aposentadas" no teste para a allowlist derivada não divergir dos grants até o GATE 2.
+- `/financeiro/geral` em cinco seções: Vendas (casca) · Recebíveis e inadimplência · Perdas e prejuízos · Antecipações ·
+  Cartões de crédito (casca). Custos financeiros e Prazos médios saíram; a carga do Aberto não grava mais a foto de prazos.
+- Migration **0301 APLICADA** em 26/10 (aditiva: chaves novas nas 3 RPCs `get_geral_*`). Banco na **0301**; **0302 reservada**
+  para a destrutiva `supabase/patches/financeiro-geral-v2-poda-destrutiva.sql` (**NÃO aplicada**). ADR livre **0184**
+  (Emenda 1 do ADR-0183, sem ADR novo).
+- Até a 0302: as RPCs de custos/prazos e a série `geral_prazo_foto` seguem no banco; `rpc-contrato.test.ts` mantém a lista
+  `RPCS_GERAL_APOSENTADAS` para a allowlist derivada não divergir dos grants. Sai no commit da 0302.
 
-> 🔴 **Yan:** conferir o mockup no preview da Vercel (GATE 1), inclusive `?estado=vazio`, `?estado=erro` e celular;
-> revisar os textos (subtítulos, "?", avisos) e o padrão de tabela simples (cabeçalho em caixa normal, o da skill).
-> Próximo: M2 (migration 0301) depois da aprovação.
+> 🔴 **Yan:**
+>
+> 1. Conferir no preview com **dado real** (out-briefing §6.1): as cinco seções, o tile sem corte, Marketing sem mudança.
+> 2. Checkpoint do briefing (out-briefing §6.2) e **mostrar à diretoria**.
+> 3. Mergear; **depois do deploy**, aplicar a **0302 em TTY** pelo roteiro do header do patch (pré-voo com deploy e md5,
+>    export da série com hora no nome, `git mv` → 0302, `db:migrate -- --destrutiva`, limpeza do teste + baseline +
+>    `database.ts` no mesmo commit, em branch + PR). Rollback do app para v6.4.x depois da 0302 exige voltar o banco antes.
 
 ---
 

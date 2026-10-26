@@ -35,6 +35,24 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '6.5.0',
+    data: '2026-10-26T13:47', // horário real de autoria; reconciliar ao horário do merge no /pos-merge
+    itens: [
+      {
+        tipo: 'melhoria',
+        texto:
+          'A página Geral do Financeiro ganha nova organização: recebíveis com evolução semanal da ' +
+          'inadimplência, prejuízos por pessoa e custo das antecipações por conta.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Custos financeiros e prazos médios saem da página Geral. Vendas e Cartões de crédito já têm lugar ' +
+          'reservado e ganham conteúdo nas próximas versões.',
+      },
+    ],
+  },
+  {
     versao: '6.4.2',
     data: '2026-10-26T10:40', // horário real do merge (PR #306), reconciliado no /pos-merge
     itens: [
