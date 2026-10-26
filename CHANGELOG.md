@@ -11,7 +11,7 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 PATCH · **Ajustes em Despesas de Marketing e na DRE de caixa.** Out-briefing
 `docs/briefings/WT_Finance_Out_Briefing_v6-4-2_Ajustes_Marketing_DRE.md`. **Patch destrutivo**
 `supabase/patches/dre-dissolver-imobilizado-em-investimentos.sql` (vira a **0300**; **pendente**, aplicação
-humana em TTY). Sem ADR.
+humana em TTY). Sem ADR novo; Emenda 2 do ADR-0168.
 
 ### Alterado
 

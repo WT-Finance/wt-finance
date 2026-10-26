@@ -2,7 +2,8 @@
 
 **Rota:** C (patch pedido direto no chat, 26/10). **Branch:** `feat/v6-4-2-ajustes-marketing-dre`, a partir
 de `origin/main` (10ffb40, merge do #305). **Banco:** patch DESTRUTIVO pendente (vira a 0300). **ADR:** nenhum
-(livre segue 0184).
+novo (livre segue 0184). A dissolução do `IMOB` entrou como **Emenda 2 do ADR-0168**, porque adota a
+"alternativa descartada" daquele ADR, decidido com a gerente de controladoria.
 
 ## 1. O pedido e as decisões
 
@@ -138,7 +139,9 @@ Custo: pendência do Yan (`/usage`).
    - a sidebar acendendo "Despesas";
    - depois do patch, a DRE de caixa sem a linha "(-) Despesas com Imobilizados" e com as 3 categorias em
      Investimentos.
-3. A entrada da diretoria sobre o imobilizado só é verdade **depois do patch aplicado**.
+3. A entrada da diretoria sobre o imobilizado só é verdade **depois do patch aplicado**. O subgrupo próprio do
+   imobilizado foi decidido com a **gerente de controladoria** na v5.7.0 (ADR-0168). Vale avisá-la de que ele
+   deixa de existir.
 4. **v6.4.1 (#305):** o pós-merge não foi feito. A data da diretoria foi reconciliada aqui (16:46). Falta, na raiz:
    `git pull --ff-only`, remover a worktree `feat-v6-4-1-antecipacoes-fluxo` (o trabalho está no `main`) e
    `git branch -d feat/v6-4-1-antecipacoes-fluxo`.
