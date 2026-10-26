@@ -93,6 +93,17 @@ do Yan) e os anexos `anexo-v6-0-0-m{5,7,9}-*.md`.
 
 ---
 
+## Achados da v6.5.0 (Financeiro · Geral v2) que não couberam nesta versão
+
+Rastro: `docs/auditoria/v6-5-0-m0-financeiro-geral-v2.md` §Q7 (três padrões de cabeçalho de tabela medidos) e o
+briefing `docs/briefings/briefing-v6-5-0-financeiro-geral-v2.md` (invariantes 5, 6 e 12).
+
+| # | item | origem | risco | esforço | por que ficou |
+|---|---|---|---|---|---|
+| B-49 | **Alinhar o cabeçalho das tabelas de Marketing e DRE ao padrão da skill `tabela-densa` (exceção conhecida desde a v6.5.0).** O padrão A — `CARD_TABELA_TH` (`src/components/shared/card-tabela.tsx`): caixa normal, `text-2xs font-medium`, `--text-muted` — foi confirmado pelo Yan no GATE 1 de 26/10/2026 e é o das tabelas da Geral. Divergem, e ficam como estão: **B — Marketing** (`src/components/marketing/gastos/tabela-estilos.ts`: `uppercase` + `font-semibold` + `tracking-[0.09em]`, escolha deliberada de coerência com a DRE na v6.3.0) e **C — DRE** (`src/components/financeiro/dre/tabela-dre.tsx`, `resumo-executivo.tsx`: o mesmo caixa alta, mais rótulos de linha `uppercase`). Registrado como exceção na página `/admin/design-system` (seção 7) e nas skills `tabela-densa` e `ui-design-system`. Antes de mexer: decidir em qual direção (DRE e Marketing passam ao padrão A, ou a skill passa a admitir o cabeçalho "de demonstrativo") — é decisão de produto/visual, não de código; e a troca precisa de conferência visual da grade inteira (a DRE tem `h-[25px]`/`h-[27px]` fixos e `rowSpan`) | M0 v6.5.0 §Q7; GATE 1 | baixo | M | Marketing tinha de ficar pixel-idêntica na v6.5.0 (invariante 5) e mexer na DRE estava fora do escopo (invariante 12); muda aparência de duas telas em produção |
+
+---
+
 ## Registro dos achados E1–E8 (leitura dos 20 arquivos de `docs/audits/`, `docs/superpowers/` e `docs/harness/`, apagados no D8-005)
 
 Estes achados nasceram da leitura dos documentos que a v5.10.0 **apagou** no D8-005. Ficam registrados

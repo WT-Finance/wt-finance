@@ -141,6 +141,13 @@ Pills de plataforma/filtro são consts de `@/components/shared/botoes`
 `@/lib/solicitacoes/format.ts`. Foco neutro (sem o anel dourado/de marca) vem da
 utilitária `.foco-neutro`.
 
+**Tabela de card** (lista curta, ranking, composição, comparativo): receita única — padrão A,
+cabeçalho `CARD_TABELA_TH` em caixa normal e `font-medium` (confirmado pelo Yan, GATE 1 da v6.5.0),
+células `TH_*`/`TD*` de `financeiro/geral/comum.tsx`, total, "demais N", vazio e scroll interno com
+`ScrollAutoHide eixo="x"` + `pb-3.5`. Mora na skill `tabela-densa` ("Tabela simples de card") e tem
+exemplo vivo em `/admin/design-system` §7 — não reinvente o cabeçalho. Marketing e DRE têm cabeçalho
+em caixa alta como **exceção conhecida** (B-49): não é precedente para tabela nova.
+
 Migração de call-site legado (tela antiga que ainda não usa o primitivo) é incremental —
 byte-equivalente quando a tela for tocada por outro motivo; não é preciso caçar e
 converter one-offs que ninguém está mexendo.
