@@ -11,7 +11,7 @@ export default function CabecalhoGeral({ carimbo }: { carimbo: string | null }) 
     <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
       <div className="min-w-0">
         <h1 className="text-xl font-semibold text-text-primary">Geral</h1>
-        <p className="mt-0.5 text-sm text-text-subtle">Visão executiva das finanças: inadimplência, antecipações, prejuízos, custos financeiros e prazos</p>
+        <p className="mt-0.5 text-sm text-text-subtle">Visão executiva das finanças: recebíveis e inadimplência, prejuízos e antecipações</p>
       </div>
 
       {carimbo && (

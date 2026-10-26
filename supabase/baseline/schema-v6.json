@@ -3429,7 +3429,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "30cca5b059e9ecd8b2abe5912e0cd13e51ae99f113e9c46ee9a99e4e4f1610bf",
+      "hash_corpo": "1888ccea683c18d2f6133cef46788bc275b1e5c0cedb64f4f4d182d9f303df67",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -3504,7 +3504,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "c26133278d0b8dbc6ed3ae70dbb5c4c90ba7c5ae347c3c04da3aa21288f15edd",
+      "hash_corpo": "8995e5dca0c1c3208e0505dd59cf66a2711536cafd0bd8f09002a8ea2e71a24e",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -3529,7 +3529,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "f316315f62e12904f41956beb6ffd344726052a7e508ddd9efde599f9a0db110",
+      "hash_corpo": "251ce75c35b5aa570aa8f61f871a2e3c85d648ff28df9630bb2c70353bb64a8e",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -16951,7 +16951,7 @@
       "triggers": {}
     }
   },
-  "ultima_migration": "0300",
+  "ultima_migration": "0301",
   "views": {
     "analytics.mv_ranking_produtos_mensal": {
       "acl": {

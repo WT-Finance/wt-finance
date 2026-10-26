@@ -6,6 +6,46 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [6.5.0] — 2026-10-26
+
+MINOR · **Financeiro · Geral, segunda versão.** Out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v6-5-0_Financeiro_Geral_v2.md`; medição
+`docs/auditoria/v6-5-0-m0-financeiro-geral-v2.md`. Migration **0301 APLICADA** (aditiva). Destrutiva
+`supabase/patches/financeiro-geral-v2-poda-destrutiva.sql` (vira a **0302**; **pendente**, humano em TTY, só
+DEPOIS do deploy). Sem ADR novo; Emenda 1 do ADR-0183.
+
+### Alterado
+
+- **`/financeiro/geral` em cinco seções:** Vendas (em construção) · Recebíveis e inadimplência · Perdas e
+  prejuízos · Antecipações · Cartões de crédito (em construção). Faixa do topo com 3 indicadores
+  (inadimplência, prejuízo do ano corrente, dias sem antecipação), os dois últimos sempre do ano corrente.
+- **Recebíveis e inadimplência:** cards em aberto / vencidos / inadimplência com Δ contra a última foto antes
+  da semana da posição; faixas de atraso só sobre os inadimplentes; 10 maiores inadimplentes por devedor;
+  evolução semanal do inadimplente (semana sem carga = lacuna).
+- **Perdas e prejuízos:** só bruto; prejuízo por pessoa (uma tabela somando os anos selecionados); prejuízo por
+  setor em construção; prejuízo bruto por mês/ano no gráfico de Marketing.
+- **Antecipações:** dias sem antecipação (com o maior intervalo do ano, que agora conta o intervalo em curso e o
+  da virada), custo efetivo e custo % por ano (fórmula única, ponderada pelo volume), volume por mês/ano,
+  volume por conta e comparativo por conta.
+- **Gráfico mensal por ano compartilhado** (`shared/grafico-mensal-por-ano.tsx`): Despesas mensais de
+  Marketing passa a usá-lo, sem mudança visual; a cópia que a Geral tinha (sem o eixo invertido da v6.4.2) sai.
+  `escalaSerie` ganha `sinal` (série positiva).
+- **RPCs** `get_geral_recebiveis`, `get_geral_prejuizos`, `get_geral_antecipacoes` (0301, `CREATE OR REPLACE`
+  aditivo): chaves novas `em_aberto`, `vencido`, `devedores`, `referencia_semana`, `evolucao_semanal`,
+  `por_pessoa`; nova semântica de `maior_intervalo_ano`. Nada do que já emitiam mudou (ensaio revertido).
+- **Padrão de tabela simples** registrado em `/admin/design-system` e nas skills (`tabela-densa`,
+  `ui-design-system`); Marketing e DRE ficam como exceção conhecida (B-49).
+- **Ícones da sidebar** (refino do Yan antes do merge): Financeiro · Geral `Gauge` → `Landmark`; Marketing · Despesas
+  `HandCoins` → `BanknoteArrowDown`.
+
+### Removido
+
+- Seções **Custos financeiros** e **Prazos médios** da página Geral (decisão do Yan). A carga do Aberto deixa
+  de gravar a foto de prazos (`registrar_foto_prazos`). As RPCs, a série `geral_prazo_foto` e o seed
+  `geral_fin_grupo` caem na destrutiva 0302 (export da série em `~/projects/arquivo-worktrees-janus/v6-5-0-gate2/`).
+
+---
+
 ## [6.4.2] — 2026-10-26
 
 PATCH · **Ajustes em Despesas de Marketing e na DRE de caixa.** Out-briefing

@@ -1,6 +1,6 @@
 // Composição MULTI-ANO das seções de fluxo (v6.4.0) — módulo PURO.
 //
-// Antecipações, Perdas e prejuízos e Custos leem UMA RPC por ano selecionado. Aqui as leituras de
+// Antecipações e Perdas e prejuízos leem UMA RPC por ano selecionado. Aqui as leituras de
 // vários anos viram o que os gráficos e as tabelas desenham: uma barra por ano, mês a mês, jan–dez.
 //
 //  • O eixo X é SEMPRE jan–dez. O mês que o ano ainda não alcançou é `null` (sem barra) — ausência
@@ -11,7 +11,6 @@
 //  • Cor por token e por POSIÇÃO entre os SELECIONADOS (`coresPorAno` do Marketing, importada sem mover):
 //    a cor de um ano não muda porque o de outro falhou.
 
-import { passoRedondo } from '@/lib/escala-grafico'
 import { ROTULOS_MES, mesesRealizados, rotuloDoAno, type RelacaoDoAno } from './periodo'
 import type { Carregado, LeituraAno } from './tipos'
 
@@ -76,41 +75,24 @@ export function anosQueFalharam<T>(leituras: readonly LeituraAno<T>[]): number[]
   return [...leituras].filter(x => !x.leitura.ok).map(x => x.ano).sort((a, b) => a - b)
 }
 
+/**
+ * A leitura do ANO CORRENTE entre as selecionadas, para o que é "do ano corrente" e não da seleção
+ * (tile de Prejuízos, maior intervalo das Antecipações). Quem decide é a RPC: a leitura CARREGADA com
+ * `relacao === 'corrente'`. Uma que falhou não traz `relacao`, então ela é achada pelo ano de `hoje`
+ * (o `hoje` de SP calculado no servidor) — falhou ≠ não selecionada, e a UI diz cada um à sua maneira.
+ * `null` = o ano corrente não está entre as leituras (as pills não o incluem).
+ */
+export function leituraDoAnoCorrente<T extends RelacaoDoAno>(
+  leituras: readonly LeituraAno<T>[],
+  hoje: string,
+): LeituraAno<T> | null {
+  const carregada = leituras.find(x => x.leitura.ok && x.leitura.dados.relacao === 'corrente')
+  if (carregada) return carregada
+  const anoHoje = Number(hoje.slice(0, 4))
+  return leituras.find(x => x.ano === anoHoje) ?? null
+}
+
 /** Adaptador `Carregado<T>` → `T | null`, para as seções de leitura única. */
 export function dadosOuNull<T>(c: Carregado<T>): T | null {
   return c.ok ? c.dados : null
-}
-
-export interface EscalaEixo {
-  domain: [number, number]
-  ticks: number[]
-}
-
-const INTERVALOS_ALVO = 4
-const limpar = (n: number): number => (n === 0 ? 0 : Math.round(n * 100) / 100) // normaliza -0
-
-/**
- * Domínio e ticks do eixo Y. Sempre CONTÉM o dado e o zero (a ponta é arredondada para FORA do dado,
- * nunca para dentro — encaixar para dentro faz pontos sumirem), a partir de um PASSO redondo
- * (`passoRedondo`), nunca o contrário. Quem fixa `domain` fixa os `ticks` junto: o domínio explícito
- * desliga os ticks bonitos do Recharts. Série que cruza o zero (prejuízo com reversão, custo com
- * receita) exige isso — o default do Recharts ancora em zero e corta os negativos.
- */
-export function escalaEixo(valores: readonly (number | null | undefined)[]): EscalaEixo {
-  const v = valores.filter((n): n is number => typeof n === 'number' && Number.isFinite(n))
-  const min = Math.min(0, ...v)
-  const max = Math.max(0, ...v)
-  const amplitude = max - min
-  if (amplitude <= 0) return { domain: [0, 1000], ticks: [0, 250, 500, 750, 1000] }
-  const passo = passoRedondo(amplitude / INTERVALOS_ALVO)
-  const lo = Math.floor(min / passo) * passo
-  const hi = Math.ceil(max / passo) * passo
-  const ticks: number[] = []
-  for (let t = lo; t <= hi + passo / 1000; t += passo) ticks.push(limpar(t))
-  return { domain: [limpar(lo), limpar(hi)], ticks }
-}
-
-/** Todos os valores de uma série (para a escala). */
-export function valoresDaSerie(s: SerieMultiAno): (number | null)[] {
-  return s.pontos.flatMap(p => p.valores)
 }

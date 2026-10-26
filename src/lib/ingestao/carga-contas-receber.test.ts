@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // v6.4.0 — `processarCarga` DE PONTA A PONTA para a base `contas-receber` (parser REAL; a matriz de
-// cada arquivo é entregue por um `lerMatriz` falso) e o gancho FAIL-SOFT da foto de prazos depois de
-// aplicar `lancamentos-aberto`. Só o que toca rede/banco é mockado: o cliente admin (RPCs), o Storage,
-// `aplicarCarga` e o disparo do alarme. O que se afirma é a DECISÃO do fluxo: o que é aplicado, o que
-// reprova antes de aplicar, e que a foto nunca desfaz nem derruba uma carga. Dados fictícios.
+// cada arquivo é entregue por um `lerMatriz` falso) e, desde a v6.5.0, a regressão de que aplicar
+// `lancamentos-aberto` NÃO chama mais `registrar_foto_prazos`. Só o que toca rede/banco é mockado: o
+// cliente admin (RPCs), o Storage, `aplicarCarga` e o disparo do alarme. O que se afirma é a DECISÃO
+// do fluxo: o que é aplicado e o que reprova antes de aplicar. Dados fictícios.
 vi.mock('server-only', () => ({}))
 
 const { rpcMock, aplicarCargaMock, dispararAlarmeMock, lerMatrizMock, parseCategoriaMock } = vi.hoisted(() => ({
@@ -19,7 +19,7 @@ vi.mock('@/lib/api-externa/http', () => ({ autenticarChamada: vi.fn() }))
 vi.mock('@/lib/auth/sessao', () => ({ requireAreaApi: vi.fn() }))
 
 /** `rpc` no PROTÓTIPO e tocando `this` (skill `contrato-rpc-front` §1): um `vi.fn()` solto passaria
- *  com o `this` destacado — e o gancho da foto chama `.rpc` direto no client. */
+ *  com o `this` destacado — e o código de produção chama `.rpc` direto no client. */
 class ClienteAdminFake {
   readonly rest = { marcador: 'postgrest' }
   rpc(fn: string, args?: Record<string, unknown>) {
@@ -49,14 +49,13 @@ vi.mock('./alarme', async (importOriginal) => ({
   somaPorAno: async () => ({}),
   dispararAlarmeDeEvento: dispararAlarmeMock,
 }))
-// Só o Aberto usa este parser — o teste do gancho da foto não precisa montar um outline de Excel.
+// Só o Aberto usa este parser — o teste de regressão do Aberto não precisa montar um outline de Excel.
 vi.mock('./parsers/lancamentos-categoria', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./parsers/lancamentos-categoria')>()),
   parseLancamentosCategoriaRows: parseCategoriaMock,
 }))
 
 import { processarCarga, ErroCarga, reconciliarContasReceber, statusAtualDaBase, type EntradaCarga } from './carga'
-import { AVISO_FOTO_PRAZOS_FALHOU } from './foto-prazos'
 import type { LinhaCarga } from './log'
 
 beforeEach(() => {
@@ -99,7 +98,6 @@ function programarRpc(extra: Record<string, Resp[]> = {}) {
     ingestao_carga_abrir: [{ data: { ...linhaCarga(), existente: false }, error: null }],
     ingestao_carga_concluir: [{ data: linhaCarga({ status: 'aplicada' }), error: null }],
     status_titulos_em_aberto: [{ data: { total: 10 }, error: null }],
-    registrar_foto_prazos: [{ data: null, error: null }],
     ...extra,
   }
   rpcMock.mockImplementation(async (nome: string) => {
@@ -171,11 +169,9 @@ describe('processarCarga (Contas a receber)', () => {
     expect(opcoes.cargaId).toBe('carga-cr')
     expect(opcoes.arquivoOrigem).toBeUndefined()
     expect(opcoes.checksums.map((c: { chave: string[] }) => c.chave)).toEqual([['24.xlsx'], ['25.xlsx']])
-    // Foto de prazos é só do Aberto.
-    expect(chamadasA('registrar_foto_prazos')).toHaveLength(0)
   })
 
-  it('CONFERÊNCIA: parseia e confere sem aplicar, sem abrir carga e sem foto; Emissão inválida chega em alarmes', async () => {
+  it('CONFERÊNCIA: parseia e confere sem aplicar e sem abrir carga; Emissão inválida chega em alarmes', async () => {
     programarRpc()
     lerMatrizMock
       .mockReturnValueOnce(matriz([titulo('1', new Date(2024, 0, 10), 100, new Date(1899, 11, 30))]))
@@ -189,7 +185,6 @@ describe('processarCarga (Contas a receber)', () => {
     expect(r.alarmes.some((a) => a.startsWith('1 título(s) com Emissão inválida'))).toBe(true)
     expect(aplicarCargaMock).not.toHaveBeenCalled()
     expect(chamadasA('ingestao_carga_abrir')).toHaveLength(0)
-    expect(chamadasA('registrar_foto_prazos')).toHaveLength(0)
   })
 
   it('lacuna entre as faixas de vencimento vira aviso e NÃO bloqueia a aplicação', async () => {
@@ -273,9 +268,9 @@ describe('statusAtualDaBase (Contas a receber)', () => {
   })
 })
 
-// ── Gancho da foto de prazos (só após APLICAR `lancamentos-aberto`) ──────────────────────────
+// ── Regressão v6.5.0: aplicar `lancamentos-aberto` não grava mais a foto de prazos ───────────
 
-describe('foto de prazos — gancho fail-soft depois do Aberto', () => {
+describe('lancamentos-aberto — sem foto de prazos (v6.5.0)', () => {
   const LINHA_ABERTO = { numero: '1', valor: 10 }
   function entradaAberto(overrides: Partial<EntradaCarga> = {}): EntradaCarga {
     return {
@@ -292,61 +287,19 @@ describe('foto de prazos — gancho fail-soft depois do Aberto', () => {
     aplicarCargaMock.mockImplementation(async () => aplicacaoOk(1))
   })
 
-  it('aplicou: chama registrar_foto_prazos(carga_id) UMA vez, DEPOIS da promoção, e a resposta sai sem aviso', async () => {
+  it('aplicou: NENHUMA chamada a registrar_foto_prazos e nenhum aviso de prazos em alarmes (a série será removida pela destrutiva 0302, GATE 2)', async () => {
     programarRpc()
     const r = await processarCarga(entradaAberto())
 
+    // Prova de que o fluxo aplicou de verdade (e não saiu cedo): promoção feita e carga concluída.
     expect(r.status).toBe('aplicada')
-    const foto = chamadasA('registrar_foto_prazos')
-    expect(foto).toHaveLength(1)
-    expect(foto[0][1]).toEqual({ p_carga_id: 'carga-ab' })
-    const idxFoto = rpcMock.mock.calls.findIndex((c) => c[0] === 'registrar_foto_prazos')
-    expect(rpcMock.mock.invocationCallOrder[idxFoto]).toBeGreaterThan(aplicarCargaMock.mock.invocationCallOrder[0])
-    expect(r.alarmes).not.toContain(AVISO_FOTO_PRAZOS_FALHOU)
-  })
-
-  it('erro DEVOLVIDO pela RPC ⇒ aviso em alarmes, carga continua aplicada e o log guarda o aviso', async () => {
-    programarRpc({ registrar_foto_prazos: [{ data: null, error: { message: 'permission denied' } }] })
-    const r = await processarCarga(entradaAberto())
-
-    expect(r.status).toBe('aplicada')
-    expect(r.alarmes).toContain(AVISO_FOTO_PRAZOS_FALHOU)
+    expect(aplicarCargaMock).toHaveBeenCalledTimes(1)
     const concluir = chamadasA('ingestao_carga_concluir').at(-1)?.[1] as { p_status: string; p_resposta: { alarmes: string[] } }
     expect(concluir.p_status).toBe('aplicada')
-    expect(concluir.p_resposta.alarmes).toContain(AVISO_FOTO_PRAZOS_FALHOU)
-  })
 
-  it('exceção de REDE na RPC ⇒ o mesmo: aviso, nunca erro da carga', async () => {
-    programarRpc()
-    rpcMock.mockImplementation(async (nome: string) => {
-      if (nome === 'registrar_foto_prazos') throw new Error('fetch failed')
-      if (nome === 'ingestao_carga_abrir') return { data: { ...linhaCarga(), existente: false }, error: null }
-      if (nome === 'ingestao_carga_concluir') return { data: linhaCarga({ status: 'aplicada' }), error: null }
-      if (nome === 'status_titulos_em_aberto') return { data: { total: 10 }, error: null }
-      return { data: null, error: null }
-    })
-    const r = await processarCarga(entradaAberto())
-
-    expect(r.status).toBe('aplicada')
-    expect(r.alarmes).toContain(AVISO_FOTO_PRAZOS_FALHOU)
-  })
-
-  it('carga que NÃO aplica (promoção rejeitada) ⇒ nenhuma foto', async () => {
-    programarRpc()
-    const { CargaRejeitada } = await import('./aplicar')
-    aplicarCargaMock.mockImplementation(async () => { throw new CargaRejeitada('promover_carga_aberto', 'checksum não fechou') })
-
-    const erro = await processarCarga(entradaAberto()).catch((e: unknown) => e)
-
-    expect(erro).toBeInstanceOf(ErroCarga)
+    // O que torna a migration destrutiva segura: o código no ar não chama a RPC que ela derruba.
     expect(chamadasA('registrar_foto_prazos')).toHaveLength(0)
-  })
-
-  it('CONFERÊNCIA do Aberto (confirmar:false) ⇒ nenhuma foto', async () => {
-    programarRpc()
-    const r = await processarCarga(entradaAberto({ confirmar: false }))
-
-    expect(r.status).toBe('conferida')
-    expect(chamadasA('registrar_foto_prazos')).toHaveLength(0)
+    expect(r.alarmes.some((a) => /prazo/i.test(a))).toBe(false)
+    expect(concluir.p_resposta.alarmes.some((a) => /prazo/i.test(a))).toBe(false)
   })
 })

@@ -611,6 +611,24 @@ Regra: tabela que entra no diário (`fn_diario_alteracoes`) com reversão por `r
 `bigserial` (molde `dre_comp_par`/`gerencial_lancamentos`). Achado do `implementador` na 0296 — o
 contrato da spec dizia IDENTITY.
 
+### RPC que devolve `json`: chave NOVA é `CREATE OR REPLACE` aditivo; tirar chave é destrutiva pós-deploy (v6.5.0, 0301/0302)
+
+O front lê o `json` por um Zod `z.object` NÃO estrito, que descarta chave extra. Então **acrescentar** chave
+numa RPC viva não quebra o front que está no ar: `CREATE OR REPLACE` com a mesma assinatura, aplicado antes do
+merge, sem nome `_v2` que fica para sempre. **Tirar** ou **mudar o sentido** de chave quebra o front no ar
+(o Zod recusa a falta) — isso vai numa destrutiva aplicada DEPOIS do deploy, partindo do catálogo vivo.
+Prova obrigatória do "nada mudou": ensaio em transação revertida que compara, chave a chave, a saída antes ×
+depois (a 0301 fez isso para as 7 leituras da página Geral).
+
+### Série derivada de foto por carga: lacuna quando o DETALHE some, nunca zero (v6.5.0, inv. 8)
+
+`financeiro.contas_receber_foto` (o detalhe por título de cada carga) ainda não tem retenção decidida, e a
+evolução semanal de `get_geral_recebiveis` depende dele para o vencido. Regras: (1) número que a foto da carga
+já guarda (`contas_receber_foto_carga.inadimplente_*`) sai DALI, imune a poda; (2) a semana cujo detalhe não tem
+mais todos os títulos em aberto que a foto contou SAI da série (a UI mostra lacuna), em vez de agregar zero;
+(3) antes de ligar qualquer limpeza do detalhe, persistir o agregado semanal (vencido por carga). Achado MÉDIO
+do `revisor-db` na 0301: `LEFT JOIN` + `count(…) FILTER` sobre detalhe podado devolve zero com cara de dado.
+
 ### Erro de `NOT NULL` (23502) em staging vaza a LINHA INTEIRA no `DETAIL`
 
 Violação de `NOT NULL` devolve `DETAIL: Failing row contains (...)` com **todos os campos da linha** — em

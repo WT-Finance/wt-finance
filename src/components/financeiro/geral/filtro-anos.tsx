@@ -7,7 +7,7 @@ import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_PRIMARIA_STYLE } from '@/compone
 // ano; clicar no único selecionado não faz nada) em `@/lib/marketing/anos`, reaproveitado SEM mover.
 //
 // Componente PRÓPRIO desta página: a DRE e o Marketing têm os seus e nenhum é compartilhado — acoplar
-// qualquer um deles aqui exigiria mexer fora da página (inv. 9). O ativo usa o trio neutro `--action-soft*`
+// qualquer um deles aqui exigiria mexer fora da página (inv. 12). O ativo usa o trio neutro `--action-soft*`
 // (`PILL_PRIMARIA_STYLE`): é um controle de plataforma, sem `var(--brand)`.
 
 interface Props {

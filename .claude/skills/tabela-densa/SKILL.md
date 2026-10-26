@@ -1,6 +1,6 @@
 ---
 name: tabela-densa
-description: Tabelas financeiras densas do Janus — <ValorContabil> (formato contábil, R$ à esquerda e número à direita), cabeçalho padrão (sem caixa alta, sem negrito) e a receita completa de tabela longa com scroll interno e cabeçalho sticky (border-separate, fundo na célula, bordas por célula, cabeçalho de duas linhas com rowSpan, exceção min-w). Use ao criar ou alterar qualquer tabela de dados — especialmente com valores monetários, cabeçalho fixo ou scroll interno.
+description: Tabelas financeiras densas do Janus — <ValorContabil> (formato contábil, R$ à esquerda e número à direita), cabeçalho padrão (sem caixa alta, sem negrito) e a receita completa de tabela longa com scroll interno e cabeçalho sticky (border-separate, fundo na célula, bordas por célula, cabeçalho de duas linhas com rowSpan, exceção min-w). Inclui a receita da tabela simples de card (padrão A: total, "demais N", vazio, scroll interno) e as exceções conhecidas de cabeçalho em caixa alta (Marketing, DRE — não copiar). Use ao criar ou alterar qualquer tabela de dados — especialmente com valores monetários, cabeçalho fixo ou scroll interno.
 ---
 
 # Tabela densa (Janus)
@@ -32,8 +32,8 @@ uma célula de tabela densa com "R$" ancorado.
 
 ## Cabeçalho de tabela: padrão único, sem caixa alta e sem negrito
 
-Todo `<thead>` da plataforma segue a mesma receita tipográfica — não inventar variação
-por tela:
+Todo `<thead>` da plataforma segue a mesma receita tipográfica (salvo as duas exceções
+conhecidas listadas logo abaixo) — não inventar variação por tela:
 
 - Caixa **normal** — NUNCA `uppercase`/`tracking-wide`.
 - Peso `font-medium` — nunca `font-semibold`/`font-bold`.
@@ -41,7 +41,59 @@ por tela:
 - Cor terciária: `text-zinc-400`/`--text-muted`.
 
 A referência viva é o cabeçalho da **Lista de Operações**. Em cards-tabela (tabela dentro
-de um Card com título), a forma canônica é a constante `CARD_TABELA_TH`.
+de um Card com título), a forma canônica é a constante `CARD_TABELA_TH`
+(`src/components/shared/card-tabela.tsx`: `py-2 px-3 text-2xs font-medium text-[var(--text-muted)]
+whitespace-nowrap`).
+
+**Confirmado pelo Yan no GATE 1 da v6.5.0 (26/10/2026):** "caixa normal, `font-medium`" é a regra —
+é o **padrão A**, o das tabelas da página Financeiro · Geral. A receita pronta (cabeçalho + células +
+total + "demais N" + vazio + scroll interno) está em "Tabela simples de card" abaixo.
+
+### Exceções conhecidas (NÃO copiar, NÃO "corrigir" por imitação)
+
+Duas famílias de tabela em produção têm cabeçalho em **caixa alta** (`uppercase` + `font-semibold` +
+tracking), contra a regra acima. Estão registradas como exceção e seguem como estão até o item
+**B-49** do `docs/backlog-v6.md`:
+
+- **B — Marketing:** `src/components/marketing/gastos/tabela-estilos.ts` (`TH`, `TH_GRUPO`,
+  `TH_PRIMEIRA`). Escolha deliberada de coerência com a DRE (v6.3.0); a página de Marketing é
+  conferida pixel a pixel — não "alinhar" ao padrão A de passagem.
+- **C — DRE:** `src/components/financeiro/dre/tabela-dre.tsx` e `resumo-executivo.tsx`.
+
+Regra de uso: **tabela nova segue o padrão A, nunca B ou C** — o fato de B e C existirem não é
+precedente. E quem estiver na DRE ou no Marketing por outro motivo **não** troca o cabeçalho junto:
+o alinhamento é decisão própria (B-49), com conferência visual da grade inteira.
+
+## Tabela simples de card (padrão A, v6.5.0)
+
+A tabela de **leitura** dentro de um card (lista curta, ranking, composição, comparativo), sem
+cabeçalho sticky nem ordenação. Referências vivas, em `src/components/financeiro/geral/`:
+`comum.tsx` (as classes), `secao-recebiveis.tsx` (faixas de atraso e 10 maiores, com "demais"),
+`prejuizos-tabela-pessoa.tsx`, `antecipacoes-volume-conta.tsx`, `antecipacoes-comparativo-conta.tsx`
+(bloco por ano, `rowSpan`, 1ª coluna presa). Exemplo vivo: `/admin/design-system` §7.
+
+- **Classes** — importe de `comum.tsx` quando estiver na Geral: `TH_ESQ`/`TH_DIR`
+  (`CARD_TABELA_TH` + `text-left|right border-b border-zinc-100`), `TD`
+  (`px-3 py-2 text-xs border-b border-zinc-50 text-zinc-700`), `TD_NUM` (`TD` + `tabular-nums
+  text-right`), `TD_TOTAL` (`px-3 py-2 text-xs font-semibold text-zinc-800 border-t border-zinc-200
+  bg-band-soft`). Fora da Geral, **não importe de `financeiro/geral`** (feature): use
+  `CARD_TABELA_TH` de `@/components/shared/card-tabela` e escreva as mesmas células.
+- **Estrutura** — `table-fixed border-separate border-spacing-0` + `<colgroup>` (1ª coluna de texto
+  sem width; numéricas em px); `scope="col"` nos `th`; `aria-label` na tabela; texto longo em `block
+  truncate` + `title`. Casca: `Card` + `CabecalhoCard` (título + subtítulo que declara o recorte).
+- **Valor monetário** em `<ValorContabil>` dentro de `TD` (não `TD_NUM`); contagem e % em `TD_NUM`.
+- **Total** — última linha (`<tfoot>` ou última `<tr>`), `TD_TOTAL` em toda célula; células de número
+  somam `text-right tabular-nums`. Total que não fecha com a origem **avisa na tela** (nunca calado).
+- **"Demais N"** — o corte de ranking vira UMA linha ("demais N pessoas"), em `italic
+  text-[var(--text-muted)]`, antes do total. **"(sem nome)"** também aparece, no mesmo tom. Nada some.
+- **Vazio** — o card mantém título e subtítulo; no lugar da tabela entra uma frase com o recorte
+  ("Sem antecipações em 2026.") ou `EmptyState`; nunca uma tabela só de cabeçalho.
+- **Scroll interno** — largura mínima na tabela (`min-w-[…]` ou `style={{ minWidth }}`) dentro de
+  `<ScrollAutoHide eixo="x" className="pb-3.5">`: rola por dentro do card, nunca a página (o `pb-3.5`
+  é o gutter do thumb overlay — `ui-design-system` §4). Presa à esquerda
+  (`sticky left-0 z-10 bg-white`, **fundo opaco**) só a 1ª coluna e só com muitas colunas.
+- **Cabeçalho de duas linhas** (`rowSpan`) — vale a regra de "Custou caro 2×" abaixo: a régua vai na
+  própria célula (`TH_ESQ` já a traz).
 
 ## Receita completa: tabela longa com scroll interno e cabeçalho sticky
 

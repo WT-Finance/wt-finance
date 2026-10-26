@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { carimboDoFluxo, carimboGeral, carimboMaisRecente } from './carimbos'
+import { fixtureGeral } from './fixture'
 import type { DadosGeral } from './tipos'
 
 describe('carimboMaisRecente', () => {
@@ -25,24 +26,26 @@ describe('carimboDoFluxo', () => {
 describe('carimboGeral', () => {
   const base: DadosGeral = {
     anos: [2026], anosDisponiveis: [2026], hoje: '2026-10-15', podeGerir: false,
-    recebiveis: { ok: false }, prazos: { ok: false }, antecipacoes: [], prejuizos: [], custos: [],
+    recebiveis: { ok: false }, antecipacoes: [], prejuizos: [],
+    corrente: { prejuizos: { ano: 2026, leitura: { ok: false } }, antecipacoes: { ano: 2026, leitura: { ok: false } } },
   }
   it('sem nenhuma fonte carregada → null (o carimbo some, o título fica)', () => {
     expect(carimboGeral(base)).toBeNull()
+    expect(carimboGeral(fixtureGeral('erro', '2026-10-26', [2026]))).toBeNull()
+  })
+  it('estado vazio da fixture: nenhuma carga e nenhum registro → null', () => {
+    expect(carimboGeral(fixtureGeral('vazio', '2026-10-26', [2026]))).toBeNull()
   })
   it('lê a gravação da carga de contas a receber quando é a fonte mais nova', () => {
-    const d: DadosGeral = {
-      ...base,
-      recebiveis: {
-        ok: true,
-        dados: {
-          carga: { carga_id: 'x', data_posicao: '2026-10-15', gravado_em: '2026-10-15T14:00:00-03:00' },
-          a_vencer: { n: 0, valor: 0 }, inadimplente: { n: 0, valor: 0, faixas: [] }, marcacao_em_aberto: [],
-          concentracao: { top: [], valor_top: 0, pct_top: null }, recuperado_ano: { ano: 2026, n: 0, valor: 0 },
-          comparativo: null, evolucao: [], historico_desde: null,
-        },
-      },
-    }
-    expect(carimboGeral(d)).toBe('2026-10-15T14:00:00-03:00')
+    const d = fixtureGeral('normal', '2026-10-26', [2026])
+    if (!d.recebiveis.ok || !d.recebiveis.dados.carga) throw new Error('fixture')
+    const maisNova = { ...d.recebiveis.dados.carga, gravado_em: '2026-10-20T14:00:00-03:00' }
+    const r: DadosGeral = { ...d, recebiveis: { ok: true, dados: { ...d.recebiveis.dados, carga: maisNova } } }
+    expect(carimboGeral(r)).toBe('2026-10-20T14:00:00-03:00')
+  })
+  it('sem a carga, vale o mais recente entre antecipações e prejuízos (2 fontes de fluxo)', () => {
+    const d = fixtureGeral('normal', '2026-10-26', [2026])
+    // prejuízos (fato_fluxo) e a carga estão em 15/10; as antecipações, em 22/09
+    expect(carimboGeral({ ...d, recebiveis: { ok: false } })).toBe('2026-10-15T16:42:10+00:00')
   })
 })

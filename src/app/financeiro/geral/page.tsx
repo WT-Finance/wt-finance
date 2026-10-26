@@ -6,23 +6,24 @@ import { type RpcLike } from '@/lib/rpc'
 import { parseRpc } from '@/lib/schemas-rpc'
 import { anosSelecionados, anosDasPillsGeral } from '@/lib/financeiro-geral/periodo'
 import { podeGerirAntecipacoes } from '@/lib/financeiro-geral/gestao'
-import {
-  antecipacoesSchema, custosFinanceirosSchema, prazosSchema, prejuizosSchema, recebiveisSchema,
-} from '@/lib/financeiro-geral/schemas'
+import { antecipacoesSchema, prejuizosSchema, recebiveisSchema } from '@/lib/financeiro-geral/schemas'
 import type { Carregado, DadosGeral, LeituraAno } from '@/lib/financeiro-geral/tipos'
 import type { ParamsAnos } from '@/lib/marketing/anos'
 import GeralContent from '@/components/financeiro/geral/geral-content'
 
-// Financeiro · Geral (v6.4.0) — leitura executiva da diretoria. Área própria 'financeiro/geral'
-// (migration 0297). Cinco seções, cada uma autocontida:
+// Financeiro · Geral (v6.4.0; reorganizada na v6.5.0) — leitura executiva da diretoria. Área própria
+// 'financeiro/geral' (migration 0297). Três seções com conteúdo, cada uma autocontida (Vendas e Cartões de
+// crédito são cascas, sem leitura):
 //
-//   ESTOQUE  Recebíveis e inadimplência  get_geral_recebiveis()          — a posição na última carga; ignora as pills
-//   FLUXO    Antecipações                get_geral_antecipacoes(p_ano)   — uma chamada por ano selecionado
-//   FLUXO    Perdas e prejuízos          get_geral_prejuizos(p_ano)      — idem
-//   FLUXO    Custos financeiros          get_geral_custos_financeiros(p_ano) — idem (fecha no bloco FIN da DRE)
-//   JANELA   Prazos médios               get_geral_prazos()              — 12 meses móveis; sem ano
+//   ESTOQUE  Recebíveis e inadimplência  get_geral_recebiveis()         — a posição na última carga; ignora as pills
+//   FLUXO    Perdas e prejuízos          get_geral_prejuizos(p_ano)     — uma chamada por ano selecionado
+//   FLUXO    Antecipações                get_geral_antecipacoes(p_ano)  — idem
 //
-// Todas as leituras partem EM PARALELO e cada uma falha SOZINHA (inv. 8): `Promise.allSettled` + `parseRpc`
+// As leituras do ANO CORRENTE (prejuízos e antecipações) vêm SEMPRE, mesmo com a pill desmarcada: a faixa
+// do topo e "Dias sem antecipação" não dependem das pills. Se o ano corrente está selecionado, a leitura da
+// lista é reaproveitada (uma chamada só).
+//
+// Todas as leituras partem EM PARALELO e cada uma falha SOZINHA (inv. 11): `Promise.allSettled` + `parseRpc`
 // por chamada; o que cair vira `{ ok: false }` e só a seção que depende dele mostra o erro — a página fica
 // de pé. O retorno de `.rpc()` é thenable (sem `.catch`): o tratamento de falha é o `status` de cada item.
 // As RPCs são tipadas pelo `database.ts` GERADO (nenhum helper frouxo) e `.rpc` é chamado sem destacar o método.
@@ -63,28 +64,35 @@ export default async function GeralPage({ searchParams }: { searchParams: Promis
   const hoje = hojeSP()
   const anoCorrente = parseInt(hoje.slice(0, 4), 10)
   const anos = anosSelecionados(sp, anoCorrente)
+  // O ano corrente entra na leitura mesmo fora da seleção (ver o cabeçalho); a lista da página continua
+  // sendo só a dos anos selecionados.
+  const anosLidos = anos.includes(anoCorrente) ? anos : [...anos, anoCorrente]
 
   const db: Db = await getServerClient()
 
   // Cada `db.rpc(...)` é chamado DIRETO no cliente (nunca `const f = db.rpc`: destacar o método perde o
   // `this`); o builder é thenable e só dispara quando `resolver` o aguarda — todos partem juntos.
-  const [recebiveisRes, prazosRes, antecipacoes, prejuizos, custos] = await Promise.all([
+  const [recebiveisRes, antecipacoesLidas, prejuizosLidos] = await Promise.all([
     resolver(db.rpc('get_geral_recebiveis')),
-    resolver(db.rpc('get_geral_prazos')),
-    Promise.all(anos.map(ano => lerAno(ano, db.rpc('get_geral_antecipacoes', { p_ano: ano }), antecipacoesSchema, 'get_geral_antecipacoes'))),
-    Promise.all(anos.map(ano => lerAno(ano, db.rpc('get_geral_prejuizos', { p_ano: ano }), prejuizosSchema, 'get_geral_prejuizos'))),
-    Promise.all(anos.map(ano => lerAno(ano, db.rpc('get_geral_custos_financeiros', { p_ano: ano }), custosFinanceirosSchema, 'get_geral_custos_financeiros'))),
+    Promise.all(anosLidos.map(ano => lerAno(ano, db.rpc('get_geral_antecipacoes', { p_ano: ano }), antecipacoesSchema, 'get_geral_antecipacoes'))),
+    Promise.all(anosLidos.map(ano => lerAno(ano, db.rpc('get_geral_prejuizos', { p_ano: ano }), prejuizosSchema, 'get_geral_prejuizos'))),
   ])
+
+  const selecionado = (l: LeituraAno<unknown>) => anos.includes(l.ano)
+  const doCorrente = <T,>(lidas: LeituraAno<T>[]): LeituraAno<T> =>
+    lidas.find(l => l.ano === anoCorrente) ?? { ano: anoCorrente, leitura: { ok: false } }
 
   const dados: DadosGeral = {
     anos,
     anosDisponiveis: anosDasPillsGeral(anoCorrente),
     hoje,
     recebiveis: carregado(parseRpc(recebiveisSchema, recebiveisRes, 'get_geral_recebiveis')),
-    prazos: carregado(parseRpc(prazosSchema, prazosRes, 'get_geral_prazos')),
-    antecipacoes,
-    prejuizos,
-    custos,
+    antecipacoes: antecipacoesLidas.filter(selecionado),
+    prejuizos: prejuizosLidos.filter(selecionado),
+    corrente: {
+      prejuizos: doCorrente(prejuizosLidos),
+      antecipacoes: doCorrente(antecipacoesLidas),
+    },
     // Só quem tem 'financeiro/geral/gestao' vê o botão (as actions e as RPCs checam de novo).
     podeGerir: podeGerirAntecipacoes(sessao.permissoes),
   }
