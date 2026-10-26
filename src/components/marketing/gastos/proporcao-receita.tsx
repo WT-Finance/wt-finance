@@ -26,9 +26,10 @@ import CabecalhoCard from './cabecalho-card'
 // proporção é competência. Não há subtítulo: quem diz isso (e o que significa o `*`) é o "?" ao lado
 // do título (`AJUDA`), para ninguém somar um com o outro.
 //
-// Sinal: o da DRE (despesa NEGATIVA) → as barras descem a partir da linha do zero, como o resto da
-// página, e o rótulo é o `fmtAv` da DRE (1 casa, negativo entre parênteses). O eixo NÃO é invertido
-// (a inversão da grade da DRE serve à LINHA de tendência; aqui a barra para baixo é a leitura).
+// Sinal: o da DRE (despesa NEGATIVA), e o rótulo é o `fmtAv` da DRE (1 casa, negativo entre
+// parênteses). O eixo é INVERTIDO (v6.4.2, decisão do Yan — antes as barras desciam do zero): como na
+// grade de proporção da DRE, "pesa mais" = "mais alto", e o número continua negativo. Vale para todos
+// os gráficos de barras da página (`serie-mensal.tsx` também).
 // Domínio e ticks vêm de `escalaProporcao` (o default do Recharts ancora em zero e cortaria os
 // negativos) e o zero é desenhado por `ChartZeroLine`. Cores por ano: as de "Despesas mensais".
 //
@@ -37,11 +38,14 @@ import CabecalhoCard from './cabecalho-card'
 
 const ALTURA = 190
 
+/** Eixo de cabeça para baixo: a despesa (negativa) sobe. O rótulo da barra lê esta mesma constante. */
+const EIXO_INVERTIDO = true
+
 const AJUDA =
   'Quanto o Marketing consumiu da Receita Bruta em cada ano. Este card é por regime de competência, ' +
   'igual ao gráfico "Proporção sobre a Receita Bruta" da DRE — o mesmo número do grupo Marketing ' +
-  'ali. O percentual é negativo, como na coluna AV do demonstrativo (despesa), e a barra desce a ' +
-  'partir do zero. O * marca o ano em andamento: conta só os meses já cobertos pela base (o ' +
+  'ali. O percentual é negativo, como na coluna AV do demonstrativo (despesa), mas o eixo está ' +
+  'invertido, como na DRE: a barra mais alta é o ano em que o Marketing pesou mais. O * marca o ano em andamento: conta só os meses já cobertos pela base (o ' +
   'tooltip mostra quantos). ' +
   'Atenção: o restante desta página é pago (caixa); esta proporção é por competência, então não ' +
   'se soma nem se confronta diretamente com os totais ao lado.'
@@ -90,7 +94,7 @@ export default function ProporcaoReceita({ anos, leituras }: Props) {
               {ChartGrid()}
               {/* `interval: 0` — o default do primitivo esconderia o ano do meio. */}
               {ChartXAxisCategoria('rotulo', { interval: 0 })}
-              {ChartYAxisPct({ casas: escala.casas, width: 48, domain: escala.domain, ticks: escala.ticks })}
+              {ChartYAxisPct({ casas: escala.casas, width: 48, invertido: EIXO_INVERTIDO, domain: escala.domain, ticks: escala.ticks })}
               {ChartZeroLine()}
               <Tooltip
                 content={p => (
@@ -107,10 +111,11 @@ export default function ProporcaoReceita({ anos, leituras }: Props) {
               <Bar dataKey="pct" name="da Receita Bruta" radius={barRadius.top} maxBarSize={64} isAnimationActive={false}>
                 {dados.map(d => <Cell key={d.rotulo} fill={d.cor} />)}
                 {/* `content` CUSTOM (não `formatter`): o LabelList padrão quebra o texto na largura
-                    da barra. O texto fica logo além da PONTA LIVRE: abaixo da barra que desce (o
-                    caso normal), acima da que sobe. `y`/`height` são assinados (barRadius.top) —
-                    por isso as duas pontas saem de min/max, sem supor qual é qual. Ano sem ponto
-                    (`value` null) não desenha nada: o "—" mora no rótulo do eixo. */}
+                    da barra. O texto fica logo além da PONTA LIVRE: acima da barra que sobe (com o
+                    eixo invertido, a negativa — o caso normal), abaixo da que desce. `y`/`height`
+                    são assinados (barRadius.top) — por isso as duas pontas saem de min/max, sem
+                    supor qual é qual. Ano sem ponto (`value` null) não desenha nada: o "—" mora no
+                    rótulo do eixo. */}
                 <LabelList
                   dataKey="pct"
                   content={p => {
@@ -122,7 +127,8 @@ export default function ProporcaoReceita({ anos, leituras }: Props) {
                     const v = Number(value)
                     const a = Number(y)
                     const b = Number(y) + Number(height)
-                    const yTexto = v < 0 ? Math.max(a, b) + 13 : Math.min(a, b) - 6
+                    const sobe = EIXO_INVERTIDO ? v < 0 : v >= 0
+                    const yTexto = sobe ? Math.min(a, b) - 6 : Math.max(a, b) + 13
                     return (
                       <text
                         x={Number(x) + Number(width) / 2}

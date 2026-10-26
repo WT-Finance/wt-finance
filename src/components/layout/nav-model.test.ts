@@ -64,7 +64,8 @@ const FORA_DA_SIDEBAR: Record<string, string> = {
   '/financeiro':                        'página do grupo Financeiro; a sidebar leva direto às subabas',
   '/financeiro/dre/estrutura':          'v5.3.0: editor da estrutura, alcançado de dentro da DRE',
   '/financeiro/dre/estrutura-competencia': 'v5.8.0: editor da estrutura do regime de competência, alcançado de dentro da DRE (irmã da de cima)',
-  '/metas/comparacao':                  'v5.1.9: Modo de Comparação, aberto pelo botão do Acompanhamento',
+  '/marketing/gastos':                  'v6.4.2: rota LEGADA de Despesas de Marketing — page.tsx é só redirect para /marketing/despesas (favoritos e links antigos)',
+  '/metas/comparacao':                'v5.1.9: Modo de Comparação, aberto pelo botão do Acompanhamento',
   '/metas/tv':                          'v5.1.0: Modo TV (tela cheia), aberto por link do Acompanhamento',
 }
 
@@ -200,8 +201,10 @@ describe('filtro por permissão — a seção nova não vaza nem apaga o que já
   it('v6.3.0: "Marketing" é um grupo com a subaba Despesas, sem página própria na raiz', () => {
     const subs = NAV_GROUPS['/marketing']
     expect(subs.map(s => [s.label, s.href, s.area])).toEqual([
-      ['Despesas', '/marketing/gastos', 'marketing/gastos'],
+      ['Despesas', '/marketing/despesas', 'marketing/gastos'],
     ])
+    expect(ROTAS).toContain('/marketing/despesas')
+    // v6.4.2: /marketing/gastos ficou só como redirecionamento para links antigos.
     expect(ROTAS).toContain('/marketing/gastos')
     // O item-pai só agrupa (como /gestao-pessoas): não existe app/marketing/page.tsx.
     expect(ROTAS).not.toContain('/marketing')
@@ -212,7 +215,7 @@ describe('filtro por permissão — a seção nova não vaza nem apaga o que já
   it('v6.3.0: quem tem SÓ marketing/gastos vê só a seção Marketing — e nada mais', () => {
     expect(rotulos(['marketing/gastos'])).toEqual(['Marketing'])
     const subs = NAV_GROUPS['/marketing'].filter(s => subVisivel(s, ['marketing/gastos']))
-    expect(subs.map(s => s.href)).toEqual(['/marketing/gastos'])
+    expect(subs.map(s => s.href)).toEqual(['/marketing/despesas'])
   })
 
   it('v6.3.0: SEM marketing/gastos, "Marketing" não aparece — e nada mais muda (Design System segue)', () => {
@@ -227,11 +230,11 @@ describe('filtro por permissão — a seção nova não vaza nem apaga o que já
     }
   })
 
-  it('v6.3.0: em /marketing/gastos acende só a subaba Despesas; rota de outra seção não acende nada', () => {
+  it('v6.3.0: em /marketing/despesas acende só a subaba Despesas; rota de outra seção não acende nada', () => {
     const subs = NAV_GROUPS['/marketing']
-    expect(hrefAtivoDoGrupo(subs, '/marketing/gastos')).toBe('/marketing/gastos')
+    expect(hrefAtivoDoGrupo(subs, '/marketing/despesas')).toBe('/marketing/despesas')
     expect(hrefAtivoDoGrupo(subs, '/gestao-pessoas/inventario')).toBeNull()
-    expect(hrefAtivoDoGrupo(NAV_GROUPS['/gestao-pessoas'], '/marketing/gastos')).toBeNull()
+    expect(hrefAtivoDoGrupo(NAV_GROUPS['/gestao-pessoas'], '/marketing/despesas')).toBeNull()
   })
 
   // ── v6.4.0 — Financeiro · Geral ─────────────────────────────────────────────────────────

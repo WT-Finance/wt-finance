@@ -57,6 +57,10 @@ import CabecalhoCard from './cabecalho-card'
 // zero é desenhado por `ChartZeroLine`, e o eixo mostra o sinal (`abs: false`) — a mesma grandeza
 // não pode aparecer com dois sinais em telas vizinhas.
 //
+// EIXO INVERTIDO (v6.4.2, decisão do Yan): os dois gráficos (meses e Total) usam `invertido`, como a
+// grade de proporção da DRE — a despesa, negativa, SOBE a partir do zero ("mais gasto" = "mais alto")
+// e o rótulo do eixo continua negativo. Um estorno que deixe o mês positivo desce.
+//
 // Falha parcial: o gráfico desenha os anos que carregaram e AVISA dos ausentes (ele não soma anos
 // — cada barra é de um ano só; quem soma, os cards, mostra o erro no lugar do número). O aviso
 // nomeia os anos ausentes em TODOS os ramos (com dado, sem lançamento nos carregados, falha total).
@@ -169,7 +173,7 @@ export default function SerieMensal({ periodo, anos, fatias, anosFalha }: Props)
               <BarChart key={chaveDosAnos} data={dadosMensais} margin={chartMargins.default} barGap={2} barCategoryGap="16%">
                 {ChartGrid()}
                 {ChartXAxisCategoria('label', { interval: 0 })}
-                {ChartYAxisBRL({ abs: false, width: 76, domain: escalaMeses.domain, ticks: escalaMeses.ticks })}
+                {ChartYAxisBRL({ abs: false, invertido: true, width: 76, domain: escalaMeses.domain, ticks: escalaMeses.ticks })}
                 {ChartZeroLine()}
                 <Tooltip
                   content={p => (
@@ -211,7 +215,7 @@ export default function SerieMensal({ periodo, anos, fatias, anosFalha }: Props)
               <BarChart data={dadosTotal} margin={chartMargins.default} barCategoryGap="22%">
                 {ChartGrid()}
                 {ChartXAxisCategoria('label', { interval: 0 })}
-                {ChartYAxisBRL({ abs: false, width: 76, domain: escalaTotal.domain, ticks: escalaTotal.ticks })}
+                {ChartYAxisBRL({ abs: false, invertido: true, width: 76, domain: escalaTotal.domain, ticks: escalaTotal.ticks })}
                 {ChartZeroLine()}
                 <Tooltip
                   content={p => (

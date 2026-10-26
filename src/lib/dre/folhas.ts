@@ -22,7 +22,8 @@
 // v5.8.1 (competência e caixa, 2025 e 2026, quatro payloads, fecha ao centavo):
 //
 //   caixa: REX = REPASSE + RV + IMP_H + CUSTO + ADM + COM + FIN + MKT + ESTR + RH
-//                + RHB + RNOP + DNOP + INV + IMOB + DIST_LUCROS
+//                + RHB + RNOP + DNOP + INV + DIST_LUCROS
+//          (até a v6.4.1 havia também `+ IMOB`; a v6.4.2 o dissolveu no `INV`)
 //   comp:  REX = RV + REEMB + IMP_H + CUSTO + ADM + COM + MKT + ESTR + RH + RHB
 //                + FIN + RNOP + DNOP + INV + DL
 //
@@ -73,7 +74,7 @@ export function folhasPorGrupo(p: DreMensalLike, ateMes: number): Map<string, nu
 
 /** Soma das folhas indicadas, em centavos. Chave ausente vale 0 — é o que permite um
  *  pareamento nomear uma folha que aquele regime não tem (`REEMB` só existe na
- *  competência, `IMOB` só no caixa) sem ramificar no chamador. */
+ *  competência) sem ramificar no chamador. */
 export function somarGrupos(folhas: Map<string, number>, chaves: readonly string[]): number {
   let s = 0
   for (const k of chaves) s += folhas.get(k) ?? 0

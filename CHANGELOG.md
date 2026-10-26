@@ -6,6 +6,33 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [6.4.2] — 2026-10-26
+
+PATCH · **Ajustes em Despesas de Marketing e na DRE de caixa.** Out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v6-4-2_Ajustes_Marketing_DRE.md`. **Patch destrutivo**
+`supabase/patches/dre-dissolver-imobilizado-em-investimentos.sql` (vira a **0300**; **pendente**, aplicação
+humana em TTY). Sem ADR novo; Emenda 2 do ADR-0168.
+
+### Alterado
+
+- **Rota de Despesas de Marketing:** `/marketing/gastos` → **`/marketing/despesas`** (sidebar e `rotaInicial`).
+  `/marketing/gastos` fica só como redirect, levando a query (`?anos=`). A área RBAC `marketing/gastos`, as RPCs
+  `get_marketing_gastos_*` e `src/components/marketing/gastos/` mantêm o nome técnico.
+- **Gráficos de barras de Marketing com eixo invertido** (Despesas mensais, painel Total e Proporção sobre a
+  Receita Bruta), como a grade de proporção da DRE: a despesa (negativa) sobe a partir do zero, e o rótulo
+  continua negativo. `ChartYAxisBRL` ganha a opção `invertido` (a mesma do `ChartYAxisPct`). O rótulo da barra da
+  proporção vai para a ponta livre conforme a orientação. O texto de ajuda do card foi atualizado.
+- **DRE de caixa: o grupo "(-) Despesas com Imobilizados" (`IMOB`) é dissolvido em "(-) Despesas com
+  Investimentos e Empréstimos" (`INV`)** pelo patch destrutivo. As categorias do `IMOB` passam para o `INV`, as
+  fórmulas ficam `INV_H = [INV]` e `RAIR = [LL, INV]`, e o bloco sai. O cabeçalho "(+/-) INVESTIMENTOS, IMOBILIZADO
+  E EMPRÉSTIMOS" mantém o rótulo. `INV_H`, `RAIR` e `REX` não mudam um centavo. A ponte competência↔caixa pareia
+  só `INV` no caixa.
+- `scripts/dre-oracle.mjs`: `INV_H` entra nos invariantes; invariante ausente no "depois" passa a reprovar (antes
+  dava `NaN` e passava como OK); confere `INV depois = INV antes + IMOB antes`.
+- Casos de contrato da v5.7.0 em `rpc-contrato.test.ts` retratam o estado pós-patch (vermelhos até a aplicação).
+
+---
+
 ## [6.4.1] — 2026-10-15
 
 PATCH · **Antecipações em âmbar no gráfico "Fluxo de Caixa Mensal".** Out-briefing

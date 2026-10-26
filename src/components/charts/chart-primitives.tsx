@@ -143,9 +143,12 @@ export function ChartXAxisCategoria(
 /**
  * Eixo Y monetário abreviado ('R$ 1,8 Mi'), sem axisLine/tickLine.
  * `abs` (default true) mostra o módulo — útil quando saídas vão para baixo.
+ * `invertido` vira o eixo de cabeça para baixo mantendo os rótulos — a mesma opção (e o mesmo
+ * porquê) do `ChartYAxisPct`: série de despesa, negativa por natureza, com "mais gasto" = "mais
+ * alto" sem trocar o sinal do número (v6.4.2, Despesas de Marketing).
  */
 export function ChartYAxisBRL(
-  opts?: { width?: number; abs?: boolean; domain?: [number, number]; ticks?: number[] },
+  opts?: { width?: number; abs?: boolean; invertido?: boolean; domain?: [number, number]; ticks?: number[] },
 ): ReactElement {
   const abs = opts?.abs ?? true
   return (
@@ -159,6 +162,7 @@ export function ChartYAxisBRL(
       // centralizado (ex.: Horizonte Previsto). undefined → default do recharts.
       domain={opts?.domain}
       ticks={opts?.ticks}
+      reversed={opts?.invertido}
     />
   )
 }

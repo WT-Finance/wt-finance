@@ -176,6 +176,24 @@ O guard de payload duplicado da `0260` (competência), que se justificava como p
 **portado para o salvar do caixa** e re-justificado nos dois lugares como recusa de payload ambíguo — a
 mesma linha duas vezes no mesmo lote é cliente confuso, e o último toque venceria em silêncio.
 
+## Emenda 2 (26/10/2026, v6.4.2) — o `IMOB` é dissolvido no `INV` (a alternativa acima foi adotada)
+
+**Decisão do Yan, em 26/10.** O pedido foi "excluir o grupo Despesas com Imobilizados" da DRE de caixa. Entre
+excluir as categorias do demonstrativo (o que mudaria o resultado), devolvê-las às despesas operacionais
+(o que reverteria a Decisão 2) e dissolvê-las no `INV`, ele escolheu **dissolver**. As categorias do `IMOB`
+passam para "(-) Despesas com Investimentos e Empréstimos", as fórmulas ficam `INV_H = [INV]` e
+`RAIR = [LL, INV]`, e o bloco sai. O cabeçalho "(+/-) INVESTIMENTOS, IMOBILIZADO E EMPRÉSTIMOS" **mantém o
+rótulo**, também por decisão dele.
+
+Isto **não** é mudança de critério: o imobilizado continua abaixo da linha. `LOP` e `LL` não são tocados, e
+`INV_H`, `RAIR` e `REX` não mudam um centavo, o que `scripts/dre-oracle.mjs` passa a conferir. O que se perde é
+exatamente o argumento da "Alternativa descartada" acima: a distinção entre imobilizado e empréstimo dentro do
+bloco deixa de ser uma linha da DRE e passa a existir só no nível das categorias. A Decisão 2 foi tomada com a
+gerente de controladoria, e esta emenda desfaz a parte dela que criava o subgrupo próprio.
+
+Patch destrutivo `supabase/patches/dre-dissolver-imobilizado-em-investimentos.sql`, que vira a `0300` quando o
+Yan o aplica em TTY. Out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-4-2_Ajustes_Marketing_DRE.md`.
+
 ## Ver também
 
 - ADR-0156 — estrutura viva da DRE (fórmulas por chave, grafo, undo generalizado)

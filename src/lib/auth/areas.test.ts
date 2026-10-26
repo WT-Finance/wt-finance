@@ -64,6 +64,8 @@ describe('areasDaRota — toda rota de página tem dono', () => {
     // quatro pontas — AREAS/AREA_INFO, areasDaRota, requireArea da page e a `area` da subaba na
     // sidebar — viram juntas. Mesma disciplina do Inventário (v5.6.0), acima.
     ['/marketing',                          ['marketing/gastos']],
+    ['/marketing/despesas',                 ['marketing/gastos']],
+    // v6.4.2: a rota antiga só redireciona, mas segue sob a mesma área.
     ['/marketing/gastos',                   ['marketing/gastos']],
   ]
   it.each(casos)('%s → %j', (rota, esperado) => {
@@ -74,7 +76,7 @@ describe('areasDaRota — toda rota de página tem dono', () => {
     expect(AREA_INFO['marketing/gastos']).toEqual({ rotulo: 'Despesas', grupo: 'Marketing', ordem: 70 })
   })
   it("v6.3.0: a rota de Marketing NÃO é liberada pela área de admin vizinha 'admin/design-system'", () => {
-    for (const rota of ['/marketing', '/marketing/gastos']) {
+    for (const rota of ['/marketing', '/marketing/despesas', '/marketing/gastos']) {
       expect(areasDaRota(rota)).not.toContain('admin/design-system')
     }
   })
@@ -127,7 +129,7 @@ describe('rotaInicial — primeira área permitida', () => {
     // v6.1.1/M3: quem só tem a área da API Externa não cai em /sem-acesso.
     expect(rotaInicial(['api-externa'])).toBe('/admin/api-externa')
     // v6.3.0: quem só tem a área de Marketing entra DIRETO na página (não cai em /sem-acesso).
-    expect(rotaInicial(['marketing/gastos'])).toBe('/marketing/gastos')
+    expect(rotaInicial(['marketing/gastos'])).toBe('/marketing/despesas')
     // v6.4.0 (inv. 12): quem tem SÓ 'financeiro/geral' (a diretoria) entra direto na página —
     // sozinha, ou junto da gestão (Financeiro/Administrador) — e não cai em /sem-acesso.
     expect(rotaInicial(['financeiro/geral'])).toBe('/financeiro/geral')
