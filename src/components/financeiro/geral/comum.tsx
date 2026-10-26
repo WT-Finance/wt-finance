@@ -76,7 +76,7 @@ export function Tile({ rotulo, valor, escopo, apoio = [], variacao, referencia, 
       {estado === 'ok' && (
         <>
           <p
-            className="mt-2 min-w-0 truncate whitespace-nowrap text-lg font-extrabold leading-none tabular-nums text-text-primary"
+            className="mt-2 min-w-0 break-words text-lg font-extrabold leading-none tabular-nums text-text-primary"
             title={valor ?? undefined}
           >
             {valor ?? '—'}

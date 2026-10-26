@@ -1,7 +1,7 @@
 // Anos e recortes da página "Financeiro · Geral" (v6.4.0) — módulo PURO, sem I/O nem React.
 //
 // A seleção de anos reaproveita `@/lib/marketing/anos` e `@/lib/marketing/periodo` SEM mover nada
-// (inv. 9: nada fora da página muda; D7 do plano — não há componente de pills compartilhado). Aqui
+// (inv. 12: nada fora da página muda; D7 do plano — não há componente de pills compartilhado). Aqui
 // ficam só as duas diferenças desta página:
 //
 //  • As RPCs do Geral NÃO devolvem `anosDisponiveis`, então a lista de pills é uma janela fixa: do

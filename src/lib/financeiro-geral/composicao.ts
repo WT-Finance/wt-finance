@@ -11,7 +11,6 @@
 //  • Cor por token e por POSIÇÃO entre os SELECIONADOS (`coresPorAno` do Marketing, importada sem mover):
 //    a cor de um ano não muda porque o de outro falhou.
 
-import { passoRedondo } from '@/lib/escala-grafico'
 import { ROTULOS_MES, mesesRealizados, rotuloDoAno, type RelacaoDoAno } from './periodo'
 import type { Carregado, LeituraAno } from './tipos'
 
@@ -96,38 +95,4 @@ export function leituraDoAnoCorrente<T extends RelacaoDoAno>(
 /** Adaptador `Carregado<T>` → `T | null`, para as seções de leitura única. */
 export function dadosOuNull<T>(c: Carregado<T>): T | null {
   return c.ok ? c.dados : null
-}
-
-export interface EscalaEixo {
-  domain: [number, number]
-  ticks: number[]
-}
-
-const INTERVALOS_ALVO = 4
-const limpar = (n: number): number => (n === 0 ? 0 : Math.round(n * 100) / 100) // normaliza -0
-
-/**
- * Domínio e ticks do eixo Y. Sempre CONTÉM o dado e o zero (a ponta é arredondada para FORA do dado,
- * nunca para dentro — encaixar para dentro faz pontos sumirem), a partir de um PASSO redondo
- * (`passoRedondo`), nunca o contrário. Quem fixa `domain` fixa os `ticks` junto: o domínio explícito
- * desliga os ticks bonitos do Recharts. Série que cruza o zero exige isso — o default do Recharts
- * ancora em zero e corta os negativos.
- */
-export function escalaEixo(valores: readonly (number | null | undefined)[]): EscalaEixo {
-  const v = valores.filter((n): n is number => typeof n === 'number' && Number.isFinite(n))
-  const min = Math.min(0, ...v)
-  const max = Math.max(0, ...v)
-  const amplitude = max - min
-  if (amplitude <= 0) return { domain: [0, 1000], ticks: [0, 250, 500, 750, 1000] }
-  const passo = passoRedondo(amplitude / INTERVALOS_ALVO)
-  const lo = Math.floor(min / passo) * passo
-  const hi = Math.ceil(max / passo) * passo
-  const ticks: number[] = []
-  for (let t = lo; t <= hi + passo / 1000; t += passo) ticks.push(limpar(t))
-  return { domain: [limpar(lo), limpar(hi)], ticks }
-}
-
-/** Todos os valores de uma série (para a escala). */
-export function valoresDaSerie(s: SerieMultiAno): (number | null)[] {
-  return s.pontos.flatMap(p => p.valores)
 }

@@ -287,7 +287,7 @@ describe('lancamentos-aberto — sem foto de prazos (v6.5.0)', () => {
     aplicarCargaMock.mockImplementation(async () => aplicacaoOk(1))
   })
 
-  it('aplicou: NENHUMA chamada a registrar_foto_prazos e nenhum aviso de prazos em alarmes (a série foi removida do banco)', async () => {
+  it('aplicou: NENHUMA chamada a registrar_foto_prazos e nenhum aviso de prazos em alarmes (a série será removida pela destrutiva 0302, GATE 2)', async () => {
     programarRpc()
     const r = await processarCarga(entradaAberto())
 

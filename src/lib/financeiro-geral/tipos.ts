@@ -3,7 +3,7 @@
 
 import type { Antecipacoes, Prejuizos, Recebiveis } from './schemas'
 
-/** Resultado de uma leitura que pode falhar sem derrubar a página (inv. 8: a seção degrada, a
+/** Resultado de uma leitura que pode falhar sem derrubar a página (inv. 11: a seção degrada, a
  *  página fica de pé). Espelha o `allSettled` por item feito em `page.tsx`. */
 export type Carregado<T> = { ok: true; dados: T } | { ok: false }
 

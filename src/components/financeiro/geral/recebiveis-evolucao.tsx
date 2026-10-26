@@ -58,7 +58,7 @@ export default function EvolucaoInadimplente({
     )
   }
 
-  const dados: LinhaGrafico[] = pontos.map(p => ({ ...p, rotuloEixo: p.parcial ? `${p.rotulo}*` : p.rotulo }))
+  const dados: LinhaGrafico[] = pontos.map(p => ({ ...p, rotuloEixo: p.parcial && !p.lacuna ? `${p.rotulo}*` : p.rotulo }))
   const comCarga = pontos.filter(p => !p.lacuna)
   const temParcial = pontos.some(p => p.parcial && !p.lacuna)
   const temLacuna = pontos.some(p => p.lacuna)

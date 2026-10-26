@@ -194,7 +194,9 @@ function Corpo({ dados, dataPosicao, hoje }: { dados: Recebiveis; dataPosicao: s
                   {devedores.linhas.map(d => (
                     <tr key={d.posicao}>
                       <td className={TD_NUM}>{d.posicao}</td>
-                      <td className={`${TD} truncate ${d.semNome ? 'italic text-[var(--text-muted)]' : ''}`} title={d.devedor}>{d.devedor}</td>
+                      <td className={TD}>
+                        <span className={`block truncate ${d.semNome ? 'italic text-[var(--text-muted)]' : ''}`} title={d.devedor}>{d.devedor}</span>
+                      </td>
                       <td className={TD_NUM}>{d.n}</td>
                       <td className={TD}><ValorContabil valor={d.valor} /></td>
                       <td className={TD_NUM}>{fmtPct(d.pct)}</td>
@@ -204,7 +206,9 @@ function Corpo({ dados, dataPosicao, hoje }: { dados: Recebiveis; dataPosicao: s
                   {devedores.demais && (
                     <tr>
                       <td className={TD} />
-                      <td className={`${TD} text-[var(--text-muted)]`}>{devedores.demais.rotulo}</td>
+                      <td className={TD}>
+                        <span className="block truncate italic text-[var(--text-muted)]">{devedores.demais.rotulo}</span>
+                      </td>
                       <td className={TD_NUM}>{devedores.demais.n}</td>
                       <td className={TD}><ValorContabil valor={devedores.demais.valor} /></td>
                       <td className={TD_NUM}>{fmtPct(devedores.demais.pct)}</td>

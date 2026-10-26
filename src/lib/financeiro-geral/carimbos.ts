@@ -1,6 +1,6 @@
 // Carimbos de data da página "Financeiro · Geral" (v6.4.0) — módulo PURO.
 //
-// Cada seção mostra a PRÓPRIA data (inv. 8) — carga, último registro, foto —, e o cabeçalho mostra o
+// Cada seção mostra a PRÓPRIA data (inv. 11) — carga, último registro, foto —, e o cabeçalho mostra o
 // "Última atualização" da página: o carimbo mais recente entre as fontes que carregaram. Timestamps
 // (timestamptz, com offset) ficam em ISO; a exibição é sempre por `fmtDataSP`/`UltimaAtualizacao`
 // (nunca split de string — o dia erra perto da meia-noite).
