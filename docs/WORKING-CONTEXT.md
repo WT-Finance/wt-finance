@@ -9,29 +9,30 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-26 (fechamento da v6.4.2, PR draft aberto).
+Última atualização: 2026-10-26 (pós-merge da v6.4.2: 0300 aplicada).
 
 ---
 
-## Em voo — v6.4.2 "Ajustes em Despesas de Marketing e na DRE de caixa" (PR draft, aguardando merge)
+## Em produção — v6.4.2 "Ajustes em Despesas de Marketing e na DRE de caixa" (PR #306, mergeado 26/10 às 10:40)
 
-Branch `feat/v6-4-2-ajustes-marketing-dre`. Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v6-4-2_Ajustes_Marketing_DRE.md`.
+Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v6-4-2_Ajustes_Marketing_DRE.md`.
 
 - Despesas de Marketing mora em **`/marketing/despesas`**; `/marketing/gastos` só redireciona (com a query). A área,
   as RPCs e os componentes seguem `gastos`.
 - Os 3 gráficos de barras de Marketing usam **eixo invertido** (a despesa sobe; o rótulo segue negativo).
-- DRE de caixa: o grupo **`IMOB` é dissolvido no `INV`** (decisão do Yan; cabeçalho `INV_H` mantém o rótulo) pelo
-  **patch DESTRUTIVO** `supabase/patches/dre-dissolver-imobilizado-em-investimentos.sql`, **NÃO aplicado**. Ele vira
-  a **0300**. Banco segue na **0299**. Sem ADR; ADR livre **0184**.
+- DRE de caixa: o grupo **`IMOB` foi dissolvido no `INV`** (decisão do Yan; cabeçalho `INV_H` mantém o rótulo;
+  Emenda 2 do ADR-0168). Migration **0300 APLICADA em 26/10** pelo Yan em TTY, depois do merge (o #306 foi
+  mergeado antes da aplicação, sem quebrar nada). O oráculo deu OK: `INV_H`, `RAIR` e `REX` ficaram iguais ao
+  centavo. Banco na **0300**, livre **0301**. ADR livre **0184**.
 
 > 🔴 **Yan:**
 >
-> 1. **Aplicar o patch em TTY**, de preferência antes do merge. O passo a passo está no header: oráculo antes →
->    `mv` → `db:migrate -- --destrutiva` → oráculo `--comparar` → `db:baseline` → commit. Antes, o pré-voo
->    `SELECT proname FROM pg_proc WHERE prosrc ILIKE '%IMOB%'`. Até lá, 2 contratos do `IMOB` ficam vermelhos.
-> 2. Conferir no preview (out-briefing §6): as barras subindo, o redirect com `?anos=` e, depois do patch, a DRE de
->    caixa sem a linha de imobilizados.
-> 3. Mergear o PR e depois rodar `/pos-merge`.
+> 1. Conferir no ar: as barras de Marketing subindo, o redirect com `?anos=`, e a DRE de caixa sem a linha de
+>    imobilizados (as 3 categorias dentro de Investimentos).
+> 2. Avisar a gerente de controladoria de que o subgrupo próprio do imobilizado (decidido com ela na v5.7.0) deixou
+>    de existir.
+> 3. Limpeza na raiz: remover as worktrees da v6.4.1 e da v6.4.2 e as branches (comandos no fim do roteiro do
+>    pós-merge).
 
 ---
 
@@ -48,9 +49,7 @@ efetivadas, segundo o registro de antecipações.
 
 > 🔴 **Yan:**
 >
-> 1. **Pós-merge não feito.** A data da diretoria foi reconciliada na v6.4.2 (16:46). Falta, na raiz:
->    `git pull --ff-only`, `git worktree remove .claude/worktrees/feat-v6-4-1-antecipacoes-fluxo`,
->    `git branch -d feat/v6-4-1-antecipacoes-fluxo`.
+> 1. A worktree e a branch da v6.4.1 saem na mesma limpeza da v6.4.2 (acima). A data da diretoria já foi reconciliada.
 > 2. Conferir no ar: abr/26 com R$ 700,3 mil em âmbar dentro de R$ 7,21 mi; tooltip "das quais antecipação"; a legenda.
 > 3. Decidir se mantém o âmbar `--warning`, cujo contraste contra o verde fica abaixo de 3:1 (out-briefing §7.3).
 
@@ -378,10 +377,10 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 
 | | |
 |---|---|
-| Produção | **v6.4.1** (PR #305, mergeado 15/10 às 16:46) · banco na **0299** |
-| Última migration aplicada | **0299** (v6.4.1 — `get_fluxo_antecipacoes_mensal`) · próxima livre: **0300** (reservada ao patch destrutivo da v6.4.2) |
+| Produção | **v6.4.2** (PR #306, mergeado 26/10 às 10:40) · banco na **0300** |
+| Última migration aplicada | **0300** (v6.4.2 — `IMOB` dissolvido no `INV`, destrutiva aplicada pelo Yan em TTY em 26/10) · próxima livre: **0301** |
 | Último ADR | **0183** (v6.4.0 — indicadores gerais do Financeiro) · próximo livre: **0184** |
-| Suíte | **2.567 verdes + 6 skipped**, 146 arquivos; vermelhos esperados: 2 contratos do `IMOB` (até o patch da v6.4.2) e 2 oráculos de ingestão sem fixture (`demonstrativo-cru`, B-38; `contas-receber-cru-24`) — fechamento da v6.4.2, 26/10 |
+| Suíte | **2.567 verdes + 6 skipped**, 146 arquivos; com a 0300 aplicada, os 2 contratos do `IMOB` ficam verdes; vermelhos esperados: 2 oráculos de ingestão sem fixture (`demonstrativo-cru`, B-38; `contas-receber-cru-24`) — fechamento da v6.4.2, 26/10 |
 
 A v5 está encerrada: auditada, triada e limpa. O que ficou para a v6 está em `docs/backlog-v6.md` (30 itens); como o sistema funciona, em `docs/estado-do-projeto.md`.
 
