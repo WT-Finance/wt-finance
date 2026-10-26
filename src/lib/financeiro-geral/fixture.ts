@@ -1,5 +1,6 @@
 // Fixture da página "Financeiro · Geral" (v6.5.0, GATE 1 — mockup na rota real) — dado de DEMONSTRAÇÃO
-// tipado como `DadosGeral`. Alimenta o mockup e os testes dos módulos puros; NÃO é dado vivo.
+// tipado como `DadosGeral`. Alimentou o mockup aprovado no GATE 1 (26/10); desde a M3 a página lê as RPCs e
+// a fixture serve só aos testes dos módulos puros. NÃO é dado vivo.
 //
 // Os números são os da medição M0 (posição de 15/10/2026): funil de recebíveis, prejuízo bruto e
 // antecipações por ano. O que a M0 não dá (faixas, devedores, séries, pessoas, split por conta) é

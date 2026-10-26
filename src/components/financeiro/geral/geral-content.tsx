@@ -2,7 +2,6 @@
 
 import { useMemo, useTransition } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import Badge from '@/components/ui/badge'
 import EmConstrucaoSecao from '@/components/shared/em-construcao-secao'
 import TopSection from '@/components/shared/top-section'
 import { alternarAno, serializarAnos } from '@/lib/marketing/anos'
@@ -29,7 +28,7 @@ import SecaoRecebiveis from './secao-recebiveis'
 //  • As pills valem para as seções de FLUXO (Perdas e prejuízos, Antecipações). Recebíveis (estoque) mostra
 //    a posição da última carga; a faixa do topo e "Dias sem antecipação" usam sempre o ano corrente.
 
-export default function GeralContent({ dados, mockup = false }: { dados: DadosGeral; mockup?: boolean }) {
+export default function GeralContent({ dados }: { dados: DadosGeral }) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -53,13 +52,6 @@ export default function GeralContent({ dados, mockup = false }: { dados: DadosGe
   return (
     <div className="space-y-6" aria-busy={isPending}>
       <CabecalhoGeral carimbo={carimbo} />
-
-      {mockup && (
-        <p className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-subtle)]">
-          <Badge variant="warning">Mockup</Badge>
-          Dados fictícios para aprovação do layout. Estados: <code>?estado=vazio</code> e <code>?estado=erro</code>.
-        </p>
-      )}
 
       <div className={`space-y-6 transition-opacity ${isPending ? 'pointer-events-none opacity-60' : ''}`}>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">

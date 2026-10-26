@@ -2963,7 +2963,8 @@ const RPCS_GERAL_VIVAS = [
 
 // APOSENTADAS ATÉ O GATE 2. A página deixou de chamá-las na v6.5.0, mas as duas CONTINUAM no banco, com
 // EXECUTE para o `verificador` (0297), até a destrutiva do GATE 2 (que roda DEPOIS do deploy: até lá a
-// ingestão em produção ainda chama a função de foto de prazos). A lista fica AQUI, explícita, para a
+// ingestão da versão anterior, ainda no ar, chama a função de foto de prazos; a v6.5.0 já não chama). A
+// lista fica AQUI, explícita, para a
 // allowlist DERIVADA deste arquivo não divergir dos grants vivos nesse meio-tempo (nome que some do arquivo
 // some da derivação; o grant, não). O shape é só "um objeto JSON qualquer" — o contrato delas morreu com os
 // schemas; o que segue valendo são as negações (anon negado, usuário sem a área negado).
