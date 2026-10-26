@@ -110,9 +110,10 @@ const API_EXTERNA_SUBS: NavSubItem[] = [
 
 // Marketing (v6.3.0) — seção NOVA da sidebar; "Despesas" é o 1º módulo. Área
 // própria 'marketing/gastos' (migration 0292) — a mesma de `areasDaRota` e do `requireArea` da
-// página; a rota e a área mantêm o nome técnico "gastos".
+// página; a área mantém o nome técnico "gastos" (a rota virou /marketing/despesas na v6.4.2;
+// /marketing/gastos só redireciona).
 const MARKETING_SUBS: NavSubItem[] = [
-  { href: '/marketing/gastos', label: 'Despesas', icon: HandCoins, area: 'marketing/gastos' },
+  { href: '/marketing/despesas', label: 'Despesas', icon: HandCoins, area: 'marketing/gastos' },
 ]
 
 /** Grupos com subabas — chave = href do item-pai em NAV_ITEMS. Único ponto que precisa

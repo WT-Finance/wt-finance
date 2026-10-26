@@ -164,7 +164,7 @@ export function areasDaRota(pathname: string): Area[] | null {
   // módulo da seção libera.
   if (p.startsWith('/gestao-pessoas'))            return ['gestao-pessoas/inventario', 'gestao-pessoas/estante', 'gestao-pessoas/estante/gestao']
   // Marketing (v6.3.0): área própria 'marketing/gastos' (migration 0292). Cobre /marketing
-  // (item-pai da sidebar, sem página) e /marketing/gastos.
+  // (item-pai da sidebar, sem página), /marketing/despesas e o redirecionamento /marketing/gastos.
   if (p.startsWith('/marketing'))                 return ['marketing/gastos']
   if (p.startsWith('/admin/design-system'))     return ['admin/design-system']
   if (p.startsWith('/admin/acessos'))           return ['admin/acessos']
@@ -213,7 +213,7 @@ const PRIORIDADE_INICIAL: { area: Area; href: string }[] = [
   // isto, quem tem SÓ 'api-externa' cairia em /sem-acesso ao entrar pela raiz.
   { area: 'api-externa',             href: '/admin/api-externa' },
   // v6.3.0: quem tem SÓ 'marketing/gastos' entra direto na página, não em /sem-acesso.
-  { area: 'marketing/gastos',        href: '/marketing/gastos' },
+  { area: 'marketing/gastos',        href: '/marketing/despesas' },
   { area: 'admin/acessos',          href: '/admin/acessos' },
   { area: 'admin/design-system',     href: '/admin/design-system' },
 ]
