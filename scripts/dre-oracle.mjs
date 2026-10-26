@@ -17,6 +17,12 @@
 //
 // Uso previsto: rodar com `antes.json` ANTES de aplicar, aplicar, rodar de novo com
 // `--comparar`. Leitura pura — não escreve nada no banco.
+//
+// v6.4.2 — reusado para a dissolução do `IMOB` no `INV` (patch
+// `supabase/patches/dre-dissolver-imobilizado-em-investimentos.sql` → 0300). Ali o
+// invariante é mais forte: além de RAIR e REX, o cabeçalho INV_H também não pode mudar
+// (INV' = INV + IMOB). A linha IMOB some no "depois" (o script a pula) e a INV cresce o
+// valor dela — conferir a olho.
 
 import { readFileSync, writeFileSync } from 'node:fs'
 
@@ -37,9 +43,10 @@ if (!HOST || !SENHA || !APIKEY) {
 
 const ANOS = [2024, 2025, 2026]
 /** As linhas que interessam: as que a reestruturação move e as que ela não pode mover. */
-const CHAVES = ['ROL', 'IMOB', 'FIN', 'DESP_H', 'LOP', 'LL', 'INV_H', 'RAIR', 'REX']
-/** RAIR e REX são o oracle propriamente dito — qualquer delta aqui reprova a migration. */
-const INVARIANTES = ['RAIR', 'REX']
+const CHAVES = ['ROL', 'IMOB', 'FIN', 'DESP_H', 'LOP', 'LL', 'INV', 'INV_H', 'RAIR', 'REX']
+/** O oracle propriamente dito — qualquer delta aqui reprova a migration. INV_H entrou na
+ *  v6.4.2 (na v5.7.0 ele MUDAVA de propósito: o IMOB entrava nele). */
+const INVARIANTES = ['INV_H', 'RAIR', 'REX']
 
 const brl = v =>
   v < 0
@@ -113,7 +120,7 @@ if (comparar) {
   )
   console.log(
     falhas.length === 0
-      ? '\n✅ ORACLE OK — RAIR e REX idênticos ao centavo em todos os anos.'
+      ? `\n✅ ORACLE OK — ${INVARIANTES.join(', ')} idênticos ao centavo em todos os anos.`
       : `\n❌ ORACLE REPROVA em: ${falhas.join(', ')}`,
   )
   process.exit(falhas.length === 0 ? 0 : 1)

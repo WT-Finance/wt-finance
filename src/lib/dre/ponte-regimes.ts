@@ -28,8 +28,9 @@
 //   · `FIN ↔ FIN` — o `RFIN` do caixa ("Receitas e Rendimentos Financeiros") foi
 //     dissolvido em `FIN` na v5.7.0 (`0251`), então hoje os dois regimes têm um único
 //     bloco de Resultado Financeiro. O anexo já supunha isso, e está certo.
-//   · `INV ↔ INV + IMOB` — o imobilizado desceu para o bloco de investimentos na
-//     v5.7.0; a competência não tem `IMOB` separado.
+//   · `INV ↔ INV` — o imobilizado desceu para o bloco de investimentos na v5.7.0
+//     (subgrupo `IMOB` próprio) e foi dissolvido no `INV` na v6.4.2; a competência
+//     nunca teve `IMOB` separado.
 //   · `DL ↔ DIST_LUCROS` — mesma conta, chaves diferentes nas duas árvores.
 //   · `REPASSE` = `ENT_H + PAG_H` (a fórmula viva do bloco `REPASSE` no caixa).
 //
@@ -89,7 +90,7 @@ export const PAREAMENTO_PONTE: readonly ParPonte[] = [
   { rotulo: 'RH Benefícios',               comp: ['RHB'],          caixa: ['RHB'],            natureza: 'despesa' },
   { rotulo: 'Resultado Financeiro',        comp: ['FIN'],          caixa: ['FIN'],            natureza: 'despesa' },
   { rotulo: 'Rec./Desp. Não Operacionais', comp: ['RNOP', 'DNOP'], caixa: ['RNOP', 'DNOP'],   natureza: 'receita' },
-  { rotulo: 'Investimentos/Empréstimos',   comp: ['INV'],          caixa: ['INV', 'IMOB'],    natureza: 'despesa' },
+  { rotulo: 'Investimentos/Empréstimos',   comp: ['INV'],          caixa: ['INV'],            natureza: 'despesa' },
   { rotulo: 'Distribuição de Lucros',      comp: ['DL'],           caixa: ['DIST_LUCROS'],    natureza: 'despesa' },
 ]
 

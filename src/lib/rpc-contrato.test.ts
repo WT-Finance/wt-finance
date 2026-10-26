@@ -1584,10 +1584,13 @@ describe.skipIf(!ON)('contrato DRE — grafo de fórmulas (a armadilha do passe 
 })
 
 // ── DRE · v5.7.0: a camada firme (Resultado Financeiro + Imobilizado abaixo da linha) ──
-// Estes três casos são o retrato do que a migration de estrutura deixa em produção.
+// Estes casos são o retrato do que a migration de estrutura deixa em produção.
 // Também nascem VERMELHOS e viram verdes na aplicação. Ficam permanentes porque a
 // estrutura é editável pela interface: sem eles, desfazer a decisão da gerente por
 // engano no editor não acusaria em lugar nenhum.
+// v6.4.2 (migration 0300, destrutiva, aplicada pelo Yan): o subgrupo IMOB foi DISSOLVIDO
+// no INV — os casos do imobilizado passaram a retratar isso, e nascem vermelhos de novo
+// até a 0300 ser aplicada.
 describe.skipIf(!ON)('contrato DRE — camada firme da v5.7.0', () => {
   it('RFIN não existe mais e suas 3 categorias vivem no Resultado Financeiro', async () => {
     const e = dreEstruturaSchema.parse(await rpc('dre_estrutura', {}))
@@ -1613,20 +1616,22 @@ describe.skipIf(!ON)('contrato DRE — camada firme da v5.7.0', () => {
     expect(f('DESP_H')).toEqual(['ADM', 'COM', 'FIN', 'MKT', 'ESTR', 'RH', 'RHB'])
     expect(f('LOP')).toEqual(['LB', 'ADM', 'COM', 'FIN', 'MKT', 'ESTR', 'RH', 'RHB'])
 
-    expect(f('INV_H')).toEqual(['INV', 'IMOB'])
-    expect(f('RAIR')).toEqual(['LL', 'INV', 'IMOB'])
+    // v6.4.2: o IMOB foi dissolvido no INV — as duas fórmulas perderam a chave JUNTAS.
+    expect(f('INV_H')).toEqual(['INV'])
+    expect(f('RAIR')).toEqual(['LL', 'INV'])
   })
 
-  it('IMOB renderiza SOB o cabeçalho que o agrega, não acima dele', async () => {
-    // A `ordem` não muda o CÁLCULO (IMOB soma categorias, materializa no passe 1),
-    // mas manda na RENDERIZAÇÃO: a 245 o subgrupo apareceria ACIMA do próprio
-    // cabeçalho. Tem de vir depois do INV_H e do INV.
+  it('v6.4.2: o grupo IMOB não existe mais e nenhuma categoria ou fórmula aponta para ele', async () => {
+    const e = dreEstruturaSchema.parse(await rpc('dre_estrutura', {}))
+    expect(e.blocos.map(b => b.chave), 'o bloco IMOB deveria ter sido removido (0300)').not.toContain('IMOB')
+    expect(e.maps.filter(m => m.bloco_chave === 'IMOB'), 'sobrou categoria apontando para IMOB').toEqual([])
+    expect(e.blocos.filter(b => (b.formula ?? []).includes('IMOB')).map(b => b.chave),
+      'fórmula ainda soma o IMOB').toEqual([])
+  })
+
+  it('o Resultado Financeiro fecha o bloco de DESPESAS, logo antes do LOP', async () => {
     const e = dreEstruturaSchema.parse(await rpc('dre_estrutura', {}))
     const ordem = (chave: string) => e.blocos.find(b => b.chave === chave)?.ordem ?? -1
-    expect(ordem('IMOB')).toBeGreaterThan(ordem('INV_H'))
-    expect(ordem('IMOB')).toBeGreaterThan(ordem('INV'))
-    expect(ordem('IMOB')).toBeLessThan(ordem('RAIR'))
-    // E o Resultado Financeiro fecha o bloco de DESPESAS, logo antes do LOP.
     expect(ordem('FIN')).toBeGreaterThan(ordem('RHB'))
     expect(ordem('FIN')).toBeLessThan(ordem('LOP'))
   })

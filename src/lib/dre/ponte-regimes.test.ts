@@ -39,7 +39,7 @@ function cenario() {
     cat('ENT_H', 5000), cat('PAG_H', -4500), cat('RV', 1200), cat('IMP_H', -400),
     cat('CUSTO', -350), cat('ADM', -38), cat('COM', -65), cat('MKT', -28),
     cat('ESTR', -22), cat('RH', -210), cat('RHB', -43), cat('FIN', -12),
-    cat('RNOP', 12), cat('DNOP', -4), cat('INV', -30), cat('IMOB', -8),
+    cat('RNOP', 12), cat('DNOP', -4), cat('INV', -38),
     cat('DIST_LUCROS', -90),
   ])
   return { comp, caixa }
@@ -60,7 +60,7 @@ describe('PAREAMENTO_PONTE — a partição', () => {
     }
   })
 
-  it('cobre as folhas vivas das duas árvores (0205+0251+0254 e 0256)', () => {
+  it('cobre as folhas vivas das duas árvores (0205+0251+0254+0300 e 0256)', () => {
     const comp = new Set(PAREAMENTO_PONTE.flatMap(p => p.comp))
     const caixa = new Set(PAREAMENTO_PONTE.flatMap(p => p.caixa))
     for (const k of ['RV', 'REEMB', 'IMP_H', 'CUSTO', 'ADM', 'COM', 'MKT', 'ESTR',
@@ -68,7 +68,7 @@ describe('PAREAMENTO_PONTE — a partição', () => {
       expect(comp.has(k), `folha de competência ${k} sem balde`).toBe(true)
     }
     for (const k of ['ENT_H', 'PAG_H', 'RV', 'IMP_H', 'CUSTO', 'ADM', 'COM', 'MKT',
-      'ESTR', 'RH', 'RHB', 'FIN', 'RNOP', 'DNOP', 'INV', 'IMOB', 'DIST_LUCROS']) {
+      'ESTR', 'RH', 'RHB', 'FIN', 'RNOP', 'DNOP', 'INV', 'DIST_LUCROS']) {
       expect(caixa.has(k), `folha de caixa ${k} sem balde`).toBe(true)
     }
   })
