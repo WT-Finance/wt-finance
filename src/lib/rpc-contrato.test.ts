@@ -1588,9 +1588,10 @@ describe.skipIf(!ON)('contrato DRE — grafo de fórmulas (a armadilha do passe 
 // Também nascem VERMELHOS e viram verdes na aplicação. Ficam permanentes porque a
 // estrutura é editável pela interface: sem eles, desfazer a decisão da gerente por
 // engano no editor não acusaria em lugar nenhum.
-// v6.4.2 (migration 0300, destrutiva, aplicada pelo Yan): o subgrupo IMOB foi DISSOLVIDO
-// no INV — os casos do imobilizado passaram a retratar isso, e nascem vermelhos de novo
-// até a 0300 ser aplicada.
+// v6.4.2: o subgrupo IMOB foi DISSOLVIDO no INV pelo patch destrutivo
+// `supabase/patches/dre-dissolver-imobilizado-em-investimentos.sql` (vira a 0300 quando o
+// Yan o aplica em TTY). Os casos do imobilizado passaram a retratar o estado DEPOIS dele e
+// ficam vermelhos até a aplicação.
 describe.skipIf(!ON)('contrato DRE — camada firme da v5.7.0', () => {
   it('RFIN não existe mais e suas 3 categorias vivem no Resultado Financeiro', async () => {
     const e = dreEstruturaSchema.parse(await rpc('dre_estrutura', {}))
@@ -1603,7 +1604,7 @@ describe.skipIf(!ON)('contrato DRE — camada firme da v5.7.0', () => {
       'FIN deveria ter as 8 próprias + as 3 que vieram do RFIN').toBe(11)
   })
 
-  it('IMOB saiu das despesas operacionais e entrou no bloco de investimentos', async () => {
+  it('o imobilizado está abaixo da linha: fora das DESPESAS/LOP, dentro de INV_H/RAIR pelo INV', async () => {
     const e = dreEstruturaSchema.parse(await rpc('dre_estrutura', {}))
     const f = (chave: string) => e.blocos.find(b => b.chave === chave)?.formula ?? []
 
@@ -1623,7 +1624,7 @@ describe.skipIf(!ON)('contrato DRE — camada firme da v5.7.0', () => {
 
   it('v6.4.2: o grupo IMOB não existe mais e nenhuma categoria ou fórmula aponta para ele', async () => {
     const e = dreEstruturaSchema.parse(await rpc('dre_estrutura', {}))
-    expect(e.blocos.map(b => b.chave), 'o bloco IMOB deveria ter sido removido (0300)').not.toContain('IMOB')
+    expect(e.blocos.map(b => b.chave), 'o bloco IMOB deveria ter sido removido (patch v6.4.2)').not.toContain('IMOB')
     expect(e.maps.filter(m => m.bloco_chave === 'IMOB'), 'sobrou categoria apontando para IMOB').toEqual([])
     expect(e.blocos.filter(b => (b.formula ?? []).includes('IMOB')).map(b => b.chave),
       'fórmula ainda soma o IMOB').toEqual([])

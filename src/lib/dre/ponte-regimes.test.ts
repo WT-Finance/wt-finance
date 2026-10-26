@@ -60,7 +60,7 @@ describe('PAREAMENTO_PONTE — a partição', () => {
     }
   })
 
-  it('cobre as folhas vivas das duas árvores (0205+0251+0254+0300 e 0256)', () => {
+  it('cobre as folhas vivas das duas árvores (0205+0251+0254+patch v6.4.2 e 0256)', () => {
     const comp = new Set(PAREAMENTO_PONTE.flatMap(p => p.comp))
     const caixa = new Set(PAREAMENTO_PONTE.flatMap(p => p.caixa))
     for (const k of ['RV', 'REEMB', 'IMP_H', 'CUSTO', 'ADM', 'COM', 'MKT', 'ESTR',

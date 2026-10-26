@@ -21,8 +21,8 @@
 // v6.4.2 — reusado para a dissolução do `IMOB` no `INV` (patch
 // `supabase/patches/dre-dissolver-imobilizado-em-investimentos.sql` → 0300). Ali o
 // invariante é mais forte: além de RAIR e REX, o cabeçalho INV_H também não pode mudar
-// (INV' = INV + IMOB). A linha IMOB some no "depois" (o script a pula) e a INV cresce o
-// valor dela — conferir a olho.
+// (INV' = INV + IMOB). A linha IMOB some no "depois" (o script a pula) e a INV tem de
+// crescer exatamente o valor dela — conferido automaticamente no `--comparar`.
 
 import { readFileSync, writeFileSync } from 'node:fs'
 
@@ -113,11 +113,24 @@ for (const ano of ANOS) {
 }
 
 if (comparar) {
+  // `!(… < 0.005)` e não `>= 0.005`: invariante que SUMIU do "depois" dá NaN, e NaN tem de
+  // REPROVAR — com `>=` ele passava calado como OK (v6.4.2, achado do revisor).
   const falhas = ANOS.flatMap(ano =>
     INVARIANTES
-      .filter(k => antes[ano]?.[k] !== undefined && Math.abs(agora[ano][k] - antes[ano][k]) >= 0.005)
+      .filter(k => antes[ano]?.[k] !== undefined && !(Math.abs(agora[ano]?.[k] - antes[ano][k]) < 0.005))
       .map(k => `${ano}/${k}`),
   )
+  // v6.4.2 — dissolução do IMOB no INV: quando o IMOB existia antes e sumiu depois, o INV
+  // tem de ter crescido EXATAMENTE o valor dele (prova que nenhuma categoria foi parar em
+  // outro bloco — o INV_H sozinho não distingue isso de uma troca entre INV e IMOB).
+  for (const ano of ANOS) {
+    const imobAntes = antes[ano]?.IMOB
+    if (imobAntes === undefined || agora[ano]?.IMOB !== undefined) continue
+    const esperado = (antes[ano]?.INV ?? 0) + imobAntes
+    const ok = Math.abs((agora[ano]?.INV ?? NaN) - esperado) < 0.005
+    console.log(`\n${ano}: INV depois = INV antes + IMOB antes (${brl(esperado)})? ${ok ? '✅' : '❌ REPROVA'}`)
+    if (!ok) falhas.push(`${ano}/INV=INV+IMOB`)
+  }
   console.log(
     falhas.length === 0
       ? `\n✅ ORACLE OK — ${INVARIANTES.join(', ')} idênticos ao centavo em todos os anos.`
