@@ -37,6 +37,9 @@ consulta (pergunta em uma linha, se mudou algum achado).
 - O header declara corretamente o que a migration faz e se é aditiva/retrocompatível?
 - A classificação declarada bate com o conteúdo real? (DML top-level em dado existente,
   DROP, TRUNCATE, ALTER que remove/reescreve = destrutiva; na dúvida, destrutiva.)
+- Destrutiva: o DML está no **top-level**? DML só dentro de `DO $$` é invisível ao classificador
+  do gate, que lê o arquivo como aditivo (`classificarSql` tem de dar `destrutiva`). Skill
+  `banco-e-rpc` §1, v6.4.2.
 - DROP de qualquer objeto: os **consumidores reais** foram verificados? Grep no app **e**
   em `supabase/seed/` (precedente v4.17.1: RPCs "órfãs" pelo briefing eram usadas pelo
   seed). Corpo do objeto dropado preservado na migration para reversibilidade?

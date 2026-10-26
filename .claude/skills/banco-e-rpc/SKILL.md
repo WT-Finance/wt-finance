@@ -83,6 +83,13 @@ prévia no header da migration** (o que ela faz; por que é aditiva/retrocompat�
 confirmação** — não auto-confirma. O gate é rede, não autorização de autonomia destrutiva
 (isso só mudaria com o restore-test COMPLETO, ainda follow-up).
 
+⚠️ **O DML de uma destrutiva fica no TOP-LEVEL; `DO $$` só para guardas.** O classificador do
+gate (`scripts/db-gate/classificar.mjs`) excisa todo corpo dollar-quoted, inclusive o de um `DO`,
+então um patch com o `UPDATE`/`DELETE` dentro de `DO` sai classificado como **aditivo**. Ele seria
+aplicado por qualquer `--aditiva` seguinte se ficasse esquecido em `migrations/`. Antes de entregar,
+confira: `classificarSql(<arquivo>)` tem de dar `destrutiva`. O retrato do estado "antes" vai numa
+tabela temporária, lida pelo `DO` de reconciliação. (v6.4.2, achado do `revisor-db`; formato da 0251.)
+
 **Antes de qualquer DROP, verificar consumidores reais** — grep no app **e** em
 `supabase/seed/`, mais uma auditoria cética. A classificação de "órfão" vinda do briefing NÃO
 basta: na v4.17.1, o briefing mandava dropar `truncate_dynamic_tables`/`inserir_lote_raw` e a

@@ -35,8 +35,32 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '6.4.2',
+    data: '2026-10-26T10:23', // horário real de autoria; reconciliar ao merge no /pos-merge
+    itens: [
+      {
+        tipo: 'melhoria',
+        texto:
+          'A página de despesas de marketing ganha um endereço com o nome da página, e os links antigos ' +
+          'continuam funcionando.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Nos gráficos de despesas de marketing, a barra mais alta passa a ser o período em que se gastou mais, ' +
+          'como já acontece na DRE. Os valores continuam negativos.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Na DRE de caixa, os gastos com imobilizado (máquinas, móveis, reforma) deixam de ter grupo próprio e ' +
+          'passam a ser lidos dentro de Investimentos e Empréstimos. O resultado do exercício não muda.',
+      },
+    ],
+  },
+  {
     versao: '6.4.1',
-    data: '2026-10-15T16:42', // horário real de autoria; reconciliar ao merge no /pos-merge
+    data: '2026-10-15T16:46', // horário real do merge (PR #305), reconciliado na v6.4.2
     itens: [
       {
         tipo: 'melhoria',

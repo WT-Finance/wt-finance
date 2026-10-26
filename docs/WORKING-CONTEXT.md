@@ -9,27 +9,50 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-15 (fechamento da v6.4.1, PR draft aberto).
+Última atualização: 2026-10-26 (fechamento da v6.4.2, PR draft aberto).
 
 ---
 
-## Em voo — v6.4.1 "Antecipações em âmbar no Fluxo de Caixa Mensal" (PR draft, aguardando merge)
+## Em voo — v6.4.2 "Ajustes em Despesas de Marketing e na DRE de caixa" (PR draft, aguardando merge)
+
+Branch `feat/v6-4-2-ajustes-marketing-dre`. Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v6-4-2_Ajustes_Marketing_DRE.md`.
+
+- Despesas de Marketing mora em **`/marketing/despesas`**; `/marketing/gastos` só redireciona (com a query). A área,
+  as RPCs e os componentes seguem `gastos`.
+- Os 3 gráficos de barras de Marketing usam **eixo invertido** (a despesa sobe; o rótulo segue negativo).
+- DRE de caixa: o grupo **`IMOB` é dissolvido no `INV`** (decisão do Yan; cabeçalho `INV_H` mantém o rótulo) pelo
+  **patch DESTRUTIVO** `supabase/patches/dre-dissolver-imobilizado-em-investimentos.sql`, **NÃO aplicado**. Ele vira
+  a **0300**. Banco segue na **0299**. Sem ADR; ADR livre **0184**.
+
+> 🔴 **Yan:**
+>
+> 1. **Aplicar o patch em TTY**, de preferência antes do merge. O passo a passo está no header: oráculo antes →
+>    `mv` → `db:migrate -- --destrutiva` → oráculo `--comparar` → `db:baseline` → commit. Antes, o pré-voo
+>    `SELECT proname FROM pg_proc WHERE prosrc ILIKE '%IMOB%'`. Até lá, 2 contratos do `IMOB` ficam vermelhos.
+> 2. Conferir no preview (out-briefing §6): as barras subindo, o redirect com `?anos=` e, depois do patch, a DRE de
+>    caixa sem a linha de imobilizados.
+> 3. Mergear o PR e depois rodar `/pos-merge`.
+
+---
+
+## Em produção — v6.4.1 "Antecipações em âmbar no Fluxo de Caixa Mensal" (PR #305, mergeado 15/10 às 16:46)
 
 O gráfico "Fluxo de Caixa Mensal" mostra, em âmbar, o **líquido** antecipado de cada mês dentro das entradas
-efetivadas, segundo o registro de antecipações. Branch `feat/v6-4-1-antecipacoes-fluxo`.
+efetivadas, segundo o registro de antecipações.
 
 - Migration **0299 APLICADA** em 15/10 (aditiva: RPC `get_fluxo_antecipacoes_mensal()`, gate
-  `financeiro/fluxo-caixa`, só o líquido). Banco na **0299**, livre **0300**. Sem ADR; ADR livre **0184**.
+  `financeiro/fluxo-caixa`, só o líquido).
 - Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v6-4-1_Antecipacoes_Fluxo.md`.
 - O `COMMENT ON FUNCTION` da 0299 ainda cita `antecipado`. O corpo está certo e travado por contrato; corrigir
   na próxima migration que tocar a função.
 
 > 🔴 **Yan:**
 >
-> 1. Conferir no preview: abr/26 com R$ 700,3 mil em âmbar dentro de R$ 7,21 mi; tooltip "das quais
->    antecipação"; a legenda nova.
-> 2. Decidir se mantém o âmbar `--warning`, cujo contraste contra o verde fica abaixo de 3:1 (out-briefing §7.3).
-> 3. Mergear o PR e depois rodar `/pos-merge`.
+> 1. **Pós-merge não feito.** A data da diretoria foi reconciliada na v6.4.2 (16:46). Falta, na raiz:
+>    `git pull --ff-only`, `git worktree remove .claude/worktrees/feat-v6-4-1-antecipacoes-fluxo`,
+>    `git branch -d feat/v6-4-1-antecipacoes-fluxo`.
+> 2. Conferir no ar: abr/26 com R$ 700,3 mil em âmbar dentro de R$ 7,21 mi; tooltip "das quais antecipação"; a legenda.
+> 3. Decidir se mantém o âmbar `--warning`, cujo contraste contra o verde fica abaixo de 3:1 (out-briefing §7.3).
 
 ---
 
@@ -74,7 +97,7 @@ nova (banco segue na **0294**, livre **0295**; ADR livre **0183**). Out-briefing
 
 ## Em produção — v6.3.0 "Despesas de Marketing" (PR #299, mergeado 13/10 às 11:08)
 
-Seção nova **Marketing** na sidebar → `/marketing/gastos`, área própria `marketing/gastos` (Administrador,
+Seção nova **Marketing** na sidebar → `/marketing/gastos` (`/marketing/despesas` a partir da v6.4.2), área própria `marketing/gastos` (Administrador,
 Financeiro, Máquina · verificação). Despesas **pagas** do bloco MKT da DRE de caixa, lido do mapa vivo — o
 total da página **é** a linha "(-) Despesas Marketing" (ADR-0182; paridade provada e coberta em
 `rpc-contrato.test.ts`). Card "Proporção sobre a Receita Bruta" = o % de Marketing da grade da DRE
@@ -93,8 +116,7 @@ medição `docs/auditoria/v6-3-0-m0-marketing.md`.
 > aceito); "Despesas mensais" jan–dez com barra por ano + painel Total; tabela "Por categoria" com anos
 > expansíveis por mês (Total + % do ano presos na rolagem) e "Por fornecedor" com um bloco por ano
 > (Valor + %); seção "Lançamentos" e Exportar **removidos**.
-> 🔴 **Yan — produto:** decidir o sentido do eixo do card de proporção (hoje as barras descem do zero; na
-> DRE o eixo é invertido); criar a role/usuário da gestora (só `marketing/gastos`) se ainda não criou;
+> 🔴 **Yan — produto:** criar a role/usuário da gestora (só `marketing/gastos`) se ainda não criou;
 > conferir no ar e mostrar à gestora (anotar o que ela pedir — insumo da próxima versão da seção).
 
 ## Em produção — v6.2.3 "Vendas por Produto: venda sem Setor deixa de derrubar a carga" (PR #297, mergeado 08/10 às 11:34)
@@ -356,10 +378,10 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 
 | | |
 |---|---|
-| Produção | **v6.1.0** (PR #283, mergeado 29/09 às 14:41) · banco na **0288** |
-| Última migration aplicada | **0294** (v6.3.0 — rótulo da área `marketing/gastos` → "Despesas", destrutiva aplicada pelo Yan em 13/10) · próxima livre: **0295** |
-| Último ADR | **0182** (v6.3.0 — recorte de marketing derivado da DRE de caixa) · próximo livre: **0183** |
-| Suíte | **1.804 verdes + 6 skipped**, 104 arquivos; 1 falha por fixture ausente (`oraculo-demonstrativo`, B-38) — fechamento da v6.1.0, 29/09 |
+| Produção | **v6.4.1** (PR #305, mergeado 15/10 às 16:46) · banco na **0299** |
+| Última migration aplicada | **0299** (v6.4.1 — `get_fluxo_antecipacoes_mensal`) · próxima livre: **0300** (reservada ao patch destrutivo da v6.4.2) |
+| Último ADR | **0183** (v6.4.0 — indicadores gerais do Financeiro) · próximo livre: **0184** |
+| Suíte | **2.567 verdes + 6 skipped**, 146 arquivos; vermelhos esperados: 2 contratos do `IMOB` (até o patch da v6.4.2) e 2 oráculos de ingestão sem fixture (`demonstrativo-cru`, B-38; `contas-receber-cru-24`) — fechamento da v6.4.2, 26/10 |
 
 A v5 está encerrada: auditada, triada e limpa. O que ficou para a v6 está em `docs/backlog-v6.md` (30 itens); como o sistema funciona, em `docs/estado-do-projeto.md`.
 
