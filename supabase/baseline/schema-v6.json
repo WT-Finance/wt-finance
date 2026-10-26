@@ -16951,7 +16951,7 @@
       "triggers": {}
     }
   },
-  "ultima_migration": "0299",
+  "ultima_migration": "0300",
   "views": {
     "analytics.mv_ranking_produtos_mensal": {
       "acl": {
