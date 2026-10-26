@@ -9,7 +9,30 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-26 (pós-merge da v6.4.2: 0300 aplicada).
+Última atualização: 2026-10-26 (v6.5.0 aberta; M1 entregue, aguardando o GATE 1).
+
+---
+
+## Em voo — v6.5.0 "Financeiro · Geral v2" (branch `feat/v6-5-0-financeiro-geral-v2`, sem PR ainda)
+
+Briefing `docs/briefings/briefing-v6-5-0-financeiro-geral-v2.md`; medição `docs/auditoria/v6-5-0-m0-financeiro-geral-v2.md`.
+
+- **M0 feita (GATE 0).** O briefing dizia que Custos financeiros e Prazos médios "já saíram": **falso**. O Yan decidiu
+  **remover tudo, inclusive a série de prazos** (3 fotos; exportar antes do DROP).
+- **M1 feita: mockup na rota real** (`/financeiro/geral`, componentes de produção + `fixture.ts`; `?estado=vazio|erro`).
+  Cinco seções: Vendas (casca) · Recebíveis e inadimplência · Perdas e prejuízos · Antecipações · Cartões (casca).
+  Gráfico mensal compartilhado com Marketing (`shared/grafico-mensal-por-ano.tsx`). Custos e Prazos já saíram da página.
+- Decisões do Yan no GATE 0: prejuízo por pessoa = **uma tabela somando os anos**; nomes de pessoa **podem** aparecer;
+  "maior intervalo" ficou com o orquestrador: conta todo intervalo que TERMINA no ano, inclusive o da virada e o em curso.
+- Técnico: **sem RPC nova**. As 3 RPCs (`json`) ganham chaves por `CREATE OR REPLACE` aditivo (não quebra o front no ar);
+  as chaves velhas e as RPCs de custos/prazos caem na destrutiva do GATE 2, **depois do deploy** (a ingestão em produção
+  chama `registrar_foto_prazos` até lá). Aditiva = **0301**. `rpc-contrato.test.ts` já está no contrato novo: o bloco
+  Geral fica **vermelho até a 0301** (esperado). `get_geral_custos_financeiros`/`get_geral_prazos` ficam numa lista de
+  "aposentadas" no teste para a allowlist derivada não divergir dos grants até o GATE 2.
+
+> 🔴 **Yan:** conferir o mockup no preview da Vercel (GATE 1), inclusive `?estado=vazio`, `?estado=erro` e celular;
+> revisar os textos (subtítulos, "?", avisos) e o padrão de tabela simples (cabeçalho em caixa normal, o da skill).
+> Próximo: M2 (migration 0301) depois da aprovação.
 
 ---
 
