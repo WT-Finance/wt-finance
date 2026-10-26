@@ -35,6 +35,8 @@ DEPOIS do deploy). Sem ADR novo; Emenda 1 do ADR-0183.
   `por_pessoa`; nova semântica de `maior_intervalo_ano`. Nada do que já emitiam mudou (ensaio revertido).
 - **Padrão de tabela simples** registrado em `/admin/design-system` e nas skills (`tabela-densa`,
   `ui-design-system`); Marketing e DRE ficam como exceção conhecida (B-49).
+- **Ícones da sidebar** (refino do Yan antes do merge): Financeiro · Geral `Gauge` → `Landmark`; Marketing · Despesas
+  `HandCoins` → `BanknoteArrowDown`.
 
 ### Removido
 
