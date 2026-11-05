@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { ClipboardList } from 'lucide-react'
 import ErroCarregamento from '@/components/shared/erro-carregamento'
 import GraficoMensalPorAno, { type SerieDoAno } from '@/components/shared/grafico-mensal-por-ano'
 import { PILL, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
@@ -21,7 +21,7 @@ import PainelAntecipacoes from './painel-antecipacoes'
 // Antecipações — FLUXO, FIXO no ano corrente e nos dois anteriores (ex.: 2024, 2025, 2026*; v6.5.0). Sem pills
 // e sem parâmetro de URL: o servidor lê os 3 anos e a seção desenha todos.
 //
-// Linha de cima: "?" da seção · "Registrar antecipação" (quem pode gerir), à direita. Sem selo "fluxo", sem texto
+// Linha de cima: "Registro de Antecipações" (quem pode gerir) à esquerda · "?" da seção à direita. Sem selo "fluxo", sem texto
 // de recorte e sem data: a data de atualização ("Antecipações") mora no topo da página.
 //
 // Linha 1: "Dias sem antecipação" (do ano CORRENTE) | "Custo Efetivo" | "Custo efetivo percentual" (uma linha por
@@ -95,16 +95,18 @@ export default function SecaoAntecipacoes({ leituras, corrente, anos, hoje, pode
       className={`${PILL} ${PILL_PRIMARIA}`}
       style={PILL_PRIMARIA_STYLE}
     >
-      <Plus size={13} aria-hidden /> Registrar antecipação
+      <ClipboardList size={13} aria-hidden /> Registro de Antecipações
     </button>
   ) : null
 
-  // A linha de cima da seção: o "?" e, à direita, o botão de registrar. A data de atualização ("Antecipações")
-  // mora no topo da página.
+  // A linha de cima da seção: o botão "Registro de Antecipações" à esquerda (abre o registro num modal) e o "?"
+  // à direita. A data de atualização ("Antecipações") mora no topo da página.
   const meta = (
-    <div className="mb-4 flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
-      <GatilhoAjuda rotulo="Antecipações" texto={AJUDA} ancoraDireita />
+    <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
       {acao}
+      <div className="ml-auto">
+        <GatilhoAjuda rotulo="Antecipações" texto={AJUDA} ancoraDireita />
+      </div>
     </div>
   )
 

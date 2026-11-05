@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Pencil, Plus, Trash2, Undo2 } from 'lucide-react'
-import ListDrawer from '@/components/shared/list-drawer'
+import ModalCentral from '@/components/shared/modal-central'
 import Button from '@/components/ui/button'
 import ErroCarregamento from '@/components/shared/erro-carregamento'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
@@ -19,8 +19,8 @@ import ConfirmarAcaoModal from './confirmar-acao-modal'
 import FormAntecipacaoModal, { type EstadoForm } from './form-antecipacao-modal'
 
 // Painel de registro de antecipações (v6.4.0) — só abre para quem tem 'financeiro/geral/gestao' (a
-// seção nem renderiza o botão sem a área; as actions e as RPCs checam de novo). Drawer com a lista
-// (editar, excluir com confirmação), o formulário (modal sobre o drawer) e o histórico com "Desfazer".
+// seção nem renderiza o botão sem a área; as actions e as RPCs checam de novo). Modal ("Registro de Antecipações") com a lista
+// (editar, excluir com confirmação), o formulário (modal sobre o modal do registro) e o histórico com "Desfazer".
 //
 // O dado vem das SERVER ACTIONS a cada abertura e a cada mutação (`versao`): o painel não guarda cópia
 // que envelheça — depois de salvar/excluir/desfazer ele rebusca E faz `router.refresh()` para a seção
@@ -95,9 +95,10 @@ export default function PainelAntecipacoes({ hoje, onFechar }: Props) {
 
   return (
     <>
-      <ListDrawer
-        titulo="Antecipações"
+      <ModalCentral
+        titulo="Registro de Antecipações"
         subtitulo="Registre, edite ou exclua. Tudo fica no histórico e dá para desfazer."
+        largura="2xl"
         onClose={onFechar}
       >
         {mensagem && <FaixaMensagem tipo="sucesso" texto={mensagem} onFechar={() => setMensagem(null)} />}
@@ -199,7 +200,7 @@ export default function PainelAntecipacoes({ hoje, onFechar }: Props) {
               </ul>
             )
         )}
-      </ListDrawer>
+      </ModalCentral>
 
       {form && (
         <FormAntecipacaoModal
