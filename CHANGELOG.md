@@ -10,8 +10,8 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 MINOR · **Financeiro · Geral, segunda versão.** Out-briefing
 `docs/briefings/WT_Finance_Out_Briefing_v6-5-0_Financeiro_Geral_v2.md`; medição
-`docs/auditoria/v6-5-0-m0-financeiro-geral-v2.md`. Migration **0301 APLICADA** (aditiva). Destrutiva
-`supabase/patches/financeiro-geral-v2-poda-destrutiva.sql` (vira a **0302**; **pendente**, humano em TTY, só
+`docs/auditoria/v6-5-0-m0-financeiro-geral-v2.md`. Migrations **0301 e 0302 APLICADAS** (aditivas). Destrutiva
+`supabase/patches/financeiro-geral-v2-poda-destrutiva.sql` (vira a **0303**; **pendente**, humano em TTY, só
 DEPOIS do deploy). Sem ADR novo; Emenda 1 do ADR-0183.
 
 ### Alterado
@@ -35,6 +35,13 @@ DEPOIS do deploy). Sem ADR novo; Emenda 1 do ADR-0183.
   `por_pessoa`; nova semântica de `maior_intervalo_ano`. Nada do que já emitiam mudou (ensaio revertido).
 - **Padrão de tabela simples** registrado em `/admin/design-system` e nas skills (`tabela-densa`,
   `ui-design-system`); Marketing e DRE ficam como exceção conhecida (B-49).
+- **Refinos de Recebíveis e inadimplência** (Yan, antes do merge): sem a linha de metadados da seção; os 3 cards
+  só com valor e nº de títulos; "Maiores Inadimplentes" com 4 linhas + total + "Ver mais" (drawer com a lista
+  completa), do tamanho de "Faixas em Atraso"; sem subtítulos; "Evolução da Inadimplência". A ajuda da seção foi
+  para os "?" dos cards. **Migration 0302 APLICADA** (aditiva): `devedores` passa a ser a lista completa.
+- **CLI do Supabase fixado em `supabase@2.122.1`** no wrapper do gate (`scripts/db-gate/migrate.mjs`): a 3.0.0
+  (major, resolvida pelo `npx` sem versão) recusa o `config.toml` e exige consentimento em produção por agente.
+  Decisão do Yan; subir para a v3 é patch próprio.
 - **Ícones da sidebar** (refino do Yan antes do merge): Financeiro · Geral `Gauge` → `Landmark`; Marketing · Despesas
   `HandCoins` → `BanknoteArrowDown`.
 
@@ -42,7 +49,7 @@ DEPOIS do deploy). Sem ADR novo; Emenda 1 do ADR-0183.
 
 - Seções **Custos financeiros** e **Prazos médios** da página Geral (decisão do Yan). A carga do Aberto deixa
   de gravar a foto de prazos (`registrar_foto_prazos`). As RPCs, a série `geral_prazo_foto` e o seed
-  `geral_fin_grupo` caem na destrutiva 0302 (export da série em `~/projects/arquivo-worktrees-janus/v6-5-0-gate2/`).
+  `geral_fin_grupo` caem na destrutiva 0303 (export da série em `~/projects/arquivo-worktrees-janus/v6-5-0-gate2/`).
 
 ---
 

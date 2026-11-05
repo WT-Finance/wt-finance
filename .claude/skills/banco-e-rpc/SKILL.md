@@ -30,6 +30,14 @@ npm run db:migrate -- --destrutiva    # backup-gate (rede) → db push COM CONFI
 O CLI do Supabase não está instalado globalmente — sempre `npx supabase ...`, nunca
 `supabase ...` puro.
 
+### CLI do Supabase FIXADO em `supabase@2.122.1` (v6.5.0)
+
+O `npx supabase` sem versão resolve a mais recente. Em nov/2026 saiu a **3.0.0** (major), que quebrou o gate: recusa
+o `supabase/config.toml` (`[inbucket]` virou `[local_smtp]`), exige `--read-only` em `db query` de leitura e pede
+consentimento em comando de produção rodado por agente. O wrapper (`scripts/db-gate/migrate.mjs`, constante `CLI`)
+fixa a 2.122.1 — use a MESMA versão nos comandos manuais (`npx supabase@2.122.1 db query --linked …`). Subir para
+a v3 é patch próprio (config.toml + flags), nunca no meio de uma aplicação.
+
 ### `db push` aplica TODO o conjunto PENDENTE, não só a migration que você escreveu
 
 **Custou caro (v5.2.0):** a v5.2.0 dropou as bases antigas do Fluxo de Caixa sem querer ao
@@ -611,7 +619,7 @@ Regra: tabela que entra no diário (`fn_diario_alteracoes`) com reversão por `r
 `bigserial` (molde `dre_comp_par`/`gerencial_lancamentos`). Achado do `implementador` na 0296 — o
 contrato da spec dizia IDENTITY.
 
-### RPC que devolve `json`: chave NOVA é `CREATE OR REPLACE` aditivo; tirar chave é destrutiva pós-deploy (v6.5.0, 0301/0302)
+### RPC que devolve `json`: chave NOVA é `CREATE OR REPLACE` aditivo; tirar chave é destrutiva pós-deploy (v6.5.0, 0301/0303)
 
 O front lê o `json` por um Zod `z.object` NÃO estrito, que descarta chave extra. Então **acrescentar** chave
 numa RPC viva não quebra o front que está no ar: `CREATE OR REPLACE` com a mesma assinatura, aplicado antes do

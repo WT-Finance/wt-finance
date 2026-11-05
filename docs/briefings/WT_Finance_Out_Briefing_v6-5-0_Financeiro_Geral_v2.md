@@ -2,8 +2,8 @@
 
 **MINOR · Rota A.** Branch `feat/v6-5-0-financeiro-geral-v2`. Briefing `docs/briefings/briefing-v6-5-0-financeiro-geral-v2.md`;
 medição `docs/auditoria/v6-5-0-m0-financeiro-geral-v2.md`. Migration **0301 APLICADA** em 26/10 (aditiva). Destrutiva
-`supabase/patches/financeiro-geral-v2-poda-destrutiva.sql` (vira a **0302**) **pendente**: aplicação humana em TTY, só
-DEPOIS do merge e do deploy. Sem ADR novo; **Emenda 1 do ADR-0183**. Banco na **0301**, livre **0302** (reservada).
+`supabase/patches/financeiro-geral-v2-poda-destrutiva.sql` (vira a **0303**) **pendente**: aplicação humana em TTY, só
+DEPOIS do merge e do deploy. Sem ADR novo; **Emenda 1 do ADR-0183**. Banco na **0302**, **0303** reservada para a destrutiva.
 
 ---
 
@@ -86,7 +86,7 @@ arquivo de resgate na worktree, com sha256 conferido contra o manifesto. Um time
 - **MÉDIO — duas cores no mesmo `<td>`** ("(sem nome)", "demais N devedores"). A cor foi para um `<span>` interno, como nas outras tabelas.
 - **MÉDIO — `*` no eixo da semana corrente ainda sem carga**, sem a nota. Agora só com semana parcial carregada.
 - **MÉDIO — o tile truncava o valor** ("R$ 12.146.8…"). Agora quebra linha; tamanho e peso iguais. **Conferir no preview.**
-- BAIXOs corrigidos: título do teste da ingestão ("será removida pela 0302"); numeração de invariantes em comentários (8→11,
+- BAIXOs corrigidos: título do teste da ingestão ("será removida pela destrutiva"); numeração de invariantes em comentários (8→11,
   9→12); `escalaEixo`/`valoresDaSerie` mortos removidos.
 - BAIXOs **registrados, não corrigidos** (não mudam comportamento): `CLASSE_ROTULO`/`PALAVRA` duplicados em
   `antecipacoes-card-custo.tsx`; container do tile repetido em 3 lugares; `apoioInad` montado em dois módulos; `fmtPontos` com
@@ -95,7 +95,7 @@ arquivo de resgate na worktree, com sha256 conferido contra o manifesto. Um time
 - Confirmado pelo revisor: **Marketing pixel-idêntica** (JSX, classes, props, aria-labels, tooltips e mensagens iguais);
   invariantes 2, 3, 4 e 11; custo % só por `custoDoRecorte`; `page.tsx` com falha isolada; ingestão limpa; PII limpa.
 
-### `revisor-db` — destrutiva 0302 (antes da aplicação): APROVADA COM RESSALVAS (0 CRÍTICO, 0 ALTO)
+### `revisor-db` — destrutiva (hoje 0303) (antes da aplicação): APROVADA COM RESSALVAS (0 CRÍTICO, 0 ALTO)
 
 - **MÉDIO 1 — a poda parte de um retrato do corpo vivo.** Corrigido: o guard de pré-condição exige `md5(prosrc)` das duas
   funções igual ao retrato pós-0301 (falha fechada antes de qualquer DROP); os md5 também estão no pré-voo.
@@ -138,7 +138,7 @@ a página com **dado real** (M3 em diante) não foi vista por ninguém. Ver §6.
 2. **Roteiro do checkpoint final do briefing:** o prejuízo bruto de um mês contra a DRE; os inadimplentes contra o filtro
    `Conferido = Inadimplente` no Monde; o custo % de um ano contra a conta à mão no registro (2026: 41.968,28 ÷ 1.797.940,19 =
    2,33%); **mostrar à diretoria e anotar o que ela pede**.
-3. **Mergear o PR** e, **depois do deploy**, aplicar a destrutiva **0302 em TTY** pelo roteiro do header do patch. Até lá a
+3. **Mergear o PR** e, **depois do deploy**, aplicar a destrutiva **0303 em TTY** pelo roteiro do header do patch. Até lá a
    página funciona (as chaves antigas sobram na resposta, sem efeito). Rollback do app para a v6.4.x depois da 0302 exige
    voltar o banco antes.
 4. **Retenção das fotos por título** (decisão pendente desde a v6.4.0): antes de ligar qualquer limpeza, persistir o agregado
@@ -182,3 +182,23 @@ a página com **dado real** (M3 em diante) não foi vista por ninguém. Ver §6.
 6. **Fixtures de ingestão não vêm para worktree nova** (5 oráculos vermelhos até restaurar do arquivo de resgate). → **já
    coberto** pela memória "worktree nova não herda estado não-versionado"; o `/nova-versao` §3 poderia incluir a cópia das
    fixtures — **proposta para o Yan**, não aplicada (ritual).
+
+## 9. Refinos do Yan antes do merge (26/10 e 05/11)
+
+- **Ícones da sidebar** (`d605fb1f`): Financeiro · Geral `Gauge` → `Landmark`; Marketing · Despesas `HandCoins` →
+  `BanknoteArrowDown`.
+- **Recebíveis e inadimplência** (`45019f91`): sai a linha de metadados da seção (regime, posição, carimbo — o carimbo
+  "Última atualização" do cabeçalho da página continua); os 3 cards mostram só valor e nº de títulos (saem escopo, Δ e
+  %); "Maiores Inadimplentes" com as 4 primeiras posições + total + "Ver mais" que abre drawer com a lista completa,
+  cards da linha 2 em colunas e alturas iguais; "Faixas em Atraso"; sem subtítulos; "Evolução da Inadimplência". A
+  ajuda da seção foi redistribuída nos "?" dos cards (sem a frase da variação, que saiu). Nota: o inv. 11 previa a
+  data de carga na seção; o Yan preferiu tirá-la — fica só o carimbo do cabeçalho.
+- **Migration 0302** (`a24edcec`, APLICADA em 05/11, aditiva): `get_geral_recebiveis.devedores` passa de
+  `{top[≤10], demais}` a **lista completa** (o drawer precisa de todos). Seguro para o front no ar (a v6.4.0 não lê a
+  chave). Ensaio revertido: 22 verificações OK; `revisor-db`: aprovada com ressalvas (0 CRÍTICO/ALTO; a destrutiva tinha
+  de ser regenerada — feito; `valor_final` é obrigatório, então o NULL no topo da ordem não ocorre); pós-aplicação
+  `rpc-contrato` 242/242; baseline na 0302. A destrutiva virou **0303**, regenerada do corpo vivo pós-0302 com md5 novo (`94eb97cd…` em recebíveis): ensaio revertido 86/86 OK, `classificarSql` = destrutiva, re-revisão do `revisor-db` **APROVADA** (só um BAIXO de texto de mensagem de guarda). Gates depois dos refinos: build, tsc, lint ✅; `npm test` 2.644 ✅ (B-38 segue o único vermelho).
+- **CLI do Supabase fixado em `supabase@2.122.1`** (`f1a471e2`, decisão do Yan): entre 26/10 e 05/11 o `npx supabase`
+  passou a resolver a 3.0.0 (major), que recusa o `config.toml` (`[inbucket]`) e exige consentimento/`--read-only` em
+  comando de produção por agente. A primeira tentativa de aplicar a 0302 falhou SEM aplicar nada. Subir para a v3 é
+  patch próprio (config.toml + flags). Comandos de leitura fora do wrapper: `npx supabase@2.122.1 db query …`.

@@ -20,10 +20,10 @@ npm run dev / build / lint / test / seed
 npx tsc --noEmit                      # typecheck — NÃO existe "npm run typecheck"
 npm run db:migrate -- --aditiva [--fora-de-ordem]   # backup-gate rede → push (autônomo sob allow)
 npm run db:migrate -- --destrutiva    # backup-gate rede → push COM CONFIRMAÇÃO HUMANA (TTY)
-npx supabase migration list           # local vs remote (read-only, seguro)
+npx supabase@2.122.1 migration list --linked   # local vs remote (read-only, seguro)
 ```
 
-O CLI do Supabase não é global — sempre `npx supabase ...`.
+O CLI do Supabase não é global e está **fixado**: sempre `npx supabase@2.122.1 ...` (a 3.0 quebra o gate — skill `banco-e-rpc`).
 
 ## Regime de trabalho (default: autônomo)
 

@@ -19,19 +19,20 @@ Branch `feat/v6-5-0-financeiro-geral-v2`. Out-briefing: `docs/briefings/WT_Finan
 
 - `/financeiro/geral` em cinco seções: Vendas (casca) · Recebíveis e inadimplência · Perdas e prejuízos · Antecipações ·
   Cartões de crédito (casca). Custos financeiros e Prazos médios saíram; a carga do Aberto não grava mais a foto de prazos.
-- Migration **0301 APLICADA** em 26/10 (aditiva: chaves novas nas 3 RPCs `get_geral_*`). Banco na **0301**; **0302 reservada**
+- Migration **0301 APLICADA** em 26/10 (aditiva: chaves novas nas 3 RPCs `get_geral_*`). **0302 APLICADA** em 05/11 (aditiva: `devedores` = lista completa). Banco na **0302**; **0303 reservada**
   para a destrutiva `supabase/patches/financeiro-geral-v2-poda-destrutiva.sql` (**NÃO aplicada**). ADR livre **0184**
   (Emenda 1 do ADR-0183, sem ADR novo).
-- Até a 0302: as RPCs de custos/prazos e a série `geral_prazo_foto` seguem no banco; `rpc-contrato.test.ts` mantém a lista
-  `RPCS_GERAL_APOSENTADAS` para a allowlist derivada não divergir dos grants. Sai no commit da 0302.
+- Até a 0303: as RPCs de custos/prazos e a série `geral_prazo_foto` seguem no banco; `rpc-contrato.test.ts` mantém a lista
+  `RPCS_GERAL_APOSENTADAS` para a allowlist derivada não divergir dos grants. Sai no commit da 0303.
+- CLI do Supabase **fixado em 2.122.1** no wrapper do gate (a 3.0.0 quebra o push). Subir para a v3 é patch próprio.
 
 > 🔴 **Yan:**
 >
 > 1. Conferir no preview com **dado real** (out-briefing §6.1): as cinco seções, o tile sem corte, Marketing sem mudança.
 > 2. Checkpoint do briefing (out-briefing §6.2) e **mostrar à diretoria**.
-> 3. Mergear; **depois do deploy**, aplicar a **0302 em TTY** pelo roteiro do header do patch (pré-voo com deploy e md5,
->    export da série com hora no nome, `git mv` → 0302, `db:migrate -- --destrutiva`, limpeza do teste + baseline +
->    `database.ts` no mesmo commit, em branch + PR). Rollback do app para v6.4.x depois da 0302 exige voltar o banco antes.
+> 3. Mergear; **depois do deploy**, aplicar a **0303 em TTY** pelo roteiro do header do patch (pré-voo com deploy e md5,
+>    export da série com hora no nome, `git mv` → 0303, `db:migrate -- --destrutiva`, limpeza do teste + baseline +
+>    `database.ts` no mesmo commit, em branch + PR). Rollback do app para v6.4.x depois da 0303 exige voltar o banco antes.
 
 ---
 

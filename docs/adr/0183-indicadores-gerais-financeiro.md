@@ -222,7 +222,7 @@ Decisões do Yan (briefing `docs/briefings/briefing-v6-5-0-financeiro-geral-v2.m
   prejuízo do ano corrente, dias sem antecipação), os dois últimos sempre do ano corrente.
 - **Custos financeiros e Prazos médios saem**, inclusive a série de prazos: a carga do Aberto deixa de gravar
   a foto; `get_geral_custos_financeiros`, `get_geral_prazos`, `registrar_foto_prazos`,
-  `geral_prazo_calcular`, `geral_prazo_foto` e `geral_fin_grupo` caem na destrutiva do GATE 2 (0302), DEPOIS
+  `geral_prazo_calcular`, `geral_prazo_foto` e `geral_fin_grupo` caem na destrutiva do GATE 2 (0303), DEPOIS
   do deploy. O export da série fica em `~/projects/arquivo-worktrees-janus/v6-5-0-gate2/`.
 - **Recebíveis:** funil em aberto ⊃ vencido ⊃ inadimplente (a marcação continua sendo a definição); Δ contra a
   última foto ANTES da semana da posição; faixas de atraso só sobre os inadimplentes (com "a vencer" quando a
@@ -236,7 +236,7 @@ Decisões do Yan (briefing `docs/briefings/briefing-v6-5-0-financeiro-geral-v2.m
   inclusive o da virada e o em curso.
 - **Contrato:** as três RPCs ganharam chaves por `CREATE OR REPLACE` aditivo (0301), sem RPC nova — devolvem
   `json` e o Zod não é estrito, então acrescentar chave não quebra o front no ar. A poda das chaves antigas
-  vai na 0302.
+  vai na 0303. (A 0302 tornou `devedores` a lista completa, para o drawer "Maiores Inadimplentes".)
 - **Retenção das fotos (inv. 8):** a evolução semanal lê o DETALHE por título (`contas_receber_foto`) para o
   vencido; o inadimplente vem de `contas_receber_foto_carga`. Antes de ligar qualquer limpeza do detalhe,
   persistir o agregado semanal (vencido por carga), senão a série perde o vencido. A RPC já trata detalhe

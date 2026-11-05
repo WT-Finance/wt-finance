@@ -5,7 +5,7 @@
 --    FUNCTION + 2 CREATE OR REPLACE que TIRAM chaves do JSON. Enquanto não é aplicado, este arquivo fica em
 --    `supabase/patches/`, SEM número, FORA de `supabase/migrations/`, pelo mesmo motivo da 0251/0300: `db push`
 --    empurra TODO o conjunto pendente de `supabase/migrations/`, e um arquivo destrutivo esquecido lá é
---    aplicado por arrasto (v5.2.0). Só entra em `migrations/` (como `0302`) no passo (c) do roteiro, na hora de
+--    aplicado por arrasto (v5.2.0). Só entra em `migrations/` (como `0303`) no passo (c) do roteiro, na hora de
 --    aplicar; se a aplicação abortar, volta para `patches/`. O agente NÃO aplica — o wrapper aborta em stdin
 --    não-TTY (ADR-0131), por construção.
 --
@@ -41,7 +41,9 @@
 --   (0) DEPLOY FEITO — verifique, não suponha: (i) o deployment de PRODUÇÃO da Vercel é o commit do MERGE da
 --       v6.5.0 (painel da Vercel ou `vercel ls`: Production = o SHA do merge, estado Ready); (ii) em produção,
 --       `/financeiro/geral` abre com as cinco seções (Vendas … Cartões). Qualquer dúvida: NÃO aplique.
---   (a) PRÉ-VOO, read-only. Três consultas (`npx supabase db query --linked "<SQL>"`):
+--   CLI FIXADO: o projeto fixa o CLI do Supabase em `supabase@2.122.1` (o wrapper scripts/db-gate/migrate.mjs
+--   já o usa; a 3.0.0 quebra o gate). TODO comando deste roteiro que chama o CLI é `npx supabase@2.122.1 …`.
+--   (a) PRÉ-VOO, read-only. Três consultas (`npx supabase@2.122.1 db query --linked "<SQL>"`):
 --       1. Consumidores — só podem aparecer funções que ESTE patch derruba
 --          (get_geral_custos_financeiros, get_geral_prazos, registrar_foto_prazos, geral_prazo_calcular):
 --            SELECT n.nspname, p.proname FROM pg_proc p
@@ -53,13 +55,13 @@
 --          (a query é a do briefing + `geral_prazo_calcular`, que este patch também derruba). Qualquer OUTRA
 --          função na lista = consumidor que o mapa não viu: PARE e investigue (o guard final do patch também
 --          aborta por isso — esta consulta PREVÊ o guard).
---       2. Corpo vivo = retrato pós-0301 (as duas podas partem desse retrato; o patch também confere):
+--       2. Corpo vivo = retrato (recebiveis pós-0302, prejuizos pós-0301; o patch também confere):
 --            SELECT proname, md5(prosrc) FROM pg_proc
 --             WHERE oid IN (to_regprocedure('public.get_geral_recebiveis()'),
 --                           to_regprocedure('public.get_geral_prejuizos(integer)'))
 --             ORDER BY proname
 --          Esperado: get_geral_prejuizos = 7123a2f8b861fde3bfb9d9b0d808d572;
---                    get_geral_recebiveis = 53f0c0703045cd0efd22fa2b9de7aed5.
+--                    get_geral_recebiveis = 94eb97cdcb146d34e37b59f3f78b34d9 (pós-0302).
 --          Diferente = alguém mexeu na função depois do retrato: NÃO aplique; reescreva a poda a partir do
 --          catálogo vivo (skill banco-e-rpc §5).
 --       3. Agendamentos que chamem o que sai — tem de voltar VAZIO:
@@ -68,11 +70,11 @@
 --       existente (geral_prazo_foto-2026-10-26.json, 3 linhas): o nome leva DATA E HORA, grava-se num arquivo
 --       temporário e só depois se faz `mv -n`.
 --         1) contagem e maior id AGORA:
---              npx supabase db query --linked "SELECT count(*), max(id) FROM financeiro.geral_prazo_foto"
+--              npx supabase@2.122.1 db query --linked "SELECT count(*), max(id) FROM financeiro.geral_prazo_foto"
 --         2) export (o `-o json` do CLI embrulha o resultado em {"rows":[{"serie":[…]}]}; o array está na
 --            coluna `serie` da 1ª linha — é de lá que o DOWN o tira):
 --              D=~/projects/arquivo-worktrees-janus/v6-5-0-gate2; mkdir -p "$D"; T=$(date +%Y-%m-%d-%H%M)
---              npx supabase db query --linked \
+--              npx supabase@2.122.1 db query --linked \
 --                "SELECT json_agg(t ORDER BY t.id) AS serie FROM financeiro.geral_prazo_foto t" -o json \
 --                > "$D/.geral_prazo_foto-$T.tmp"
 --         3) CONFIRA que o nº de elementos de rows[0].serie e o maior id batem com o passo 1 (e que são ≥ 3):
@@ -80,10 +82,10 @@
 --                console.log(a.length, Math.max(...a.map(x=>x.id)))' "$D/.geral_prazo_foto-$T.tmp"
 --         4) só então: mv -n "$D/.geral_prazo_foto-$T.tmp" "$D/geral_prazo_foto-$T.json"
 --       Segunda rede: o backup-gate do `db:migrate` (passo d) também inclui esta tabela no backup-do-dia.
---   (c) Conferir que 0302 está livre (`npx supabase migration list --linked` e as worktrees irmãs). Trabalhe
---       numa BRANCH nova (nunca direto na main) e então:
---         git mv supabase/patches/financeiro-geral-v2-poda-destrutiva.sql supabase/migrations/0302_financeiro_geral_v2_poda.sql
---   (d) npm run db:migrate -- --destrutiva --label v6-5-0-0302
+--   (c) Conferir que 0303 está livre (`npx supabase@2.122.1 migration list --linked` e as worktrees irmãs; a
+--       0302 é a lista de devedores, já aplicada). Trabalhe numa BRANCH nova (nunca direto na main) e então:
+--         git mv supabase/patches/financeiro-geral-v2-poda-destrutiva.sql supabase/migrations/0303_financeiro_geral_v2_poda.sql
+--   (d) npm run db:migrate -- --destrutiva --label v6-5-0-0303
 --       (backup-gate como rede + confirmação humana; a classificação TEM de sair `destrutiva` pelos DROP TABLE
 --        de top-level. Se o db:migrate abortar — gate, confirmação ou guarda —, `git mv` de VOLTA para
 --        supabase/patches/ ANTES de qualquer outro db:migrate: destrutiva parada em migrations/ é aplicada por
@@ -110,7 +112,7 @@
 --             6. `src/lib/ingestao/carga-contas-receber.test.ts` NÃO muda (cita `registrar_foto_prazos` só como
 --                nome numa asserção de "zero chamadas").
 --         · npm run db:baseline
---         · npx supabase gen types typescript --linked > src/types/database.ts
+--         · npx supabase@2.122.1 gen types typescript --linked > src/types/database.ts
 --           (perde get_geral_custos_financeiros, get_geral_prazos e registrar_foto_prazos)
 --         · npx vitest run src/lib/rpc-contrato.test.ts            (verde)
 --         · node scripts/credencial/derivar-allowlist.mjs verificador   (sem "não resolvidos")
@@ -137,16 +139,20 @@
 --   • AO RESTAURAR as duas funções, restaurar também a constante `RPCS_GERAL_APOSENTADAS` (e o describe) em
 --     src/lib/rpc-contrato.test.ts, e `RPCS_GERAL` voltar a incluí-la: sem isso o `verificador` mantém o GRANT
 --     numa função que a allowlist derivada não enxerga.
---   • As duas RPCs podadas voltam pela 0301 (CREATE OR REPLACE dos corpos de lá, com os COMMENT de :733-738).
---     Isso é SEGURO com o front da v6.5.0 no ar: a 0301 emite um superconjunto das chaves que ele lê.
+--   • As duas RPCs podadas voltam por CREATE OR REPLACE dos corpos de LÁ: get_geral_recebiveis pela 0302
+--     (o `devedores` array vive nela; a 0301 emitiria o objeto top/demais, que o front v6.5.0 não lê) e
+--     get_geral_prejuizos pela 0301 (:450), com os COMMENT correspondentes. Isso é SEGURO com o front da
+--     v6.5.0 no ar: ambos emitem um superconjunto das chaves que ele lê.
 --
 -- ── Como as chaves mantidas conservam o valor ────────────────────────────────────────────────────────────
---   Os dois corpos partem da definição VIVA pós-0301 (pg_get_functiondef), não de migration antiga. Nada
+--   Os dois corpos partem da definição VIVA (pg_get_functiondef): recebiveis pós-0302, prejuizos pós-0301
+--   (a 0302 só mexeu em `devedores` de recebiveis) — não de migration antiga. Nada
 --   foi reescrito: foram REMOVIDOS blocos inteiros (chaves, CTEs e variáveis que só serviam a elas) e os
 --   blocos restantes ficaram byte a byte iguais, salvo comentários que citavam o que saiu.
---     recebiveis — `ab`, `inad`, `tot`, `fx`, `dev`, `dev_rk`, `semanas`, `sem_agg` e as 8 chaves mantidas:
---       idênticas. Saíram só `topn`/`tp` (liam apenas a concentração) e v_ano/v_mes_ini/v_mes_ant (liam só
---       recuperado_ano/comparativo). Nenhuma CTE mantida lia `topn`, `tp` ou essas variáveis.
+--     recebiveis — `ab`, `inad`, `tot`, `fx`, `dev`, `semanas`, `sem_agg` e as 8 chaves mantidas (inclusive
+--       `devedores` como ARRAY, nos dois ramos, exatamente como na 0302): idênticas. Saíram só `topn`/`tp`
+--       (liam apenas a concentração) e v_ano/v_mes_ini/v_mes_ant (liam só recuperado_ano/comparativo).
+--       Nenhuma CTE mantida lia `topn`, `tp` ou essas variáveis.
 --     prejuizos — SÓ remoção, nenhuma lógica nova: saem o ramo UNION ALL que somava a série de líquido, os
 --       dois itens do VALUES de `top` e as quatro chaves de saída (reversao e liquido, no topo e em
 --       ano_anterior_ytd). `base`, `arr`, `ytd`, `pess`, bandeja e por_pessoa ficam idênticos; `ser`/`arr`
@@ -159,8 +165,9 @@
 --     dollar-quoted, inclusive o de `DO`); os `DO` são só guardas. Sem `EXCEPTION WHEN OTHERS`.
 --   • Guard ANTES dos DROP (pré-condição): todas as assinaturas/tabelas-alvo EXISTEM (`to_regprocedure`/
 --     `to_regclass` devolvem NULL também para erro de digitação — sem esta prova, um alvo digitado errado
---     passaria pelo guard final), os sobreviventes existem, a 0301 está aplicada (marcadores no corpo vivo) e
---     o md5(prosrc) das duas funções podadas é o do retrato pós-0301 (corpo divergente ⇒ aborta, fail-closed).
+--     passaria pelo guard final), os sobreviventes existem, a 0301 e a 0302 estão aplicadas (marcadores no corpo
+--     vivo: devedores presente e SEM o objeto top/demais) e o md5(prosrc) das duas funções podadas é o do
+--     retrato (recebiveis pós-0302, prejuizos pós-0301; corpo divergente ⇒ aborta, fail-closed).
 --   • Guard DEPOIS: alvos inexistentes; nenhum outro corpo de função cita os objetos derrubados; nenhum job do
 --     pg_cron chama get_geral_*/registrar_foto_* (mesma consulta do pré-voo a.3); as duas podadas
 --     e a antecipacoes com SECURITY DEFINER, search_path vazio, exigir_acesso no corpo, STABLE/json; grants
@@ -173,7 +180,7 @@ BEGIN;
 SET LOCAL lock_timeout = '5s';
 
 -- ═════════════════════════════════════════════════════════════════════════════════════════════
--- (0) Pré-condição: os alvos existem (assinaturas PROVADAS) e a 0301 está aplicada.
+-- (0) Pré-condição: os alvos existem (assinaturas PROVADAS), a 0301 e a 0302 estão aplicadas e os corpos vivos são os do retrato.
 -- ═════════════════════════════════════════════════════════════════════════════════════════════
 DO $$
 DECLARE
@@ -212,22 +219,25 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- A 0301 tem de estar aplicada: as podas partem do corpo dela. Corpo ainda de 0297 (sem as chaves novas)
-  -- viraria, depois da poda, uma função SEM o contrato da v6.5.0.
+  -- A 0301 E a 0302 têm de estar aplicadas: as podas partem do corpo delas (devedores = ARRAY). Corpo ainda
+  -- de 0297/0301 viraria, depois da poda, uma função SEM o contrato da v6.5.0.
   SELECT p.prosrc INTO v_src FROM pg_proc p WHERE p.oid = to_regprocedure('public.get_geral_recebiveis()');
   IF position('''evolucao_semanal''' IN v_src) = 0 OR position('''devedores''' IN v_src) = 0 THEN
     RAISE EXCEPTION 'poda Geral v2: get_geral_recebiveis() ainda não é a da 0301 (sem devedores/evolucao_semanal) — a 0301 foi aplicada?';
+  END IF;
+  IF position('''demais''' IN v_src) > 0 THEN
+    RAISE EXCEPTION 'poda Geral v2: get_geral_recebiveis() ainda emite devedores como objeto top/demais (é a da 0301) — a 0302 foi aplicada?';
   END IF;
   SELECT p.prosrc INTO v_src FROM pg_proc p WHERE p.oid = to_regprocedure('public.get_geral_prejuizos(integer)');
   IF position('''por_pessoa''' IN v_src) = 0 THEN
     RAISE EXCEPTION 'poda Geral v2: get_geral_prejuizos(integer) ainda não é a da 0301 (sem por_pessoa) — a 0301 foi aplicada?';
   END IF;
 
-  -- Trava contra corpo vivo divergente: as duas podas partem do retrato pós-0301 (md5 do prosrc medido no
-  -- catálogo vivo). Se alguém alterou a função depois, o REPLACE apagaria a mudança em silêncio.
+  -- Trava contra corpo vivo divergente: as podas partem do retrato vivo (recebiveis pós-0302, prejuizos
+  -- pós-0301; md5 do prosrc medido no catálogo vivo). Se alguém alterou a função depois, o REPLACE apagaria a mudança em silêncio.
   IF (SELECT md5(p.prosrc) FROM pg_proc p WHERE p.oid = to_regprocedure('public.get_geral_recebiveis()'))
-       IS DISTINCT FROM '53f0c0703045cd0efd22fa2b9de7aed5' THEN
-    RAISE EXCEPTION 'poda Geral v2: public.get_geral_recebiveis() — corpo vivo divergiu do retrato pós-0301 — reescreva a poda a partir do catálogo vivo';
+       IS DISTINCT FROM '94eb97cdcb146d34e37b59f3f78b34d9' THEN
+    RAISE EXCEPTION 'poda Geral v2: public.get_geral_recebiveis() — corpo vivo divergiu do retrato pós-0302 — reescreva a poda a partir do catálogo vivo';
   END IF;
   IF (SELECT md5(p.prosrc) FROM pg_proc p WHERE p.oid = to_regprocedure('public.get_geral_prejuizos(integer)'))
        IS DISTINCT FROM '7123a2f8b861fde3bfb9d9b0d808d572' THEN
@@ -249,7 +259,7 @@ DROP TABLE financeiro.geral_prazo_foto;
 DROP TABLE financeiro.geral_fin_grupo;
 
 -- ═════════════════════════════════════════════════════════════════════════════════════════════
--- (2) get_geral_recebiveis() — PODADA (definição viva pós-0301, sem as chaves da v6.4.0 que a página largou)
+-- (2) get_geral_recebiveis() — PODADA (definição viva pós-0302, sem as chaves da v6.4.0 que a página largou)
 -- ═════════════════════════════════════════════════════════════════════════════════════════════
 CREATE OR REPLACE FUNCTION public.get_geral_recebiveis()
  RETURNS json
@@ -282,8 +292,7 @@ BEGIN
       -- A UI trata "sem base" pela chave `carga` nula.
       'em_aberto',          json_build_object('n', 0, 'valor', 0),
       'vencido',            json_build_object('n', 0, 'valor', 0),
-      'devedores',          json_build_object('top', '[]'::json,
-                                              'demais', json_build_object('devedores', 0, 'n', 0, 'valor', 0)),
+      'devedores',          '[]'::json,
       'referencia_semana',  NULL::json,
       'evolucao_semanal',   '[]'::json
     );
@@ -330,13 +339,6 @@ BEGIN
            max(v_dp - i.vencimento)                           AS maior_atraso
       FROM inad i
      GROUP BY 1
-  ),
-  dev_rk AS (
-    -- UMA janela decide top e demais ⇒ Σ top + demais ≡ inadimplente. Ordem total (pessoa é única
-    -- por grupo): o corte do top 10 não flutua entre execuções.
-    SELECT d.pessoa, d.n, d.valor, d.maior_atraso,
-           row_number() OVER (ORDER BY d.valor DESC, d.pessoa ASC NULLS LAST) AS rn
-      FROM dev d
   ),
   semanas AS (
     -- A foto que REPRESENTA cada semana (seg–dom, pela data_posicao): a de maior (gravado_em, carga_id)
@@ -403,26 +405,17 @@ BEGIN
         FROM ab x
        WHERE x.liquidacao IS NULL AND x.vencimento < v_dp
     ),
-    'devedores', json_build_object(
-      'top', COALESCE((
-        SELECT json_agg(json_build_object(
-                 'pessoa',       r.pessoa,
-                 'n',            r.n,
-                 'valor',        r.valor,
-                 'maior_atraso', r.maior_atraso
-               ) ORDER BY r.rn)
-          FROM dev_rk r
-         WHERE r.rn <= 10
-      ), '[]'::json),
-      'demais', (
-        SELECT json_build_object(
-                 'devedores', count(*),
-                 'n',         COALESCE(sum(r.n), 0)::bigint,
-                 'valor',     COALESCE(sum(r.valor), 0))
-          FROM dev_rk r
-         WHERE r.rn > 10
-      )
-    ),
+    -- Lista COMPLETA dos devedores inadimplentes (sem corte; o top N é do front). Ordem total: valor DESC,
+    -- pessoa ASC NULLS LAST (pessoa é única por grupo) ⇒ Σ n e Σ valor ≡ `inadimplente` por construção.
+    'devedores', COALESCE((
+      SELECT json_agg(json_build_object(
+               'pessoa',       d.pessoa,
+               'n',            d.n,
+               'valor',        d.valor,
+               'maior_atraso', d.maior_atraso
+             ) ORDER BY d.valor DESC, d.pessoa ASC NULLS LAST)
+        FROM dev d
+    ), '[]'::json),
     -- Referência do Δ: o ponto da própria série imediatamente anterior à semana da posição atual.
     'referencia_semana', (
       SELECT json_build_object(
@@ -591,7 +584,7 @@ END $function$;
 -- (4) COMMENT — contrato que sobrou (nenhuma chave podada citada)
 -- ═════════════════════════════════════════════════════════════════════════════════════════════
 COMMENT ON FUNCTION public.get_geral_recebiveis() IS
-  'Geral v6.5.0: posição de recebíveis na carga vigente de raw.contas_receber. em_aberto/vencido {n,valor}; inadimplente {n,valor,faixas} (marcação Conferido=Inadimplente); devedores {top[≤10] {pessoa,n,valor,maior_atraso}, demais {devedores,n,valor}} (aparo de pessoa de Marketing; Σ top+demais ≡ inadimplente); referencia_semana (a última foto ANTES da semana da posição — pode ser de 2+ semanas atrás —, p/ o Δ; null sem foto anterior); evolucao_semanal [{semana,data_posicao,inadimplente_n,inadimplente_valor,vencido_valor}] (a última foto de cada semana seg–dom, do detalhe contas_receber_foto; semana sem carga não vem); historico_desde. Sem base: carga null, zeros e listas vazias.';
+  'Geral v6.5.0: posição de recebíveis na carga vigente de raw.contas_receber. em_aberto/vencido {n,valor}; inadimplente {n,valor,faixas} (marcação Conferido=Inadimplente); devedores [{pessoa,n,valor,maior_atraso}] (lista completa, do maior valor ao menor; aparo de pessoa de Marketing; Σ n e Σ valor ≡ inadimplente); referencia_semana (a última foto ANTES da semana da posição — pode ser de 2+ semanas atrás —, p/ o Δ; null sem foto anterior); evolucao_semanal [{semana,data_posicao,inadimplente_n,inadimplente_valor,vencido_valor}] (a última foto de cada semana seg–dom, do detalhe contas_receber_foto; semana sem carga não vem); historico_desde. Sem base: carga null, zeros e listas vazias.';
 COMMENT ON FUNCTION public.get_geral_prejuizos(integer) IS
   'Geral v6.5.0: prejuízo por mês (categorias de geral_perda_map com papel prejuizo ⨝ dre_categoria_map NOT excluida, realizado) com ano_anterior_ytd {prejuizo} + por_pessoa [{pessoa,n,valor}] (lista completa do ano, mesma varredura do prejuizo: Σ por_pessoa ≡ prejuizo.total; pessoa aparada, NULL = sem pessoa; do maior prejuízo ao menor) + bandeja de categorias preju/perda não curadas.';
 
@@ -668,8 +661,9 @@ BEGIN
     SELECT * FROM (VALUES
       ('public.get_geral_recebiveis()',
        'carga,inadimplente,historico_desde,em_aberto,vencido,devedores,referencia_semana,evolucao_semanal,'
-       || 'faixas,top,demais,maior_atraso,semana,data_posicao,inadimplente_n,inadimplente_valor,vencido_valor,carga_id,gravado_em',
-       'a_vencer,marcacao_em_aberto,concentracao,recuperado_ano,comparativo,evolucao'),
+       || 'faixas,maior_atraso,semana,data_posicao,inadimplente_n,inadimplente_valor,vencido_valor,carga_id,gravado_em',
+       -- top/demais: a forma antiga de devedores (objeto) morreu na 0302; devedores é array.
+       'a_vencer,marcacao_em_aberto,concentracao,recuperado_ano,comparativo,evolucao,top,demais'),
       ('public.get_geral_prejuizos(integer)',
        'ano,relacao,mes_corrente,prejuizo,meses,total,ano_anterior_ytd,bandeja,categoria_id,rotulo,atualizado_em,por_pessoa,pessoa,n,valor',
        'reversao,liquido'),
