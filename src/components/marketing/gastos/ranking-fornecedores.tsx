@@ -87,7 +87,7 @@ export default function RankingFornecedores({ periodo, fatias, anosFalha }: Prop
   if (tabela.qtd === 0) {
     return (
       <Card>
-        <CabecalhoCard titulo="Por fornecedor" />
+        <CabecalhoCard titulo="Por Fornecedor" />
         <EmptyState icon={Users} message={`Sem lançamentos pagos em ${periodo}.`} />
       </Card>
     )
@@ -101,7 +101,7 @@ export default function RankingFornecedores({ periodo, fatias, anosFalha }: Prop
 
   return (
     <Card>
-      <CabecalhoCard titulo="Por fornecedor" />
+      <CabecalhoCard titulo="Por Fornecedor" />
       {/* Gutters: interno SÓ à direita (`pr-3.5`, o thumb vertical flutua em overlay, fora da tabela); o
           externo `-mr-3.5` devolve ao card esses 14px, então a borda da tabela fica alinhada à da tabela
           de cima, e o thumb vertical pousa no padding do card. Embaixo NÃO há gutter dentro do viewport

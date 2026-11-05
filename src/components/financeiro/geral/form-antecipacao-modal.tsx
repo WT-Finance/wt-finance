@@ -10,20 +10,17 @@ import { DATA_PISO, descontoEmCentavos, descontoFormatado, lerValorDigitado, men
 import type { RegistroAntecipacao } from '@/lib/financeiro-geral/schemas'
 import { numBRL2 } from '@/lib/fmt'
 
-// Formulário de uma antecipação (criar e editar no mesmo modal): conta, data, valor antecipado e valor
-// líquido. O DESCONTO é exibido, derivado (antecipado − líquido) — NUNCA digitado. O valor é texto livre
-// em pt-BR e só é normalizado no ENVIO (`validarFormulario` → `toNum` canônico, padrão da v6.2.1); mascarar
-// no `onChange` impediria escrever "1.234,56". A validação daqui é uma DICA: a barreira é o banco.
+// Formulário de EDIÇÃO de uma antecipação (a criação é a linha inline `antecipacoes-linha-nova.tsx`, v6.5.0):
+// conta, data, valor antecipado e valor líquido. O DESCONTO é exibido, derivado (antecipado − líquido) — NUNCA
+// digitado. O valor é texto livre em pt-BR e só é normalizado no ENVIO (`validarFormulario` → `toNum`
+// canônico, padrão da v6.2.1); mascarar no `onChange` impediria escrever "1.234,56". A validação daqui é uma
+// DICA: a barreira é o banco.
 //
-// `key` do componente (no pai) muda entre criar e editar e a cada abertura: o `useState` com initializer só
-// roda na montagem, e um modal reaproveitado entre itens manteria o estado do anterior.
-
-export type EstadoForm =
-  | { modo: 'criar' }
-  | { modo: 'editar'; registro: RegistroAntecipacao }
+// `key` do componente (no pai) muda a cada registro: o `useState` com initializer só roda na montagem, e um
+// modal reaproveitado entre itens manteria o estado do anterior.
 
 interface Props {
-  estado: EstadoForm
+  registro: RegistroAntecipacao
   contas: readonly { id: number; nome: string }[]
   hoje: string
   onFechar: () => void
@@ -33,14 +30,11 @@ interface Props {
 /** 1234.5 → "1.234,50": o valor do registro volta ao campo no formato que o usuário digita. */
 const paraCampo = (v: number) => numBRL2(v)
 
-export default function FormAntecipacaoModal({ estado, contas, hoje, onFechar, onSalvo }: Props) {
-  const editando = estado.modo === 'editar'
-  const base = editando ? estado.registro : null
-
-  const [contaId, setContaId] = useState(base ? String(base.conta_id) : '')
-  const [data, setData] = useState(base?.data ?? hoje)
-  const [antecipado, setAntecipado] = useState(base ? paraCampo(base.valor_antecipado) : '')
-  const [liquido, setLiquido] = useState(base ? paraCampo(base.valor_liquido) : '')
+export default function FormAntecipacaoModal({ registro, contas, hoje, onFechar, onSalvo }: Props) {
+  const [contaId, setContaId] = useState(String(registro.conta_id))
+  const [data, setData] = useState(registro.data)
+  const [antecipado, setAntecipado] = useState(paraCampo(registro.valor_antecipado))
+  const [liquido, setLiquido] = useState(paraCampo(registro.valor_liquido))
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
 
@@ -52,9 +46,9 @@ export default function FormAntecipacaoModal({ estado, contas, hoje, onFechar, o
   const descontoOk = descontoEmCentavos(antecipado, liquido) !== null
 
   // Conta do registro que já não está na lista (conta desativada depois): continua escolhível na edição.
-  const opcoes = base && !contas.some(c => c.id === base.conta_id)
-    ? [{ id: base.conta_id, nome: base.conta }, ...contas]
-    : contas
+  const opcoes = contas.some(c => c.id === registro.conta_id)
+    ? contas
+    : [{ id: registro.conta_id, nome: registro.conta }, ...contas]
 
   async function salvar() {
     const v = validarFormulario({ contaId, data, valorAntecipado: antecipado, valorLiquido: liquido }, hoje)
@@ -66,7 +60,7 @@ export default function FormAntecipacaoModal({ estado, contas, hoje, onFechar, o
     let res: Awaited<ReturnType<typeof salvarAntecipacao>>
     try {
       res = await salvarAntecipacao({
-        id: base ? base.id : null,
+        id: registro.id,
         contaId: v.entrada.contaId,
         data: v.entrada.data,
         valorAntecipado: v.entrada.valorAntecipado,
@@ -89,7 +83,7 @@ export default function FormAntecipacaoModal({ estado, contas, hoje, onFechar, o
       <div className="flex flex-wrap justify-end gap-2">
         <Button variant="contorno" size="sm" onClick={onFechar} disabled={salvando}>Cancelar</Button>
         <Button variant="solido" size="sm" onClick={salvar} disabled={salvando}>
-          {salvando ? 'Salvando…' : editando ? 'Salvar alterações' : 'Registrar antecipação'}
+          {salvando ? 'Salvando…' : 'Salvar alterações'}
         </Button>
       </div>
     </div>
@@ -97,7 +91,7 @@ export default function FormAntecipacaoModal({ estado, contas, hoje, onFechar, o
 
   return (
     <ModalCentral
-      titulo={editando ? 'Editar antecipação' : 'Registrar antecipação'}
+      titulo="Editar antecipação"
       subtitulo="O desconto é calculado: valor antecipado menos valor líquido."
       rodape={rodape}
       onClose={onFechar}

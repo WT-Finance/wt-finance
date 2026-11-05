@@ -1,16 +1,15 @@
 import {
-  SkeletonPagina, SkeletonHeader, SkeletonFiltros, SkeletonGrafico, SkeletonTabela,
+  SkeletonPagina, SkeletonHeader, SkeletonGrafico, SkeletonTabela,
 } from '@/components/shared/skeletons'
 
-// Marketing · Despesas de Marketing: header + pills de ano + card do total (1/3 da largura) e o da
-// proporção sobre a Receita Bruta (2/3, como na página real; sem subtítulo, então mais baixo) +
-// gráfico "Despesas mensais" (com o painel "Total" ao lado) + tabela por categoria + ranking por
-// fornecedor. Alturas fixas (sem CLS).
+// Marketing · Despesas de Marketing: header + card do total (1/3 da largura) e o da proporção sobre a
+// Receita Bruta (2/3, como na página real; sem subtítulo, então mais baixo) + gráfico "Despesas
+// Mensais" (com o painel "Total" ao lado) + tabela por categoria + ranking por fornecedor. Sem
+// pills de ano (a página é fixa nos 3 anos). Alturas fixas (sem CLS).
 export default function Loading() {
   return (
     <SkeletonPagina>
       <SkeletonHeader />
-      <SkeletonFiltros n={3} />
       {/* A mesma grade de 3 colunas da página: o card do total (1/3) e o da proporção (2/3). A altura
           vem do card da proporção (a do total estica junto, como na página real). */}
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">

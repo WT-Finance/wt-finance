@@ -22,13 +22,22 @@ const INTERVALOS_ALVO = 4
 
 const limpar = (n: number): number => (n === 0 ? 0 : Math.round(n * 100) / 100) // normaliza -0
 
-export function escalaSerie(valores: readonly (number | null | undefined)[]): EscalaSerie {
+/** `sinal` só decide o eixo MÍNIMO da série toda zero/vazia: 'negativo' (default, gasto) → [-4000, 0];
+ *  'positivo' (ex.: volume antecipado) → [0, 4000]. Com dado, o domínio sai do dado e `sinal` não pesa. */
+export function escalaSerie(
+  valores: readonly (number | null | undefined)[],
+  sinal: 'negativo' | 'positivo' = 'negativo',
+): EscalaSerie {
   const v = valores.filter((n): n is number => typeof n === 'number' && Number.isFinite(n))
   const min = Math.min(0, ...v)
   const max = Math.max(0, ...v)
   const amplitude = max - min
   // Série toda zero (ou vazia): domínio mínimo e legível; o gráfico nem é desenhado nesse caso.
-  if (amplitude <= 0) return { domain: [-4000, 0], ticks: [-4000, -3000, -2000, -1000, 0] }
+  if (amplitude <= 0) {
+    return sinal === 'positivo'
+      ? { domain: [0, 4000], ticks: [0, 1000, 2000, 3000, 4000] }
+      : { domain: [-4000, 0], ticks: [-4000, -3000, -2000, -1000, 0] }
+  }
 
   const passo = passoRedondo(amplitude / INTERVALOS_ALVO)
   const lo = Math.floor(min / passo) * passo

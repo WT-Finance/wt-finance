@@ -340,10 +340,9 @@ describe('completude — fixture', () => {
 describe('fixture — estados degradados', () => {
   const base = { anos: [2025, 2026], hoje: HOJE }
 
-  it('padrão: tudo carregado, uma leitura por ano (em ordem crescente), pills de 2024 ao corrente', () => {
+  it('padrão: tudo carregado, uma leitura por ano (em ordem crescente)', () => {
     const d = montarDadosFixture({ ...base, anos: [2026, 2025], estado: null })
     expect(d.anos).toEqual([2025, 2026])
-    expect(d.anosDisponiveis).toEqual([2024, 2025, 2026])
     expect(d.porAno.map(l => l.ano)).toEqual([2025, 2026])
     expect(d.porAno.every(l => l.resumo.ok && l.fornecedores.ok)).toBe(true)
     const resumo = d.porAno[1].resumo.ok ? d.porAno[1].resumo.dados : null
@@ -354,9 +353,8 @@ describe('fixture — estados degradados', () => {
     expect((resumo?.ultimaDataCartao ?? '') < (resumo?.cobertura?.max ?? '')).toBe(true)
   })
 
-  it('ano antes do 1º da base (2023): o resumo vem vazio e 2023 fora de anosDisponiveis', () => {
+  it('ano antes do 1º da base (2023): o resumo vem vazio (ausência de dado, não zero)', () => {
     const d = montarDadosFixture({ anos: [2023, 2024], hoje: HOJE, estado: null })
-    expect(d.anosDisponiveis).not.toContain(2023)
     const [de2023, de2024] = d.porAno
     expect(de2023.resumo.ok && de2023.resumo.dados.porMesCategoria).toEqual([])
     expect(de2023.resumo.ok && de2023.resumo.dados.cobertura).toBeNull()

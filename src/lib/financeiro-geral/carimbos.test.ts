@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { carimboDoFluxo, carimboGeral, carimboMaisRecente } from './carimbos'
+import {
+  FONTE_ANTECIPACOES, FONTE_CAIXA, FONTE_CONTAS_A_RECEBER, carimboDoFluxo, carimboMaisRecente, carimbosDaPagina,
+} from './carimbos'
+import { fixtureGeral } from './fixture'
 import type { DadosGeral } from './tipos'
 
 describe('carimboMaisRecente', () => {
@@ -22,27 +25,54 @@ describe('carimboDoFluxo', () => {
   })
 })
 
-describe('carimboGeral', () => {
+describe('carimbosDaPagina — uma linha por fonte, na ordem do topo', () => {
   const base: DadosGeral = {
-    anos: [2026], anosDisponiveis: [2026], hoje: '2026-10-15', podeGerir: false,
-    recebiveis: { ok: false }, prazos: { ok: false }, antecipacoes: [], prejuizos: [], custos: [],
+    anosPrejuizos: [2026], anosAntecipacoes: [2026], anosDisponiveis: [2026], hoje: '2026-10-15', podeGerir: false, intervaloRecorde: null,
+    recebiveis: { ok: false }, antecipacoes: [], prejuizos: [], prejuizosMensal: [],
+    corrente: { prejuizos: { ano: 2026, leitura: { ok: false } }, antecipacoes: { ano: 2026, leitura: { ok: false } } },
   }
-  it('sem nenhuma fonte carregada → null (o carimbo some, o título fica)', () => {
-    expect(carimboGeral(base)).toBeNull()
+  it('sem nenhuma fonte carregada → nenhuma linha (o título fica)', () => {
+    expect(carimbosDaPagina(base)).toEqual([])
+    expect(carimbosDaPagina(fixtureGeral('erro', '2026-10-26', [2026]))).toEqual([])
   })
-  it('lê a gravação da carga de contas a receber quando é a fonte mais nova', () => {
-    const d: DadosGeral = {
-      ...base,
-      recebiveis: {
-        ok: true,
-        dados: {
-          carga: { carga_id: 'x', data_posicao: '2026-10-15', gravado_em: '2026-10-15T14:00:00-03:00' },
-          a_vencer: { n: 0, valor: 0 }, inadimplente: { n: 0, valor: 0, faixas: [] }, marcacao_em_aberto: [],
-          concentracao: { top: [], valor_top: 0, pct_top: null }, recuperado_ano: { ano: 2026, n: 0, valor: 0 },
-          comparativo: null, evolucao: [], historico_desde: null,
-        },
-      },
+  it('estado vazio da fixture: nenhuma carga e nenhum registro → nenhuma linha', () => {
+    expect(carimbosDaPagina(fixtureGeral('vazio', '2026-10-26', [2026]))).toEqual([])
+  })
+  it('Contas a receber, Caixa e Antecipações, nesta ordem, cada uma com a própria data', () => {
+    const d = fixtureGeral('normal', '2026-10-26', [2026])
+    expect(carimbosDaPagina(d)).toEqual([
+      { fonte: FONTE_CONTAS_A_RECEBER, iso: '2026-10-15T16:42:10+00:00' },
+      { fonte: FONTE_CAIXA, iso: '2026-10-15T16:42:10+00:00' },
+      { fonte: FONTE_ANTECIPACOES, iso: '2026-09-22T13:05:00+00:00' },
+    ])
+    expect([FONTE_CONTAS_A_RECEBER, FONTE_CAIXA, FONTE_ANTECIPACOES]).toEqual(['Contas a receber', 'Caixa', 'Antecipações'])
+  })
+  it('lê a gravação da carga de contas a receber (não o mais recente entre as fontes)', () => {
+    const d = fixtureGeral('normal', '2026-10-26', [2026])
+    if (!d.recebiveis.ok || !d.recebiveis.dados.carga) throw new Error('fixture')
+    const maisNova = { ...d.recebiveis.dados.carga, gravado_em: '2026-10-20T14:00:00-03:00' }
+    const r: DadosGeral = { ...d, recebiveis: { ok: true, dados: { ...d.recebiveis.dados, carga: maisNova } } }
+    expect(carimbosDaPagina(r)[0]).toEqual({ fonte: FONTE_CONTAS_A_RECEBER, iso: '2026-10-20T14:00:00-03:00' })
+  })
+  it('fonte sem data não aparece; as outras seguem na ordem', () => {
+    const d = fixtureGeral('normal', '2026-10-26', [2026])
+    const fontes = (x: DadosGeral) => carimbosDaPagina(x).map(c => c.fonte)
+    expect(fontes({ ...d, recebiveis: { ok: false } })).toEqual([FONTE_CAIXA, FONTE_ANTECIPACOES])
+    expect(fontes({ ...d, prejuizos: [], prejuizosMensal: [], corrente: { ...d.corrente, prejuizos: { ano: 2026, leitura: { ok: false } } } }))
+      .toEqual([FONTE_CONTAS_A_RECEBER, FONTE_ANTECIPACOES])
+    expect(fontes({ ...d, antecipacoes: [], corrente: { ...d.corrente, antecipacoes: { ano: 2026, leitura: { ok: false } } } }))
+      .toEqual([FONTE_CONTAS_A_RECEBER, FONTE_CAIXA])
+  })
+  it('a leitura do ano corrente entra mesmo fora das listas das seções', () => {
+    const d = fixtureGeral('normal', '2026-10-26', [2026])
+    const r: DadosGeral = { ...d, prejuizos: [], prejuizosMensal: [], antecipacoes: [] }
+    expect(carimbosDaPagina(r).map(c => c.fonte)).toEqual([FONTE_CONTAS_A_RECEBER, FONTE_CAIXA, FONTE_ANTECIPACOES])
+  })
+  it('Caixa considera as leituras do gráfico mensal, mesmo sem as das pills nem a do corrente', () => {
+    const d = fixtureGeral('normal', '2026-10-26', [2026])
+    const r: DadosGeral = {
+      ...d, prejuizos: [], corrente: { ...d.corrente, prejuizos: { ano: 2026, leitura: { ok: false } } },
     }
-    expect(carimboGeral(d)).toBe('2026-10-15T14:00:00-03:00')
+    expect(carimbosDaPagina(r).map(c => c.fonte)).toContain(FONTE_CAIXA)
   })
 })

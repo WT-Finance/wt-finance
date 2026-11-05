@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  PRIMEIRO_ANO, anosDasPillsGeral, anosSelecionados, mesesRealizados, recorteDaLeitura,
+  PRIMEIRO_ANO, anosDasPillsGeral, anosFixosDoFluxo, anosParaLer, anosDosPrejuizos, mesesRealizados, recorteDaLeitura,
   recorteTexto, rotuloDoAno, rotuloReferencia,
 } from './periodo'
 
@@ -15,21 +15,62 @@ describe('anosDasPillsGeral — janela fixa (as RPCs não devolvem anosDisponive
   })
 })
 
-describe('anosSelecionados — ?anos= reaproveitando lib/marketing/anos', () => {
-  it('sem parâmetro: os 3 últimos anos até o corrente', () => {
-    expect(anosSelecionados({}, 2026)).toEqual([2024, 2025, 2026])
+describe('anosDosPrejuizos — ?prejuizos= (com ?anos= como valor inicial); Antecipações não lê URL', () => {
+  it('lê o próprio parâmetro: desordem, repetição, formato repetido, ano fora das pills ou futuro', () => {
+    expect(anosDosPrejuizos({ prejuizos: '2025,2026' }, 2026)).toEqual([2025, 2026])
+    expect(anosDosPrejuizos({ prejuizos: '2026,2025,2025' }, 2026)).toEqual([2025, 2026])
+    expect(anosDosPrejuizos({ prejuizos: ['2024', '2026'] }, 2026)).toEqual([2024, 2026])
+    expect(anosDosPrejuizos({ prejuizos: '2019,2025' }, 2026)).toEqual([2025])
+    expect(anosDosPrejuizos({ prejuizos: '2019' }, 2026)).toEqual([2026])
+    expect(anosDosPrejuizos({ prejuizos: '2027,2026' }, 2026)).toEqual([2026])
   })
-  it('?anos=2025,2026 e o antigo ?ano=2026', () => {
-    expect(anosSelecionados({ anos: '2026,2025' }, 2026)).toEqual([2025, 2026])
-    expect(anosSelecionados({ ano: '2025' }, 2026)).toEqual([2025])
+  it('o antigo ?anos= (e ?ano=) é o valor inicial', () => {
+    expect(anosDosPrejuizos({ anos: '2025,2026' }, 2026)).toEqual([2025, 2026])
+    expect(anosDosPrejuizos({ ano: '2025' }, 2026)).toEqual([2025])
   })
-  it('ano sem pill (anterior ao primeiro) é ignorado; lixo cai no default sem estourar', () => {
-    expect(anosSelecionados({ anos: '2019,2025' }, 2026)).toEqual([2025])
-    expect(anosSelecionados({ anos: 'abc' }, 2026)).toEqual([2024, 2025, 2026])
-    expect(anosSelecionados({ anos: '2019' }, 2026)).toEqual([2026])
+  it('seleção explícita igual à janela de 3 anos continua valendo (não é confundida com o padrão)', () => {
+    expect(anosDosPrejuizos({ prejuizos: '2024,2025,2026' }, 2026)).toEqual([2024, 2025, 2026])
+    expect(anosDosPrejuizos({ anos: '2024,2025,2026' }, 2026)).toEqual([2024, 2025, 2026])
   })
-  it('ano futuro é descartado', () => {
-    expect(anosSelecionados({ anos: '2027,2026' }, 2026)).toEqual([2026])
+  it('o parâmetro próprio vence o antigo', () => {
+    expect(anosDosPrejuizos({ anos: '2024', prejuizos: '2026' }, 2026)).toEqual([2026])
+  })
+  it('parâmetro próprio sem ano válido (lixo, vazio) cai no antigo e, sem ele, no padrão: SÓ o ano corrente', () => {
+    expect(anosDosPrejuizos({ prejuizos: 'abc', anos: '2025' }, 2026)).toEqual([2025])
+    expect(anosDosPrejuizos({ prejuizos: '', ano: '2025' }, 2026)).toEqual([2025])
+    expect(anosDosPrejuizos({ prejuizos: 'abc' }, 2026)).toEqual([2026])
+    expect(anosDosPrejuizos({ prejuizos: 'abc', anos: 'xyz', ano: 'nada' }, 2026)).toEqual([2026])
+    expect(anosDosPrejuizos({ prejuizos: '2026', anos: '2024' }, 2026)).toEqual([2026])
+    expect(anosDosPrejuizos({}, 2026)).toEqual([2026])
+    expect(anosDosPrejuizos({}, 2027)).toEqual([2027])
+  })
+  it('um `?antecipacoes=` antigo (link salvo) não influencia nada', () => {
+    const comLixo = (x: Record<string, string>) => x as unknown as Parameters<typeof anosDosPrejuizos>[0]
+    expect(anosDosPrejuizos(comLixo({ prejuizos: '2025', antecipacoes: '2024' }), 2026)).toEqual([2025])
+    expect(anosDosPrejuizos(comLixo({ antecipacoes: '2024' }), 2026)).toEqual([2026])
+  })
+})
+
+describe('anosFixosDoFluxo — recorte FIXO: o ano corrente e os dois anteriores', () => {
+  it('crescente, sem depender de URL', () => {
+    expect(anosFixosDoFluxo(2026)).toEqual([2024, 2025, 2026])
+    expect(anosFixosDoFluxo(2027)).toEqual([2025, 2026, 2027])
+  })
+})
+
+describe('anosParaLer — união de selecionados e fixos, cada ano UMA vez', () => {
+  it('seleção dentro dos fixos: nenhuma chamada a mais', () => {
+    expect(anosParaLer([2025], anosFixosDoFluxo(2026))).toEqual([2024, 2025, 2026])
+    expect(anosParaLer([2024, 2025, 2026], anosFixosDoFluxo(2026))).toEqual([2024, 2025, 2026])
+  })
+  it('seleção fora dos fixos (pill de ano antigo): só o que falta é somado; crescente', () => {
+    expect(anosParaLer([2024, 2026], anosFixosDoFluxo(2027))).toEqual([2024, 2025, 2026, 2027])
+    expect(anosParaLer([2024], anosFixosDoFluxo(2027))).toEqual([2024, 2025, 2026, 2027])
+  })
+  it('sem repetição, mesmo com entrada repetida ou desordenada', () => {
+    const lista = anosParaLer([2026, 2025, 2025], [2026, 2025, 2024])
+    expect(lista).toEqual([2024, 2025, 2026])
+    expect(new Set(lista).size).toBe(lista.length)
   })
 })
 

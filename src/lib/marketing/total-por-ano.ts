@@ -44,7 +44,7 @@ export interface VariacaoVsAnterior {
   sentido: SentidoVariacao | null
   /** O recorte comparado ("jan–out") quando a linha é de ano parcial; `null` = ano inteiro × inteiro. */
   recorte: string | null
-  /** Referência curta ao lado do Δ: "vs 2025" · "vs 2025 (jan–out)". */
+  /** Referência curta ao lado do Δ: "vs 2025" · "vs 2025*" (o "*" = mesmo período do ano parcial, como o "2026*" da linha). */
   referencia: string
 }
 
@@ -101,7 +101,7 @@ export function linhasTotalPorAno(
         pct,
         sentido: sentidoDaVariacao(pct),
         recorte,
-        referencia: recorte ? `vs ${abaixo.ano} (${recorte})` : `vs ${abaixo.ano}`,
+        referencia: recorte ? `vs ${abaixo.ano}*` : `vs ${abaixo.ano}`,
       }
     }
     return {

@@ -89,6 +89,15 @@ continua certo para **fundo, borda e ícone**, onde o critério de contraste é 
 `*-deep` existe para exatamente isso e já vale para `--positive-deep` / `--negative-deep`:
 **quando o estado vira texto, a variante `-deep` é a tinta.**
 
+**Exceção registrada (v6.5.0, decisão do Yan em 05/11/2026): Δ FAVORÁVEL em card de comparação anual usa
+`text-positive`** (#5F7A3D), não `text-positive-deep` — o `-deep` (8,79:1) quase não se distingue do texto e o
+destaque do "favorável" sumia. `--positive` dá **4,84:1 sobre branco** (passa AA), mas **4,30:1 sobre
+`--surface-soft`** (reprova): vale SÓ em card branco (`bg-white`/`--surface`), que é onde esses cards vivem.
+O DESFAVORÁVEL continua `text-negative-deep`. A palavra continua escrita ao lado (a cor nunca vai sozinha).
+Onde: `TextoVariacao` em `src/components/financeiro/geral/comum.tsx` (tiles e faixa do topo da Geral),
+`antecipacoes-card-custo.tsx` (Custo Efetivo / Custo efetivo percentual) e `marketing/gastos/indicadores-gastos.tsx`
+(total por ano). Card novo desse tipo segue o mesmo par.
+
 **Não substitua por `--gestao-fg`.** O DS separa a família de gestão de propósito: gestão é "ação
 administrativa", não estado de alerta, e não acompanha mudanças do warning (ADR-0103 ext., v4.18.0).
 Dois âmbares parecidos com semânticas diferentes é como a divergência entra.
@@ -140,6 +149,13 @@ Pills de plataforma/filtro são consts de `@/components/shared/botoes`
 (`PILL*`/`PILL_FILTRO*`); badge de status de solicitação é `statusBadge` de
 `@/lib/solicitacoes/format.ts`. Foco neutro (sem o anel dourado/de marca) vem da
 utilitária `.foco-neutro`.
+
+**Tabela de card** (lista curta, ranking, composição, comparativo): receita única — padrão A,
+cabeçalho `CARD_TABELA_TH` em caixa normal e `font-medium` (confirmado pelo Yan, GATE 1 da v6.5.0),
+células `TH_*`/`TD*` de `financeiro/geral/comum.tsx`, total, "demais N", vazio e scroll interno com
+`ScrollAutoHide eixo="x"` + `pb-3.5`. Mora na skill `tabela-densa` ("Tabela simples de card") e tem
+exemplo vivo em `/admin/design-system` §7 — não reinvente o cabeçalho. Marketing e DRE têm cabeçalho
+em caixa alta como **exceção conhecida** (B-49): não é precedente para tabela nova.
 
 Migração de call-site legado (tela antiga que ainda não usa o primitivo) é incremental —
 byte-equivalente quando a tela for tocada por outro motivo; não é preciso caçar e
@@ -203,6 +219,17 @@ varre `src/app`/`src/components` e reprova qualquer par h1+p fora do padrão (cl
   <p className="mt-0.5 text-sm text-text-subtle">Subtítulo — uma linha de contexto</p>
 </div>
 ```
+
+**Carimbo de atualização de base (decisão do Yan, 05/11/2026):** toda informação de atualização de
+dados fica no **TOPO da página**, à direita do cabeçalho — **nunca** dentro de seção, card ou linha de
+metadados. **Uma linha por fonte**, com relógio, no formato `"<Fonte> · Última atualização em <data longa>"`,
+empilhadas e alinhadas à direita (`flex flex-col items-end gap-y-0.5 text-2xs`). Implementação canônica:
+`UltimaAtualizacao` (`@/components/metas/ultima-atualizacao`) com `prefixo="<Fonte> · Última atualização em"`
+e `iconSize={12}`. **`vigiarAtraso={false}` para fonte de cadência humana** (planilha, registro manual); a
+vigília de atraso (vermelho) é só para a sincronização automática do Monde. Exemplos vivos: cabeçalho da DRE
+(`src/app/financeiro/dre/page.tsx`), Weddings (`src/components/performance/weddings-content.tsx`),
+Marketing (`marketing/gastos/cabecalho-gastos.tsx`) e Financeiro · Geral (`financeiro/geral/cabecalho-geral.tsx`:
+Contas a receber · Caixa · Antecipações). Demo em `/admin/design-system` §12. Telas legadas fora do padrão: B-50.
 
 Título de **seção** (`TopSection`) continua na cor de marca (`--brand-deep`, §6); título de
 **card** continua `--text-primary`. `--text-secondary` é texto de corpo/H3, nunca subtítulo.

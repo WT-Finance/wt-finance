@@ -296,9 +296,10 @@ servidor; a cobertura é derivada do dado (`min/max(data_venda)`), nunca do nome
   mais de 1 dia do fim da anterior). O checksum não a vê — cada arquivo fecha sozinho.
 - **Sem RPA e sem expectativa de vigia por ora:** a base não entra em `escopo_bases` de chave de API nem
   em `ingestao_expectativa`. Entra só no card de `/admin/ingestao/upload` (sessão, área `admin/uploads`).
-- **Efeito colateral de outra base:** depois de **aplicar** `lancamentos-aberto`, o servidor chama
-  `registrar_foto_prazos(carga_id)` (série histórica de PMR/PMP). É **fail-soft**: falha vira um aviso em
-  `alarmes[]`, nunca erro nem desfaz a carga.
+- ~~**Efeito colateral de outra base:** depois de **aplicar** `lancamentos-aberto`, o servidor chama
+  `registrar_foto_prazos(carga_id)` (série histórica de PMR/PMP).~~ **Errata (v6.5.0, 26/10/2026):** removido.
+  Prazos médios saiu da página Financeiro · Geral e a série foi aposentada (ADR-0183, Emenda 1); a carga do
+  Aberto não tem mais efeito colateral em outra base.
 
 ## 4. Checksums por base (o que o arquivo já traz)
 

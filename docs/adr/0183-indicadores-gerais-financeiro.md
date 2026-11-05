@@ -211,3 +211,35 @@ follow-up.
   fonte de leitura.
 - Se uma sétima base de posição entrar: nasce isenta do alarme de ano fechado e ampliando o `CHECK` por
   novo patch destrutivo.
+
+## Emenda 1 — v6.5.0 (26/10/2026): a página em cinco seções
+
+Decisões do Yan (briefing `docs/briefings/briefing-v6-5-0-financeiro-geral-v2.md`; medição
+`docs/auditoria/v6-5-0-m0-financeiro-geral-v2.md`):
+
+- **Forma nova:** cinco TopSections, nesta ordem — Vendas (casca) · Recebíveis e inadimplência · Perdas e
+  prejuízos · Antecipações · Cartões de crédito (casca). Faixa do topo com três indicadores (inadimplência,
+  prejuízo do ano corrente, dias sem antecipação), os dois últimos sempre do ano corrente.
+- **Custos financeiros e Prazos médios saem**, inclusive a série de prazos: a carga do Aberto deixa de gravar
+  a foto; `get_geral_custos_financeiros`, `get_geral_prazos`, `registrar_foto_prazos`,
+  `geral_prazo_calcular`, `geral_prazo_foto` e `geral_fin_grupo` caem na destrutiva do GATE 2 (0303), DEPOIS
+  do deploy. O export da série fica em `~/projects/arquivo-worktrees-janus/v6-5-0-gate2/`.
+- **Recebíveis:** funil em aberto ⊃ vencido ⊃ inadimplente (a marcação continua sendo a definição); Δ contra a
+  última foto ANTES da semana da posição; faixas de atraso só sobre os inadimplentes (com "a vencer" quando a
+  marcação antecede o vencimento); 10 maiores por devedor; evolução semanal (última foto de cada semana; semana
+  sem carga aparece em cinza repetindo o valor da última carga — refino do Yan em 05/11; o dado da RPC continua
+  sem a semana, e o tooltip avisa "sem carga").
+- **Prejuízos:** só bruto (reversão e líquido saem); por pessoa = `fato_fluxo.pessoa`, uma tabela somando os
+  anos selecionados; por setor fica em construção até haver fonte. Nomes de pessoa podem aparecer (decisão do
+  Yan no GATE 0).
+- **Antecipações:** custo efetivo (R$ de desconto) e custo % ponderado pelo volume, por uma fórmula única; por
+  conta (rótulo "Conta", nunca "bandeira"); a seção é FIXA no ano corrente e nos dois anteriores, sem pills, e o
+  volume e o custo por conta ficam numa tabela só ("Comparativo por Conta", refino de 05/11); "maior intervalo do ano" = maior intervalo que TERMINA no ano,
+  inclusive o da virada e o em curso.
+- **Contrato:** as três RPCs ganharam chaves por `CREATE OR REPLACE` aditivo (0301), sem RPC nova — devolvem
+  `json` e o Zod não é estrito, então acrescentar chave não quebra o front no ar. A poda das chaves antigas
+  vai na 0303. (A 0302 tornou `devedores` a lista completa, para o drawer "Maiores Inadimplentes".)
+- **Retenção das fotos (inv. 8):** a evolução semanal lê o DETALHE por título (`contas_receber_foto`) para o
+  vencido; o inadimplente vem de `contas_receber_foto_carga`. Antes de ligar qualquer limpeza do detalhe,
+  persistir o agregado semanal (vencido por carga), senão a série perde o vencido. A RPC já trata detalhe
+  incompleto como lacuna, nunca zero.

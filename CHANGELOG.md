@@ -6,6 +6,73 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [6.5.0] — 2026-10-26
+
+MINOR · **Financeiro · Geral, segunda versão.** Out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v6-5-0_Financeiro_Geral_v2.md`; medição
+`docs/auditoria/v6-5-0-m0-financeiro-geral-v2.md`. Migrations **0301 e 0302 APLICADAS** (aditivas). Destrutiva
+`supabase/patches/financeiro-geral-v2-poda-destrutiva.sql` (vira a **0303**; **pendente**, humano em TTY, só
+DEPOIS do deploy). Sem ADR novo; Emenda 1 do ADR-0183.
+
+### Alterado
+
+- **`/financeiro/geral` em cinco seções:** Vendas (em construção) · Recebíveis e inadimplência · Perdas e
+  prejuízos · Antecipações · Cartões de crédito (em construção). Faixa do topo com 3 indicadores
+  (inadimplência, prejuízo do ano corrente, dias sem antecipação), os dois últimos sempre do ano corrente.
+- **Recebíveis e inadimplência:** cards em aberto / vencidos / inadimplência com Δ contra a última foto antes
+  da semana da posição; faixas de atraso só sobre os inadimplentes; 10 maiores inadimplentes por devedor;
+  evolução semanal do inadimplente (semana sem carga = lacuna).
+- **Perdas e prejuízos:** só bruto; prejuízo por pessoa (uma tabela somando os anos selecionados); prejuízo por
+  setor em construção; prejuízo bruto por mês/ano no gráfico de Marketing.
+- **Antecipações:** dias sem antecipação (com o maior intervalo do ano, que agora conta o intervalo em curso e o
+  da virada), custo efetivo e custo % por ano (fórmula única, ponderada pelo volume), volume por mês/ano,
+  volume por conta e comparativo por conta.
+- **Gráfico mensal por ano compartilhado** (`shared/grafico-mensal-por-ano.tsx`): Despesas mensais de
+  Marketing passa a usá-lo, sem mudança visual; a cópia que a Geral tinha (sem o eixo invertido da v6.4.2) sai.
+  `escalaSerie` ganha `sinal` (série positiva).
+- **RPCs** `get_geral_recebiveis`, `get_geral_prejuizos`, `get_geral_antecipacoes` (0301, `CREATE OR REPLACE`
+  aditivo): chaves novas `em_aberto`, `vencido`, `devedores`, `referencia_semana`, `evolucao_semanal`,
+  `por_pessoa`; nova semântica de `maior_intervalo_ano`. Nada do que já emitiam mudou (ensaio revertido).
+- **Padrão de tabela simples** registrado em `/admin/design-system` e nas skills (`tabela-densa`,
+  `ui-design-system`); Marketing e DRE ficam como exceção conhecida (B-49).
+- **Refinos de Recebíveis e inadimplência** (Yan, antes do merge): sem a linha de metadados da seção; os 3 cards
+  só com valor e nº de títulos; "Maiores Inadimplentes" com 4 linhas + total + "Ver mais" (drawer com a lista
+  completa), do tamanho de "Faixas em Atraso"; sem subtítulos; "Evolução da Inadimplência". A ajuda da seção foi
+  para os "?" dos cards. Segunda rodada: o card de devedores mostra tantas posições quanto as linhas de faixa (5
+  com "A vencer", 4 sem); o aviso de inadimplente ainda não vencido vira "!" âmbar com tooltip no card Inadimplência;
+  na evolução, semana sem carga ganha ponto cinza repetindo o valor da última carga (linha contínua; tooltip avisa)
+  e a legenda mostra os 3 tipos de ponto. Terceira rodada: Maiores Inadimplentes à esquerda de Faixas em Atraso;
+  colunas "Pessoa" e "Atraso"; legenda "Semana sem carga".
+- **Carimbo de atualização no topo, uma linha por fonte** (padrão da plataforma, decisão do Yan): a Geral mostra
+  "Contas a receber", "Caixa" e "Antecipações · Última atualização em …"; as seções perdem a linha de metadados
+  (`MetaSecao` removido). Regra em `/admin/design-system` e na skill `ui-design-system`; telas fora do padrão no B-50.
+- **Pills de ano por seção** (`?prejuizos=` e `?antecipacoes=`; o `?anos=` antigo vale para as duas). Perdas e
+  prejuízos: "Prejuízo por Pessoa" com 5 linhas + total + "Ver mais" (drawer com todos); "Prejuízo Mensal".
+- **Antecipações fixa no ano corrente e nos dois anteriores, sem pills** (refino do Yan): cards "Custo Efetivo" e
+  "Custo efetivo percentual" sem subtítulo e sem destaque de cor, referência "vs 2025*"; "Volume Mensal de
+  Antecipações"; "Volume antecipado por conta" + "Comparativo" unificados em "Comparativo por Conta" (conta × ano:
+  volume, custo efetivo, custo %). `?antecipacoes=` deixa de existir; `?anos=` antigo vale só para Prejuízos.
+  O botão "Registrar antecipação" vira **"Registro de Antecipações"**, à esquerda, e o registro abre num **modal**
+  (era drawer); formulário e confirmação continuam como modais por cima. Depois: o registro vira tabela com
+  colunas ordenáveis (Data desc por padrão; `ThOrdenavel` extraído para `shared/`, o Gerencial passa a importá-lo
+  sem mudança), "Novo registro" abre uma linha editável inline sob o cabeçalho (mesma action e validação da criação;
+  a edição segue no modal); "Comparativo por Conta" com cabeçalhos "Antecipado", "Custo Efetivo" e "%". **Migration 0302 APLICADA** (aditiva): `devedores` passa a ser a lista completa.
+- **CLI do Supabase fixado em `supabase@2.122.1`** no wrapper do gate (`scripts/db-gate/migrate.mjs`): a 3.0.0
+  (major, resolvida pelo `npx` sem versão) recusa o `config.toml` e exige consentimento em produção por agente.
+  Decisão do Yan; subir para a v3 é patch próprio.
+- **Despesas de Marketing fixa no ano corrente e nos dois anteriores, sem pills** (refino do Yan, como em
+  Antecipações): `?anos=` deixa de ter efeito; títulos "Despesas Mensais", "Por Categoria" e "Por Fornecedor".
+- **Ícones da sidebar** (refino do Yan antes do merge): Financeiro · Geral `Gauge` → `Landmark`; Marketing · Despesas
+  `HandCoins` → `BanknoteArrowDown`.
+
+### Removido
+
+- Seções **Custos financeiros** e **Prazos médios** da página Geral (decisão do Yan). A carga do Aberto deixa
+  de gravar a foto de prazos (`registrar_foto_prazos`). As RPCs, a série `geral_prazo_foto` e o seed
+  `geral_fin_grupo` caem na destrutiva 0303 (export da série em `~/projects/arquivo-worktrees-janus/v6-5-0-gate2/`).
+
+---
+
 ## [6.4.2] — 2026-10-26
 
 PATCH · **Ajustes em Despesas de Marketing e na DRE de caixa.** Out-briefing

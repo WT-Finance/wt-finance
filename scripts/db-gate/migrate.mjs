@@ -35,13 +35,19 @@ const flag = n => argv.includes(n)
 // NÃO afrouxa o gate: classificação, backup-rede e confirmação destrutiva continuam
 // idênticos; o flag só muda a aceitação de ORDEM do conjunto pendente (que é o mesmo).
 const foraDeOrdem = flag('--fora-de-ordem')
-const pushArgs = ['supabase', 'db', 'push', '--linked', ...(foraDeOrdem ? ['--include-all'] : [])]
+
+// CLI do Supabase FIXADO (v6.5.0, decisão do Yan em 05/11/2026). `npx supabase` sem versão resolve a mais
+// recente, e a 3.0.0 (major) quebrou o gate: recusa o `supabase/config.toml` atual (`[inbucket]` → `[local_smtp]`)
+// e passa a exigir confirmação explícita em comando de produção rodado por agente. A 2.122.1 é a última 2.x — o
+// comportamento com que a 0301 foi aplicada. Subir para a v3 é patch próprio (config.toml + flags novas).
+const CLI = 'supabase@2.122.1'
+const pushArgs = [CLI, 'db', 'push', '--linked', ...(foraDeOrdem ? ['--include-all'] : [])]
 
 // ── nível da(s) migration(s) pendente(s): 'aditiva' | 'warn' | 'destrutiva' ──
 // Usa o classificador PURO (tokenizer + top-level) por arquivo; agrega pelo MAIS forte.
 function heuristicaNivel() {
   try {
-    const out = execFileSync('npx', ['supabase', 'migration', 'list', '--linked'], { cwd: REPO, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+    const out = execFileSync('npx', [CLI, 'migration', 'list', '--linked'], { cwd: REPO, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
     const pend = []
     for (const ln of out.split('\n')) { const m = ln.match(/^\s*(\d{4,})\s*\|\s*\|\s*\d/); if (m) pend.push(m[1]) }
     const dir = join(REPO, 'supabase', 'migrations')

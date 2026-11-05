@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import ChartShowcase from './chart-showcase'
 import PlataformaShowcase from './plataforma-showcase'
+import TabelaSimplesShowcase from './tabela-simples-showcase'
+import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
 import { requireArea } from '@/lib/auth/sessao'
 
 export const dynamic = 'force-dynamic'
@@ -268,6 +270,14 @@ export default async function DesignSystemPage() {
             <table><thead><tr className="text-left uppercase tracking-wide text-zinc-400 border-b border-zinc-100"><th className="py-1 pr-5">Pessoa</th><th className="py-1 pr-5">Valor</th><th className="py-1">Status</th></tr></thead></table>
           </div>
         </div>
+        <p className="text-xs text-[var(--text-muted)] mb-4">
+          <strong>Exceção conhecida (v6.5.0):</strong> duas famílias de tabela em produção ainda usam cabeçalho em
+          caixa alta (<code className="bg-zinc-100 px-1 rounded">uppercase</code> + <code className="bg-zinc-100 px-1 rounded">font-semibold</code> + tracking):
+          as de <strong>Despesas de Marketing</strong> (<code className="bg-zinc-100 px-1 rounded">src/components/marketing/gastos/tabela-estilos.ts</code>,
+          escolha de coerência com a DRE) e a <strong>DRE</strong> (<code className="bg-zinc-100 px-1 rounded">tabela-dre.tsx</code>,{' '}
+          <code className="bg-zinc-100 px-1 rounded">resumo-executivo.tsx</code>). São legado deliberado — <strong>não copie esse
+          cabeçalho em tabela nova</strong> e não “corrija” Marketing/DRE por imitação; o alinhamento está no backlog (B-49).
+        </p>
         <p className="text-xs text-[var(--text-muted)] mb-6">
           <strong>Tabela longa com scroll interno + cabeçalho fixo</strong> (Cadastro de Clientes, Base de Dados do Gerencial) — a receita completa (v4.34.1):
           a tabela usa <code className="bg-zinc-100 px-1 rounded">border-separate border-spacing-0</code> (em <em>collapse</em>, fundo/borda não acompanham
@@ -316,6 +326,43 @@ export default async function DesignSystemPage() {
           <p className="pl-4">{'</table>'}</p>
           <p className="pl-4">{'{open && <ListDrawer subtitulo="...">...lista completa...</ListDrawer>}'}</p>
           <p>{'</CardTabela>'}</p>
+        </div>
+
+        {/* Tabela simples — padrão A, confirmado no GATE 1 da v6.5.0 */}
+        <p className="font-medium text-[var(--text-primary)] text-sm mb-1">
+          Tabela simples — padrão A (v6.5.0)
+        </p>
+        <p className="text-xs text-[var(--text-muted)] mb-3">
+          A tabela de leitura de um <strong>card</strong> (lista curta, ranking, composição, comparativo) — sem cabeçalho fixo, sem
+          ordenação. É o padrão das tabelas de <strong>Financeiro · Geral</strong> (faixas de atraso, maiores inadimplentes,
+          prejuízo por pessoa, volume e comparativo por conta). Cabeçalho em <strong>caixa normal, <code className="bg-zinc-100 px-1 rounded">font-medium</code></strong>,
+          confirmado pelo Yan no GATE 1 de 26/10/2026. Para tabela longa com cabeçalho sticky, vale a receita da seção acima; para
+          card-tabela com “Ver mais”, o <code className="bg-zinc-100 px-1 rounded">CardTabela</code>.
+        </p>
+        <ul className="text-xs text-[var(--text-muted)] space-y-1 list-disc pl-4 mb-4">
+          <li><strong>Classes</strong> (fonte única: <code className="bg-zinc-100 px-1 rounded">src/components/financeiro/geral/comum.tsx</code>): cabeçalho{' '}
+            <code className="bg-zinc-100 px-1 rounded">TH_ESQ</code>/<code className="bg-zinc-100 px-1 rounded">TH_DIR</code> (= <code className="bg-zinc-100 px-1 rounded">CARD_TABELA_TH</code> +{' '}
+            <code className="bg-zinc-100 px-1 rounded">text-left|right border-b border-zinc-100</code>), célula <code className="bg-zinc-100 px-1 rounded">TD</code>, célula numérica{' '}
+            <code className="bg-zinc-100 px-1 rounded">TD_NUM</code> (<code className="bg-zinc-100 px-1 rounded">tabular-nums text-right</code>), total <code className="bg-zinc-100 px-1 rounded">TD_TOTAL</code>.
+            Fora da página Geral, importe <code className="bg-zinc-100 px-1 rounded">CARD_TABELA_TH</code> de <code className="bg-zinc-100 px-1 rounded">@/components/shared/card-tabela</code> e
+            escreva as células equivalentes — não invente outro cabeçalho.</li>
+          <li><strong>Estrutura:</strong> <code className="bg-zinc-100 px-1 rounded">table-fixed border-separate border-spacing-0</code> + <code className="bg-zinc-100 px-1 rounded">&lt;colgroup&gt;</code>:
+            1ª coluna (texto) sem largura, colunas numéricas com largura em px; <code className="bg-zinc-100 px-1 rounded">scope=&quot;col&quot;</code> em cada <code className="bg-zinc-100 px-1 rounded">th</code> e{' '}
+            <code className="bg-zinc-100 px-1 rounded">aria-label</code> na tabela. Texto longo: <code className="bg-zinc-100 px-1 rounded">block truncate</code> + <code className="bg-zinc-100 px-1 rounded">title</code>.</li>
+          <li><strong>Valores monetários</strong> sempre em <code className="bg-zinc-100 px-1 rounded">&lt;ValorContabil&gt;</code> (célula <code className="bg-zinc-100 px-1 rounded">TD</code>, não <code className="bg-zinc-100 px-1 rounded">TD_NUM</code> —
+            o componente já alinha); contagem e % em <code className="bg-zinc-100 px-1 rounded">TD_NUM</code>.</li>
+          <li><strong>Linha de total</strong> na última linha, em <code className="bg-zinc-100 px-1 rounded">&lt;tfoot&gt;</code> (ou a última <code className="bg-zinc-100 px-1 rounded">&lt;tr&gt;</code> do corpo), com{' '}
+            <code className="bg-zinc-100 px-1 rounded">TD_TOTAL</code> em toda célula (as de número somam <code className="bg-zinc-100 px-1 rounded">text-right tabular-nums</code>). Se o total não fechar com a soma de origem, a tela avisa — nunca some calada.</li>
+          <li><strong>“Demais N”:</strong> corte de ranking vira UMA linha “demais N contas/pessoas”, em <code className="bg-zinc-100 px-1 rounded">italic text-[var(--text-muted)]</code>, antes do total. Nada some da soma.</li>
+          <li><strong>Sem nome:</strong> a linha “(sem …)” aparece e fica em itálico e tom discreto, igual ao “demais”.</li>
+          <li><strong>Vazio:</strong> título e subtítulo do card ficam; no lugar da tabela entra uma frase que diz o recorte (“Sem antecipações em 2026.”), nunca uma tabela só de cabeçalho.</li>
+          <li><strong>Scroll interno:</strong> tabela com largura mínima (<code className="bg-zinc-100 px-1 rounded">min-w-[…]</code> ou <code className="bg-zinc-100 px-1 rounded">style=&#123;&#123; minWidth &#125;&#125;</code>) dentro de{' '}
+            <code className="bg-zinc-100 px-1 rounded">&lt;ScrollAutoHide eixo=&quot;x&quot; className=&quot;pb-3.5&quot;&gt;</code> — rola por dentro do card, nunca a página; o{' '}
+            <code className="bg-zinc-100 px-1 rounded">pb-3.5</code> é o gutter onde o thumb overlay flutua. Primeira coluna presa à esquerda (<code className="bg-zinc-100 px-1 rounded">sticky left-0 z-10 bg-white</code>)
+            só quando há muitas colunas por ano.</li>
+        </ul>
+        <div className="mb-6">
+          <TabelaSimplesShowcase />
         </div>
 
         <div className="space-y-3">
@@ -560,6 +607,44 @@ export default async function DesignSystemPage() {
           <code className="bg-zinc-100 px-1 rounded">mb-6</code> antes do conteúdo. Tela nova nasce assim
           (sonda: <code className="bg-zinc-100 px-1 rounded">src/styles/cabecalho-pagina.test.ts</code>).
         </p>
+
+        <h3 className="mt-6 mb-1 text-sm font-semibold text-[var(--text-primary)]">Carimbo de atualização</h3>
+        <p className="text-xs text-[var(--text-muted)] mb-3">
+          <strong>Toda informação de atualização de base de dados fica no TOPO da página</strong>, à direita do
+          cabeçalho, <strong>uma linha por fonte</strong>, com o ícone de relógio, no formato{' '}
+          <code className="bg-zinc-100 px-1 rounded">{'"<Fonte> · Última atualização em <data longa>"'}</code>,
+          empilhadas e alinhadas à direita. <strong>Nunca</strong> dentro de seção, card ou linha de metadados
+          (decisão do Yan, 05/11/2026). Implementação canônica:{' '}
+          <code className="bg-zinc-100 px-1 rounded">UltimaAtualizacao</code>{' '}
+          (<code className="bg-zinc-100 px-1 rounded">src/components/metas/ultima-atualizacao.tsx</code>) com{' '}
+          <code className="bg-zinc-100 px-1 rounded">prefixo=&quot;&lt;Fonte&gt; · Última atualização em&quot;</code>.{' '}
+          <code className="bg-zinc-100 px-1 rounded">vigiarAtraso={'{false}'}</code> para fonte de cadência humana
+          (planilha, registro manual); a vigília de atraso (vermelho) é só para a sincronização automática do Monde.
+          Exemplos vivos: cabeçalho da DRE (<code className="bg-zinc-100 px-1 rounded">src/components/financeiro/dre/</code>),
+          Weddings (<code className="bg-zinc-100 px-1 rounded">src/components/performance/weddings-content.tsx</code>) e
+          Financeiro · Geral (Contas a receber · Caixa · Antecipações).
+        </p>
+        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2 rounded-xl bg-zinc-50 p-4">
+          <div>
+            <p className="text-xl font-semibold text-text-primary">Título da Página</p>
+            <p className="mt-0.5 text-sm text-text-subtle">Subtítulo — uma linha de contexto</p>
+          </div>
+          {/* Datas FICTÍCIAS e fixas (nada de relógio do cliente); vigiarAtraso={false} = sem timer. */}
+          <div className="flex flex-col items-end gap-y-0.5 text-2xs">
+            <UltimaAtualizacao
+              iso="2026-11-03T20:17:00Z"
+              prefixo="Competência · Última atualização em"
+              iconSize={12}
+              vigiarAtraso={false}
+            />
+            <UltimaAtualizacao
+              iso="2026-11-03T19:56:00Z"
+              prefixo="Caixa · Última atualização em"
+              iconSize={12}
+              vigiarAtraso={false}
+            />
+          </div>
+        </div>
       </Section>
     </div>
   )

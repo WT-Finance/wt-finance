@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  ANO_PISO, alternarAno, anosDaUrl, anosDasPills, anosPadrao, resolverAnos, serializarAnos,
+  ANO_PISO, alternarAno, anosDaUrl, anosPadrao, resolverAnos, serializarAnos,
 } from './anos'
 
 const CORRENTE = 2026
@@ -81,29 +81,6 @@ describe('resolverAnos — filtro pelos anos que têm pill', () => {
   })
 })
 
-describe('anosDasPills — a lista de pills', () => {
-  it('com a base lida: os anos da base mais o corrente; o pedido fora da base NÃO ganha pill', () => {
-    expect(anosDasPills([2024, 2025], [2010], CORRENTE, 3)).toEqual([2024, 2025, 2026])
-    expect(anosDasPills([2024, 2025, 2026], [2025], CORRENTE, 3)).toEqual([2024, 2025, 2026])
-  })
-
-  it('sem a base (nenhum resumo carregou): a janela dos últimos N anos', () => {
-    expect(anosDasPills(null, [2026], CORRENTE, 3)).toEqual([2024, 2025, 2026])
-  })
-
-  it('sem a base: os anos PEDIDOS entram — a seleção tem de ter pill para o usuário poder desmarcar', () => {
-    const pills = anosDasPills(null, [2010, 2012], CORRENTE, 3)
-    expect(pills).toEqual([2010, 2012, 2024, 2025, 2026])
-    // A seleção que `resolverAnos` devolve sem a base (o pedido) está toda nas pills.
-    const selecao = resolverAnos([2010, 2012], null, CORRENTE)
-    expect(selecao.every(a => pills.includes(a))).toBe(true)
-  })
-
-  it('sempre inclui o ano corrente, mesmo que a base ainda não o tenha (janeiro)', () => {
-    expect(anosDasPills([2024, 2025], [2025], CORRENTE, 3)).toContain(2026)
-  })
-})
-
 describe('alternarAno — clique numa pill', () => {
   it('liga um ano novo, mantendo a lista crescente', () => {
     expect(alternarAno([2026], 2025)).toEqual([2025, 2026])
@@ -143,9 +120,12 @@ describe('serializarAnos', () => {
   })
 })
 
-describe('anosPadrao — a página abre com o corrente e os dois anos anteriores (decisão do Yan, 09/10)', () => {
+describe('anosPadrao — o corrente e os dois anos anteriores (fixos em Despesas de Marketing, v6.5.0)', () => {
   it('2026 → 2024, 2025, 2026', () => {
     expect(anosPadrao(2026)).toEqual([2024, 2025, 2026])
+  })
+  it('vira o ano: 2027 → 2025, 2026, 2027', () => {
+    expect(anosPadrao(2027)).toEqual([2025, 2026, 2027])
   })
   it('anos sem lançamento na base saem depois, em resolverAnos (ex.: base começando em 2025)', () => {
     expect(resolverAnos(anosPadrao(2026), [2025, 2026], 2026)).toEqual([2025, 2026])

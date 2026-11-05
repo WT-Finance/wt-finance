@@ -56,7 +56,7 @@ describe('linhasTotalPorAno — variação contra o ano logo abaixo', () => {
     // base = 2025 em jan–out = −300 (e NÃO o ano inteiro, −800): (−450 − −300) / 300 = −50%.
     expect(v?.pct).toBe(-50)
     expect(v?.recorte).toBe('jan–out')
-    expect(v?.referencia).toBe('vs 2025 (jan–out)')
+    expect(v?.referencia).toBe('vs 2025*')
   })
 
   it('ano da linha FECHADO: ano inteiro × ano inteiro (2025 × 2024, sem recorte)', () => {

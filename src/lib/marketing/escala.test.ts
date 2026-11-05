@@ -47,4 +47,14 @@ describe('escalaSerie — eixo de uma série de gasto (negativa)', () => {
       expect(e.ticks.every(Number.isFinite)).toBe(true)
     }
   })
+
+  it('série positiva (sinal "positivo"): o eixo mínimo da série zero fica acima do zero; com dado o sinal não pesa', () => {
+    expect(escalaSerie([0, null], 'positivo').domain).toEqual([0, 4000])
+    expect(escalaSerie([0, null], 'positivo').ticks).toEqual([0, 1000, 2000, 3000, 4000])
+    const e = escalaSerie([2000, 8000, 5000], 'positivo')
+    expect(e.domain).toEqual(escalaSerie([2000, 8000, 5000]).domain)
+    expect(e.domain[0]).toBe(0)
+    expect(e.domain[1]).toBeGreaterThanOrEqual(8000)
+    expect(e.ticks).toContain(0)
+  })
 })

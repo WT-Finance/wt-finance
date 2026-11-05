@@ -13,7 +13,6 @@ import 'server-only'
 
 import { ROTULO_BASE, aceitaMultiplosArquivos, type BaseIngestao } from './bases'
 import { preRequisitosBloqueantes, avaliarDependenciaDeCarga } from './grafo'
-import { registrarFotoDePrazos } from './foto-prazos'
 import { hojeSP } from '@/lib/fmt'
 import {
   LIMITE_BYTES_ARQUIVO, LIMITE_BYTES_CARGA,
@@ -1401,14 +1400,6 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
       base, parseado.linhasParaAplicar, parseado.arquivoOrigem, cargaId, parseado.checksums, camposPivotDemonstrativo,
     )
 
-    // v6.4.0 — foto de prazos (PMR/PMP): a cada Aberto APLICADO, o servidor registra o ponto da
-    // série (`registrar_foto_prazos(carga_id)`). Fica DEPOIS da promoção (que já aconteceu — senão
-    // `aplicarComTraducaoDeErro` teria lançado) e é FAIL-SOFT: falha vira aviso em `alarmes[]`, nunca
-    // erro da carga nem desfaz o que foi aplicado. É a única mudança no caminho de outra base. O
-    // aviso entra em `resultado.alarmes` ANTES de `concluirCarga`, para a resposta guardada (replay
-    // idempotente) também levá-lo.
-    const avisoFotoPrazos = base === 'lancamentos-aberto' ? await registrarFotoDePrazos(cargaId) : null
-
     // A promoção já aconteceu (senão `aplicarComTraducaoDeErro` teria lançado antes daqui) —
     // mede o "depois" com a MESMA RPC, e a decisão do alarme é uma função PURA
     // (`calcularDiffPorAno`, sem rede/banco). Falha em qualquer ponta da medição degrada em
@@ -1528,7 +1519,6 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
       diff: diffComAno,
       alarmes: [
         ...alarmesBase, ...avisosDoConjunto, ...linhasLegiveisDeOperacoes(diffComAno), ...aplicacao.avisos,
-        ...(avisoFotoPrazos ? [avisoFotoPrazos] : []),
       ],
       promocao: {
         checksums_conferidos: aplicacao.checksumsConferidos,
