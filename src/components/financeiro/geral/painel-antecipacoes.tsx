@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Pencil, Plus, Trash2, Undo2 } from 'lucide-react'
+import { Download, Loader2, Pencil, Plus, Trash2, Undo2 } from 'lucide-react'
 import ModalCentral from '@/components/shared/modal-central'
 import Button from '@/components/ui/button'
 import ErroCarregamento from '@/components/shared/erro-carregamento'
@@ -14,7 +14,8 @@ import {
 } from '@/app/financeiro/geral/actions'
 import { mensagemDeFalhaDaAcao, podeDesfazerEntrada, registroDaEntrada, rotuloOperacao } from '@/lib/financeiro-geral/gestao'
 import type { EntradaHistorico, ListaAntecipacoes, RegistroAntecipacao } from '@/lib/financeiro-geral/schemas'
-import { fmtBRL2, fmtDataHoraSP, fmtDate } from '@/lib/fmt'
+import { fmtBRL2, fmtDataHoraSP, fmtDate, hojeSP } from '@/lib/fmt'
+import { montarExportacaoAntecipacoes } from '@/lib/financeiro-geral/exportar-antecipacoes'
 import {
   COL_PADRAO_REGISTRO, DIR_PADRAO_COL_REGISTRO, DIR_PADRAO_REGISTRO, ordenarRegistros,
   type ColRegistro, type DirRegistro,
@@ -76,6 +77,8 @@ export default function PainelAntecipacoes({ hoje, onFechar }: Props) {
   }
   const [confirmacao, setConfirmacao] = useState<Confirmacao | null>(null)
   const [mensagem, setMensagem] = useState<string | null>(null)
+  const [exportando, setExportando] = useState(false)
+  const [erroExportar, setErroExportar] = useState(false)
 
   // `loading` DERIVADO da chave "última carregada" (react-padroes §1a): nada de setState síncrono no efeito.
   const carregando = carga === null || carga.versao !== versao
@@ -124,6 +127,28 @@ export default function PainelAntecipacoes({ hoje, onFechar }: Props) {
     [lista, colAtiva, dirOrd],
   )
 
+  // Exportar para Excel (v6.5.0): lista inteira na ordem da tela; a linha nova inline não entra. A lib de
+  // planilha entra por import dinâmico no clique (fora do bundle inicial); `exportando` barra o duplo clique.
+  async function exportarExcel() {
+    if (exportando || ordenados.length === 0) return
+    setExportando(true)
+    setErroExportar(false)
+    try {
+      const XLSX = await import('@e965/xlsx')
+      const exportacao = montarExportacaoAntecipacoes(ordenados, hojeSP())
+      const wb = XLSX.utils.book_new()
+      const ws = XLSX.utils.aoa_to_sheet(exportacao.linhas)
+      ws['!cols'] = exportacao.larguras.map(wch => ({ wch }))
+      XLSX.utils.book_append_sheet(wb, ws, exportacao.nome)
+      XLSX.writeFile(wb, exportacao.nomeArquivo)
+    } catch (err) {
+      console.error('[antecipações exportar]', err)
+      setErroExportar(true)
+    } finally {
+      setExportando(false)
+    }
+  }
+
   // Devolve o foco ao "Novo registro" depois que a linha fecha — o botão está desabilitado enquanto a linha
   // existe (e enquanto a lista recarrega), então o foco espera ele voltar a ficar habilitado.
   useEffect(() => {
@@ -145,16 +170,33 @@ export default function PainelAntecipacoes({ hoje, onFechar }: Props) {
 
         <div className="mb-3 flex items-center justify-between gap-3">
           <h3 className="text-sm font-semibold text-text-primary">Registros</h3>
-          <button
-            ref={novoRegistroRef}
-            type="button"
-            className={`${PILL} ${PILL_PRIMARIA}`}
-            style={PILL_PRIMARIA_STYLE}
-            disabled={carregando || lista === null || criando}
-            onClick={() => setCriando(true)}
-          >
-            <Plus size={13} aria-hidden /> Novo registro
-          </button>
+          <div className="flex items-center gap-2">
+            {erroExportar && (
+              <span role="alert" className="text-2xs text-danger">
+                Não foi possível gerar a planilha — tente de novo.
+              </span>
+            )}
+            <button
+              type="button"
+              className={`${PILL} ${PILL_NEUTRO}`}
+              disabled={exportando || carregando || ordenados.length === 0}
+              onClick={() => void exportarExcel()}
+              title="Baixar os registros em Excel, na ordem em que estão na tela"
+            >
+              {exportando ? <Loader2 size={13} className="animate-spin" aria-hidden /> : <Download size={13} aria-hidden />}
+              Exportar
+            </button>
+            <button
+              ref={novoRegistroRef}
+              type="button"
+              className={`${PILL} ${PILL_PRIMARIA}`}
+              style={PILL_PRIMARIA_STYLE}
+              disabled={carregando || lista === null || criando}
+              onClick={() => setCriando(true)}
+            >
+              <Plus size={13} aria-hidden /> Novo registro
+            </button>
+          </div>
         </div>
 
         {carga?.lista.ok === false && <ErroCarregamento mensagem={carga.lista.erro} />}
