@@ -95,10 +95,8 @@ export interface LeituraAno {
 
 /** O que a página recebe do servidor. Array (não Map/Set): atravessa a fronteira RSC → client. */
 export interface DadosGastosMarketing {
-  /** Anos selecionados (ao menos 1), em ordem CRESCENTE — o gráfico desenha do mais antigo ao mais recente. */
+  /** Anos da página (fixos: o corrente e os dois anteriores), em ordem CRESCENTE — o gráfico desenha do mais antigo ao mais recente. */
   anos: number[]
-  /** Anos com pill, em ordem crescente. */
-  anosDisponiveis: number[]
   /** Hoje em São Paulo ('YYYY-MM-DD'), calculado NO SERVIDOR — o cliente não usa relógio
    *  próprio (mismatch de hidratação e fuso). Define o mês corrente. */
   hoje: string

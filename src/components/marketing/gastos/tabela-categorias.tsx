@@ -132,7 +132,7 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
   if (anosFalha.length > 0) {
     return (
       <Card>
-        <CabecalhoCard titulo="Por categoria" />
+        <CabecalhoCard titulo="Por Categoria" />
         <ErroCarregamento mensagem={`Não foi possível carregar o resumo por categoria de ${rotuloAnos(anosFalha)}.`} />
       </Card>
     )
@@ -140,7 +140,7 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
   if (tabela.qtd === 0) {
     return (
       <Card>
-        <CabecalhoCard titulo="Por categoria" />
+        <CabecalhoCard titulo="Por Categoria" />
         <EmptyState icon={Tags} message={`Sem lançamentos pagos em ${periodo}.`} />
       </Card>
     )
@@ -156,7 +156,7 @@ export default function TabelaCategorias({ periodo, fatias, anosFalha }: Props) 
 
   return (
     <Card>
-      <CabecalhoCard titulo="Por categoria" />
+      <CabecalhoCard titulo="Por Categoria" />
       {/* Gutter externo `pb-1.5` + interno `pb-3.5`: o thumb horizontal flutua em overlay e não
           pode pousar em cima da linha de total. */}
       <div className="pb-1.5">

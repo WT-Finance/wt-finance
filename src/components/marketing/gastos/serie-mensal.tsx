@@ -64,7 +64,7 @@ export default function SerieMensal({ periodo, anos, fatias, anosFalha }: Props)
 
   return (
     <GraficoMensalPorAno
-      titulo="Despesas mensais"
+      titulo="Despesas Mensais"
       anos={anos}
       series={series}
       anosFalha={anosFalha}

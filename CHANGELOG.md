@@ -57,6 +57,8 @@ DEPOIS do deploy). Sem ADR novo; Emenda 1 do ADR-0183.
 - **CLI do Supabase fixado em `supabase@2.122.1`** no wrapper do gate (`scripts/db-gate/migrate.mjs`): a 3.0.0
   (major, resolvida pelo `npx` sem versão) recusa o `config.toml` e exige consentimento em produção por agente.
   Decisão do Yan; subir para a v3 é patch próprio.
+- **Despesas de Marketing fixa no ano corrente e nos dois anteriores, sem pills** (refino do Yan, como em
+  Antecipações): `?anos=` deixa de ter efeito; títulos "Despesas Mensais", "Por Categoria" e "Por Fornecedor".
 - **Ícones da sidebar** (refino do Yan antes do merge): Financeiro · Geral `Gauge` → `Landmark`; Marketing · Despesas
   `HandCoins` → `BanknoteArrowDown`.
 

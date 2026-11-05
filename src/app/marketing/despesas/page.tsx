@@ -3,7 +3,7 @@ import { requireArea } from '@/lib/auth/sessao'
 import { hojeSP } from '@/lib/fmt'
 import { type RpcLike } from '@/lib/rpc'
 import { parseRpc } from '@/lib/schemas-rpc'
-import { anosDaUrl, anosDasPills, resolverAnos, type ParamsAnos } from '@/lib/marketing/anos'
+import { anosPadrao } from '@/lib/marketing/anos'
 import type { LeituraProporcao } from '@/lib/marketing/proporcao'
 import { fornecedoresMarketingSchema, resumoMarketingSchema } from '@/lib/marketing/schemas'
 import { proporcaoReceitaMarketingSchema } from '@/lib/marketing/schemas-proporcao'
@@ -15,8 +15,7 @@ import type { Carregado, DadosGastosMarketing, LeituraAno } from '@/lib/marketin
 //
 // Dado: 2 RPCs de leitura POR ANO (`get_marketing_gastos_resumo|fornecedores`), com o MESMO
 // predicado da DRE de caixa (bloco MKT, só realizado) — o total da página é a linha
-// "(-) Despesas Marketing" da DRE. A página lê as duas de CADA ano selecionado (sem teto de anos),
-// todas em paralelo. (`get_marketing_gastos_lancamentos` e o resumo do ano anterior deixaram de ser lidos:
+// "(-) Despesas Marketing" da DRE. A página lê as duas de CADA um dos 3 anos, todas em paralelo. (`get_marketing_gastos_lancamentos` e o resumo do ano anterior deixaram de ser lidos:
 // a tela não tem mais tabela de lançamentos nem comparativo.) Junto vai a 3ª leitura por ano,
 // `get_marketing_proporcao_receita` (0293) — % de Marketing sobre a Receita Bruta por COMPETÊNCIA,
 // o mesmo número da grade da DRE — que alimenta o card "Proporção sobre a Receita Bruta".
@@ -25,14 +24,10 @@ import type { Carregado, DadosGastosMarketing, LeituraAno } from '@/lib/marketin
 // `{ ok: false }` e só o card que depende dele mostra o erro — a página fica de pé. O retorno de
 // `.rpc()` é thenable (sem `.catch`): o tratamento de falha é o `status` de cada item.
 //
-// Anos: `?anos=2025,2026` (ou o antigo `?ano=2026`); default = os três anos até o corrente em São Paulo (2024, 2025, 2026 — `anosPadrao`), filtrados pela base.
-// A faixa [2001, ano corrente] filtra ANTES de ler; a lista de anos com dado (`anosDisponiveis`)
-// só se conhece DEPOIS de ler um resumo, então o filtro por ela vem em seguida — e, se ele trocar
-// o pedido pelo fallback (ano corrente) que ainda não foi lido, uma segunda leitura o busca.
+// Anos: FIXOS (v6.5.0) — o ano corrente em São Paulo e os dois anteriores (`anosPadrao`: 2024, 2025,
+// 2026), sem filtro: `?anos=`/`?ano=` não têm efeito. Um ano sem dado na base aparece com o estado
+// vazio do próprio card.
 export const dynamic = 'force-dynamic'
-
-/** Quantos anos a pill oferece (além dos pedidos) quando nenhum resumo carregou e `anosDisponiveis` não veio. */
-const JANELA_FALLBACK = 3
 
 type Db = Awaited<ReturnType<typeof getServerClient>>
 
@@ -84,60 +79,29 @@ async function lerAnoCompleto(db: Db, ano: number): Promise<{ leitura: LeituraAn
   return { leitura, proporcao }
 }
 
-export default async function GastosMarketingPage({
-  searchParams,
-}: {
-  searchParams: Promise<ParamsAnos>
-}) {
+export default async function GastosMarketingPage() {
   await requireArea('marketing/gastos')
 
-  const sp = await searchParams
   // "Hoje" NO FUSO DE SÃO PAULO e no SERVIDOR — o runtime roda em UTC e o cliente não pode usar
   // relógio próprio (mismatch de hidratação; perto da virada do ano erraria o ano corrente).
   const hoje = hojeSP()
   const anoCorrente = parseInt(hoje.slice(0, 4), 10)
 
-  const pedidos = anosDaUrl(sp, anoCorrente)
+  // Página FIXA: o ano corrente e os dois anteriores (crescente). Ano sem lançamento na base entra
+  // do mesmo jeito — cada card mostra o próprio estado vazio, nunca zero fingido.
+  const anos = anosPadrao(anoCorrente)
   const db = await getServerClient()
 
-  // Leituras já feitas, por ano. Round 1: os anos pedidos, todos em paralelo.
-  const lidos = new Map<number, LeituraAno>()
-  const proporcoes = new Map<number, LeituraProporcao>()
-  const guardar = (l: { leitura: LeituraAno; proporcao: LeituraProporcao }) => {
-    lidos.set(l.leitura.ano, l.leitura)
-    proporcoes.set(l.proporcao.ano, l.proporcao)
-  }
-  for (const l of await Promise.all(pedidos.map(a => lerAnoCompleto(db, a)))) guardar(l)
-
-  // Pills de ano (`anosDasPills`). Fonte: `anosDisponiveis` (anos com lançamento na base), que é
-  // GLOBAL — qualquer resumo carregado traz a mesma lista. Só se NENHUM carregou cai para os
-  // `JANELA_FALLBACK` anos até o corrente (mesmo critério da DRE) MAIS os anos pedidos: sem a base,
-  // a seleção é o pedido tal como veio, e ela precisa ter pill para o usuário poder desmarcá-la.
-  // Sempre inclui o ano corrente (em janeiro ele ainda pode não ter lançamento e a pill não pode
-  // sumir). Com a base lida, um `?anos=` digitado fora dela NÃO ganha pill.
-  const daBase = [...lidos.values()].flatMap(l => (l.resumo.ok ? [l.resumo.dados.anosDisponiveis] : []))[0] ?? null
-  const anosDisponiveis = anosDasPills(daBase, pedidos, anoCorrente, JANELA_FALLBACK)
-
-  // A seleção final só tem anos com pill. Sem a lista da base (todos falharam), vale o pedido.
-  const anos = resolverAnos(pedidos, daBase === null ? null : anosDisponiveis, anoCorrente)
-
-  // Round 2 (raro): o filtro trocou o pedido pelo ano corrente e ele ainda não foi lido.
-  const faltam = anos.filter(a => !lidos.has(a))
-  for (const l of await Promise.all(faltam.map(a => lerAnoCompleto(db, a)))) guardar(l)
+  const lidas = await Promise.all(anos.map(a => lerAnoCompleto(db, a)))
 
   const dados: DadosGastosMarketing = {
     anos,
-    anosDisponiveis,
     hoje,
-    porAno: anos.flatMap(a => {
-      const l = lidos.get(a)
-      return l ? [l] : []
-    }),
+    porAno: lidas.map(l => l.leitura),
   }
 
-  // Card "Proporção sobre a Receita Bruta": uma leitura por ano selecionado. Um ano sem leitura
-  // (não deveria ocorrer) entra como falha — o card o nomeia no aviso em vez de omiti-lo.
-  const leiturasProporcao = anos.map((a): LeituraProporcao => proporcoes.get(a) ?? { ano: a, proporcao: { ok: false } })
+  // Card "Proporção sobre a Receita Bruta": uma leitura por ano, na mesma ordem de `anos`.
+  const leiturasProporcao = lidas.map(l => l.proporcao)
 
   return <GastosContent dados={dados} proporcao={<ProporcaoReceita anos={anos} leituras={leiturasProporcao} />} />
 }

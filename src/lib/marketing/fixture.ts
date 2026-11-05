@@ -185,7 +185,6 @@ export function montarDadosFixture(args: {
 
   return {
     anos,
-    anosDisponiveis: anosDaFixture(hoje),
     hoje,
     porAno: anos.map((ano): LeituraAno => {
       // Antes do 1º ano da base não há lançamento — como na RPC, o resumo vem vazio.
