@@ -41,7 +41,13 @@ DEPOIS do deploy). Sem ADR novo; Emenda 1 do ADR-0183.
   para os "?" dos cards. Segunda rodada: o card de devedores mostra tantas posições quanto as linhas de faixa (5
   com "A vencer", 4 sem); o aviso de inadimplente ainda não vencido vira "!" âmbar com tooltip no card Inadimplência;
   na evolução, semana sem carga ganha ponto cinza repetindo o valor da última carga (linha contínua; tooltip avisa)
-  e a legenda mostra os 3 tipos de ponto. **Migration 0302 APLICADA** (aditiva): `devedores` passa a ser a lista completa.
+  e a legenda mostra os 3 tipos de ponto. Terceira rodada: Maiores Inadimplentes à esquerda de Faixas em Atraso;
+  colunas "Pessoa" e "Atraso"; legenda "Semana sem carga".
+- **Carimbo de atualização no topo, uma linha por fonte** (padrão da plataforma, decisão do Yan): a Geral mostra
+  "Contas a receber", "Caixa" e "Antecipações · Última atualização em …"; as seções perdem a linha de metadados
+  (`MetaSecao` removido). Regra em `/admin/design-system` e na skill `ui-design-system`; telas fora do padrão no B-50.
+- **Pills de ano por seção** (`?prejuizos=` e `?antecipacoes=`; o `?anos=` antigo vale para as duas). Perdas e
+  prejuízos: "Prejuízo por Pessoa" com 5 linhas + total + "Ver mais" (drawer com todos); "Prejuízo Mensal". **Migration 0302 APLICADA** (aditiva): `devedores` passa a ser a lista completa.
 - **CLI do Supabase fixado em `supabase@2.122.1`** no wrapper do gate (`scripts/db-gate/migrate.mjs`): a 3.0.0
   (major, resolvida pelo `npx` sem versão) recusa o `config.toml` e exige consentimento em produção por agente.
   Decisão do Yan; subir para a v3 é patch próprio.

@@ -24,10 +24,31 @@ export function anosDasPillsGeral(anoCorrente: number): number[] {
   return Array.from({ length: n }, (_, i) => PRIMEIRO_ANO + i)
 }
 
-/** A seleção final: `?anos=` (ou `?ano=`) filtrada pelas pills; sem nada válido, o default da casa
- *  (os 3 últimos anos até o corrente — mesmo critério da página de Marketing). */
-export function anosSelecionados(params: ParamsAnos, anoCorrente: number): number[] {
-  return resolverAnos(anosDaUrl(params, anoCorrente), anosDasPillsGeral(anoCorrente), anoCorrente)
+// ── Pills por seção (v6.5.0) ───────────────────────────────────────────────────────────────────
+
+/** As duas seções de fluxo, cada uma com a sua linha de pills e o seu parâmetro de URL. */
+export type SecaoDeAnos = 'prejuizos' | 'antecipacoes'
+
+/** Os parâmetros de ano da página: um por seção (`?prejuizos=2025,2026`, `?antecipacoes=2024,2026`) e os
+ *  antigos `?anos=`/`?ano=` (links salvos, de quando havia uma linha de pills só). */
+export interface ParamsGeral extends ParamsAnos {
+  prejuizos?: ParamsAnos['anos']
+  antecipacoes?: ParamsAnos['anos']
+}
+
+/**
+ * A seleção de anos de UMA seção: o parâmetro próprio (mesmo formato e mesmas regras de `?anos=`); sem
+ * nenhum ano válido nele, o antigo `?anos=`/`?ano=` vale como valor inicial; sem esse, o default da casa.
+ * O parse é o de `anosDaUrl` (não reimplementado): ele devolve o default quando nada vale, então "o parâmetro
+ * próprio tem ano válido?" se decide por DUAS sondas com `?ano=` diferentes — iguais só se o próprio decidiu.
+ */
+export function anosDaSecao(params: ParamsGeral, secao: SecaoDeAnos, anoCorrente: number): number[] {
+  const proprio = params[secao]
+  const sondaA = anosDaUrl({ anos: proprio, ano: String(anoCorrente) }, anoCorrente)
+  const sondaB = anosDaUrl({ anos: proprio, ano: String(anoCorrente - 1) }, anoCorrente)
+  const temProprio = sondaA.length === sondaB.length && sondaA.every((a, i) => a === sondaB[i])
+  const pedidos = temProprio ? sondaA : anosDaUrl({ anos: params.anos, ano: params.ano }, anoCorrente)
+  return resolverAnos(pedidos, anosDasPillsGeral(anoCorrente), anoCorrente)
 }
 
 /** O que a RPC de fluxo diz do ano: fechado, corrente (até `mes_corrente`) ou futuro. */

@@ -2,8 +2,6 @@ import type { ReactNode } from 'react'
 import { TriangleAlert } from 'lucide-react'
 import Tooltip from '@/components/ui/tooltip'
 import ErroCarregamento from '@/components/shared/erro-carregamento'
-import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
-import Badge from '@/components/ui/badge'
 import { CARD_TABELA_TH } from '@/components/shared/card-tabela'
 import { fmtDeltaPct } from '@/lib/marketing/formatar'
 import type { Sentido, Variacao } from '@/lib/financeiro-geral/variacao'
@@ -120,34 +118,8 @@ export function Tile({ rotulo, valor, escopo, apoio = [], variacao, referencia, 
   )
 }
 
-// ── Metadados da seção ─────────────────────────────────────────────────────────────────────────
-
-interface MetaProps {
-  /** "estoque" (posição numa data) ou "fluxo" (período). */
-  regime: 'estoque' | 'fluxo'
-  /** O recorte desta seção, por extenso ("posição na carga de 15/10", "2025 + 2026*"). */
-  recorte: string
-  /** A data própria da seção ("Carga gravada em 15/10/2026"); `null` = nenhuma fonte carregou. */
-  carimbo: string | null
-  ajudaRotulo: string
-  ajudaTexto: string
-  /** Ação da seção (ex.: "Registrar antecipação"), à direita. */
-  acao?: ReactNode
-}
-
-/** A linha que abre cada seção: etiqueta do regime, recorte, data própria e o "?" com a definição.
- *  O "?" abre o balão para BAIXO, dentro da cortina — a seção sempre tem conteúdo abaixo desta linha. */
-export function MetaSecao({ regime, recorte, carimbo, ajudaRotulo, ajudaTexto, acao }: MetaProps) {
-  return (
-    <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-      <Badge variant="neutro">{regime}</Badge>
-      <span className="text-xs text-[var(--text-muted)]">{recorte}</span>
-      {carimbo && <span className="text-xs text-[var(--text-subtle)]">· {carimbo}</span>}
-      <GatilhoAjuda rotulo={ajudaRotulo} texto={ajudaTexto} />
-      {acao && <div className="ml-auto">{acao}</div>}
-    </div>
-  )
-}
+// (v6.5.0: a linha de metadados das seções — `MetaSecao` — saiu, por decisão do Yan. A data de atualização
+// de cada base fica só no topo da página, uma linha por fonte; o "?" de cada seção foi para o "?" dos cards.)
 
 /** Casca branca para o estado de erro/vazio de uma seção inteira. Altura mínima: o balão do "?" abre
  *  para baixo dentro da cortina (que corta o que passa dela) e precisa de espaço mesmo sem dado. */

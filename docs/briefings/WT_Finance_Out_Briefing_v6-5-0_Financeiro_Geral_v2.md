@@ -199,6 +199,16 @@ a página com **dado real** (M3 em diante) não foi vista por ninguém. Ver §6.
   na evolução, **semana sem carga deixa de ser lacuna**: ponto cinza repetindo o valor da última carga (decisão do
   Yan; o módulo separa o valor real — null — do exibido, e o tooltip diz "sem carga · repete DD/MM"); legenda
   horizontal com os 3 tipos de ponto; semana de hoje sem carga conta como "sem carga", não "em andamento".
+- **Terceira rodada** (05/11): Recebíveis — Maiores Inadimplentes à esquerda, colunas "Pessoa"/"Atraso", legenda
+  "Semana sem carga". **Carimbo de atualização só no topo**, uma linha por fonte (`UltimaAtualizacao`, "<Fonte> ·
+  Última atualização em …"): Contas a receber · Caixa · Antecipações — vira **padrão da plataforma** (DS + skill
+  `ui-design-system`; telas fora do padrão: B-50). As seções perdem a linha de metadados (`MetaSecao` removido); o "?"
+  foi para os cards. **Pills de ano por seção** (`?prejuizos=`, `?antecipacoes=`; `?anos=` antigo vale para as duas;
+  a seção não clicada é gravada explicitamente para não voltar ao default). Perdas e prejuízos: "Prejuízo por Pessoa"
+  com 5 linhas + total + "Ver mais" (drawer com todas), "Prejuízo Mensal" sem subtítulo. Antecipações: linha de cima
+  com pills + "?" + botão (saíram selo "fluxo", recorte e data — decisão do orquestrador por coerência).
+  Gates: build, tsc, lint ✅; `npm test` 2.653 ✅ (B-38). Uma rodada anterior da suíte teve 12 falhas transitórias em
+  `rpc-contrato` que não se repetiram (isolado 242/242; suíte de novo verde) — causa não diagnosticada.
 - **Migration 0302** (`a24edcec`, APLICADA em 05/11, aditiva): `get_geral_recebiveis.devedores` passa de
   `{top[≤10], demais}` a **lista completa** (o drawer precisa de todos). Seguro para o front no ar (a v6.4.0 não lê a
   chave). Ensaio revertido: 22 verificações OK; `revisor-db`: aprovada com ressalvas (0 CRÍTICO/ALTO; a destrutiva tinha

@@ -6,10 +6,9 @@ import ErroCarregamento from '@/components/shared/erro-carregamento'
 import GraficoMensalPorAno, { type SerieDoAno } from '@/components/shared/grafico-mensal-por-ano'
 import { PILL, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
-import { fmtDate, fmtDataSP } from '@/lib/fmt'
+import { fmtDate } from '@/lib/fmt'
 import { rotuloAnos } from '@/lib/marketing/periodo'
 import { custoPorAno, diasSemAntecipacao, rotuloDias } from '@/lib/financeiro-geral/antecipacoes'
-import { carimboDoFluxo } from '@/lib/financeiro-geral/carimbos'
 import { anosQueFalharam, dadosCarregados, serieMensalMultiAno } from '@/lib/financeiro-geral/composicao'
 import { recorteTexto, rotuloDoAno } from '@/lib/financeiro-geral/periodo'
 import type { Antecipacoes } from '@/lib/financeiro-geral/schemas'
@@ -17,10 +16,14 @@ import type { LeituraAno } from '@/lib/financeiro-geral/tipos'
 import AntecipacoesCardCusto from './antecipacoes-card-custo'
 import AntecipacoesComparativoConta from './antecipacoes-comparativo-conta'
 import AntecipacoesVolumeConta from './antecipacoes-volume-conta'
-import { CascaEstado, MetaSecao, Tile } from './comum'
+import { CascaEstado, Tile } from './comum'
+import FiltroAnos from './filtro-anos'
 import PainelAntecipacoes from './painel-antecipacoes'
 
 // Antecipações — FLUXO (uma leitura por ano selecionado; v6.5.0, segunda forma da página).
+//
+// Linha de cima: as pills de ano da seção · "?" · "Registrar antecipação" (quem pode gerir). Sem selo "fluxo",
+// sem texto de recorte e sem data: a data de atualização ("Antecipações") mora no topo da página.
 //
 // Linha 1: "Dias sem antecipação" (do ano CORRENTE, carregado SEMPRE — não depende das pills) | "Custo efetivo no
 // ano" | "Custo percentual no ano" (uma linha por ano selecionado). Linha 2: "Volume antecipado por mês/ano"
@@ -52,11 +55,17 @@ interface Props {
   corrente: LeituraAno<Antecipacoes>
   /** Anos selecionados (todos), crescente. */
   anos: number[]
+  /** Anos com pill, crescente. */
+  anosDisponiveis: number[]
+  /** Clique numa pill desta seção (a navegação é do container). */
+  onAlternarAno: (ano: number) => void
   hoje: string
   podeGerir: boolean
 }
 
-export default function SecaoAntecipacoes({ leituras, corrente, anos, hoje, podeGerir }: Props) {
+export default function SecaoAntecipacoes({
+  leituras, corrente, anos, anosDisponiveis, onAlternarAno, hoje, podeGerir,
+}: Props) {
   const [painelAberto, setPainelAberto] = useState(false)
 
   const carregadas = useMemo(() => dadosCarregados(leituras), [leituras])
@@ -64,14 +73,6 @@ export default function SecaoAntecipacoes({ leituras, corrente, anos, hoje, pode
   const mensal = useMemo(() => serieMensalMultiAno(leituras, d => d.meses.map(m => m.volume)), [leituras])
   const custo = useMemo(() => custoPorAno(leituras, hoje), [leituras, hoje])
   const dias = useMemo(() => diasSemAntecipacao([corrente], hoje), [corrente, hoje])
-  // O carimbo vale para tudo o que a seção mostra: os anos selecionados e o corrente.
-  const carimbo = useMemo(
-    () => carimboDoFluxo([
-      ...carregadas.map(c => c.dados),
-      ...(corrente.leitura.ok ? [corrente.leitura.dados] : []),
-    ]),
-    [carregadas, corrente],
-  )
 
   // Entrada genérica do gráfico: por ano carregado, 12 volumes (`null` = mês que o ano ainda não alcançou),
   // o total do ano e o recorte. `carregadas` e `mensal.anos` saem das mesmas leituras, ambos crescentes.
@@ -101,15 +102,14 @@ export default function SecaoAntecipacoes({ leituras, corrente, anos, hoje, pode
     ? `${carregadas.map(c => rotuloDoAno(c.ano, c.dados)).join(' + ')} · regime de caixa`
     : rotuloAnos(anos)
 
+  // A linha de cima da seção: as pills de ano (independentes das de Perdas e prejuízos), o "?" e, à direita, o
+  // botão de registrar. A data de atualização ("Antecipações") mora no topo da página.
   const meta = (
-    <MetaSecao
-      regime="fluxo"
-      recorte={recorte}
-      carimbo={carimbo ? `Último registro em ${fmtDataSP(carimbo)}` : null}
-      ajudaRotulo="Antecipações"
-      ajudaTexto={AJUDA}
-      acao={acao}
-    />
+    <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+      <FiltroAnos rotulo="Anos de Antecipações" selecionados={anos} anos={anosDisponiveis} onAlternar={onAlternarAno} />
+      <GatilhoAjuda rotulo="Antecipações" texto={AJUDA} />
+      {acao && <div className="ml-auto">{acao}</div>}
+    </div>
   )
 
   const painel = podeGerir && painelAberto

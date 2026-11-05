@@ -283,7 +283,8 @@ function antecipacoesDoAno(ano: number, hoje: string, vazio: boolean): Antecipac
 // ── A fixture ──────────────────────────────────────────────────────────────────────────────────
 
 /**
- * `DadosGeral` de demonstração. `anos` = os anos selecionados (os demais não entram); `hoje` = 'AAAA-MM-DD'
+ * `DadosGeral` de demonstração. `anos` = os anos selecionados (os demais não entram), os MESMOS nas duas seções
+ * de fluxo (prejuízos e antecipações); `hoje` = 'AAAA-MM-DD'
  * (o `hoje` de SP que o servidor mandaria). `podeGerir` liga o botão "Registrar antecipação" no mockup.
  */
 export function fixtureGeral(
@@ -304,7 +305,8 @@ export function fixtureGeral(
     : { ok: true, dados: estado === 'vazio' ? recebiveisVazio() : recebiveisNormal() }
 
   return {
-    anos: selecionados,
+    anosPrejuizos: selecionados,
+    anosAntecipacoes: selecionados,
     anosDisponiveis: anosDasPillsGeral(anoCorrente),
     hoje,
     recebiveis,

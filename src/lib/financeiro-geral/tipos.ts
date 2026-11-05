@@ -15,15 +15,18 @@ export interface LeituraAno<T> {
 
 /** O que a página recebe do servidor. Arrays (não Map/Set): atravessam a fronteira RSC → client. */
 export interface DadosGeral {
-  /** Anos selecionados (ao menos 1), CRESCENTE. */
-  anos: number[]
-  /** Anos com pill, crescente. */
+  /** Anos selecionados em "Perdas e prejuízos" (`?prejuizos=`; ao menos 1), CRESCENTE. */
+  anosPrejuizos: number[]
+  /** Anos selecionados em "Antecipações" (`?antecipacoes=`; ao menos 1), CRESCENTE. Independente dos de prejuízos. */
+  anosAntecipacoes: number[]
+  /** Anos com pill (as duas seções usam a mesma janela), crescente. */
   anosDisponiveis: number[]
   /** Hoje em São Paulo ('YYYY-MM-DD'), calculado NO SERVIDOR (o cliente não usa relógio próprio). */
   hoje: string
   /** Estoque: ignora as pills de ano. */
   recebiveis: Carregado<Recebiveis>
-  /** Fluxo: uma leitura por ano selecionado, na MESMA ordem de `anos`. */
+  /** Fluxo: uma leitura por ano selecionado na respectiva seção (`antecipacoes` ↔ `anosAntecipacoes`,
+   *  `prejuizos` ↔ `anosPrejuizos`), na MESMA ordem. */
   antecipacoes: LeituraAno<Antecipacoes>[]
   prejuizos: LeituraAno<Prejuizos>[]
   /** As leituras do ANO CORRENTE, carregadas SEMPRE (v6.5.0), mesmo com a pill desmarcada: a faixa do topo

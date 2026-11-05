@@ -127,7 +127,8 @@ describe('fixtureGeral — estado normal (números da M0)', () => {
 describe('fixtureGeral — anos e tempo', () => {
   it('só entram os anos de `anos`, crescente e sem repetir; as pills vão até o ano de hoje', () => {
     const d = fixtureGeral('normal', HOJE, [2026, 2025, 2025])
-    expect(d.anos).toEqual([2025, 2026])
+    expect(d.anosPrejuizos).toEqual([2025, 2026])
+    expect(d.anosAntecipacoes).toEqual([2025, 2026])
     expect(d.antecipacoes.map(x => x.ano)).toEqual([2025, 2026])
     expect(d.prejuizos.map(x => x.ano)).toEqual([2025, 2026])
     expect(d.anosDisponiveis).toEqual([2024, 2025, 2026])

@@ -16,8 +16,8 @@ import type { LeituraAno } from './tipos'
 import { variacao, type Variacao } from './variacao'
 
 export const ROTULO_SEM_PESSOA = '(sem pessoa)'
-/** Linhas nomeadas da tabela por pessoa; o resto vira "demais N pessoas". */
-export const LIMITE_TOP_PESSOAS = 10
+/** Pessoas mostradas no CARD "Prejuízo por Pessoa"; a lista completa (todas) vai no drawer do "Ver mais". */
+export const LINHAS_CARD_PESSOAS = 5
 
 // ── Resumo por ano (gráfico "Total por ano" e Δ) ───────────────────────────────────────────────
 
@@ -71,20 +71,12 @@ export interface LinhaPessoa {
   pct: number | null
 }
 
-export interface LinhaDemaisPessoas {
-  pessoas: number
-  /** "demais 40 pessoas" */
-  rotulo: string
-  n: number
-  valor: number
-  pct: number | null
-}
-
 export interface TabelaPessoas {
+  /** As pessoas até o `limite` (todas, sem limite), na ordem do maior prejuízo. */
   linhas: LinhaPessoa[]
-  /** `null` quando todas as pessoas cabem no top. */
-  demais: LinhaDemaisPessoas | null
-  /** Σ de TODAS as pessoas (top + demais), dos anos carregados. */
+  /** Há pessoas além das `linhas` (o card mostra o "Ver mais"; no drawer, sem limite, é sempre `false`). */
+  temMais: boolean
+  /** Σ de TODAS as pessoas — também as que o `limite` deixou de fora —, dos anos carregados. */
   total: { n: number; valor: number }
   /** Anos somados (os que carregaram), crescente. */
   anos: number[]
@@ -94,19 +86,17 @@ export interface TabelaPessoas {
   fecha: boolean
 }
 
-export function rotuloDemaisPessoas(pessoas: number): string {
-  return `demais ${pessoas} ${pessoas === 1 ? 'pessoa' : 'pessoas'}`
-}
-
 /**
  * Soma os anos carregados POR PESSOA (a mesma pessoa em dois anos vira uma linha), ordena pelo maior
- * prejuízo — valores negativos: ordena pela MAGNITUDE, e o empate cai no nome (o corte top/demais não
- * pode flutuar entre execuções) — e corta em `limite`. `null` agrupa sozinho e vira "(sem pessoa)".
- * Acumula em centavos inteiros: a conferência `fecha` não carrega ruído de ponto flutuante.
+ * prejuízo — valores negativos: ordena pela MAGNITUDE, e o empate cai no nome (o corte do `limite` não
+ * pode flutuar entre execuções) — e devolve as linhas até `limite` (sem `limite`: todas). O `total` é
+ * sempre o de TODAS as pessoas (Σ ≡ Σ das séries, `fecha`), e `temMais` diz se o corte deixou alguém.
+ * `null` agrupa sozinho e vira "(sem pessoa)". Acumula em centavos inteiros: a conferência `fecha` não
+ * carrega ruído de ponto flutuante.
  */
 export function tabelaPorPessoa(
   leituras: readonly LeituraAno<Prejuizos>[],
-  limite: number = LIMITE_TOP_PESSOAS,
+  limite?: number,
 ): TabelaPessoas {
   const carregadas = dadosCarregados(leituras)
   const anosFalha = leituras.filter(x => !x.leitura.ok).map(x => x.ano).sort((a, b) => a - b)
@@ -135,7 +125,7 @@ export function tabelaPorPessoa(
   const total = { n: totalN, valor: totalCentavos / 100 }
   const pct = (centavos: number) => pctDe(centavos / 100, total.valor)
 
-  const corte = Math.max(0, limite)
+  const corte = limite === undefined ? ordenados.length : Math.max(0, Math.floor(limite))
   const linhas = ordenados.slice(0, corte).map((g, i): LinhaPessoa => ({
     posicao: i + 1,
     pessoa: g.pessoa ?? ROTULO_SEM_PESSOA,
@@ -144,22 +134,11 @@ export function tabelaPorPessoa(
     valor: g.centavos / 100,
     pct: pct(g.centavos),
   }))
-  const resto = ordenados.slice(corte)
-  const restoCentavos = resto.reduce((s, g) => s + g.centavos, 0)
-  const demais: LinhaDemaisPessoas | null = resto.length > 0
-    ? {
-      pessoas: resto.length,
-      rotulo: rotuloDemaisPessoas(resto.length),
-      n: resto.reduce((s, g) => s + g.n, 0),
-      valor: restoCentavos / 100,
-      pct: pct(restoCentavos),
-    }
-    : null
 
   const totalDosAnos = carregadas.reduce((s, x) => s + emCentavos(x.dados.prejuizo.total), 0)
   return {
     linhas,
-    demais,
+    temMais: ordenados.length > linhas.length,
     total,
     anos: carregadas.map(x => x.ano),
     anosFalha,

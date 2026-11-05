@@ -24,8 +24,8 @@ import EvolucaoInadimplente from './recebiveis-evolucao'
 // "?" de cada card (`GatilhoAjuda` no `CabecalhoCard`).
 // Decisões do Yan (briefing §1/§2.1 + refinos de 05/11):
 //  • Linha 1: Recebíveis em aberto | vencidos | Inadimplência — SÓ o valor e o nº de títulos.
-//  • Linha 2: Faixas em Atraso | Maiores Inadimplentes (`recebiveis-devedores.tsx`: tantas posições quanto
-//    linhas de faixa + total + "Ver mais" no drawer) — AMBAS só sobre os títulos marcados como
+//  • Linha 2: Maiores Inadimplentes (`recebiveis-devedores.tsx`: tantas posições quanto linhas de faixa +
+//    total + "Ver mais" no drawer) | Faixas em Atraso — AMBAS só sobre os títulos marcados como
 //    inadimplentes, em colunas e altura iguais.
 //  • Linha 3: Evolução da Inadimplência (`recebiveis-evolucao.tsx`).
 //  • Inadimplência = SÓ a marcação `Conferido = Inadimplente`. Marcado e ainda não vencido continua contando e
@@ -89,6 +89,13 @@ function Corpo({ dados, hoje }: { dados: Recebiveis; hoje: string }) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        {/* Posições no card = linhas de faixa exibidas (5 com "A vencer", 4 sem): os dois cards casam. */}
+        <CardMaioresInadimplentes
+          devedores={dados.devedores}
+          inadimplente={dados.inadimplente}
+          posicoes={faixas.linhas.length}
+        />
+
         <Card className="min-w-0 h-full">
           <CabecalhoCard
             titulo="Faixas em Atraso"
@@ -125,13 +132,6 @@ function Corpo({ dados, hoje }: { dados: Recebiveis; hoje: string }) {
           </ScrollAutoHide>
           {!faixas.fecha && <AvisoNaoFecha />}
         </Card>
-
-        {/* Posições no card = linhas de faixa exibidas (5 com "A vencer", 4 sem): os dois cards casam. */}
-        <CardMaioresInadimplentes
-          devedores={dados.devedores}
-          inadimplente={dados.inadimplente}
-          posicoes={faixas.linhas.length}
-        />
       </div>
 
       <EvolucaoInadimplente pontos={pontos} desde={rotuloHistoricoDesde(dados.historico_desde)} />

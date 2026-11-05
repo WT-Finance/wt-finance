@@ -1,10 +1,10 @@
 import {
-  SkeletonPagina, SkeletonHeader, SkeletonFiltros, SkeletonGrafico, SkeletonTabela,
+  SkeletonPagina, SkeletonHeader, SkeletonGrafico, SkeletonTabela,
 } from '@/components/shared/skeletons'
 
-// Financeiro · Geral (v6.5.0): header + pills de ano + faixa de 3 indicadores + as 5 seções na ordem da página
-// real (Vendas · Recebíveis e inadimplência · Perdas e prejuízos · Antecipações · Cartões de crédito): barra de
-// TopSection seguida do conteúdo aproximado (linha de metadados, tiles, tabelas, gráfico). Vendas e Cartões são
+// Financeiro · Geral (v6.5.0): header + faixa de 3 indicadores + as 5 seções na ordem da página real (Vendas ·
+// Recebíveis e inadimplência · Perdas e prejuízos · Antecipações · Cartões de crédito): barra de TopSection
+// seguida do conteúdo aproximado (linha de metadados ou de pills de ano, tiles, tabelas, gráfico). Vendas e Cartões são
 // cascas "Em construção" (um card pequeno). Alturas fixas (sem CLS); tom neutro (zinc + animate-pulse), sem
 // sidebar (só o <main> é substituído). ADR-0144.
 
@@ -34,7 +34,6 @@ export default function Loading() {
   return (
     <SkeletonPagina>
       <SkeletonHeader />
-      <SkeletonFiltros n={3} />
 
       {/* Faixa do topo: 3 tiles */}
       <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-3">

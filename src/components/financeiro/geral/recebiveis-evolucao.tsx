@@ -33,7 +33,7 @@ const ALTURA = 220
 function LegendaDosPontos() {
   const itens = [
     { rotulo: 'Semana com carga', cor: COR, fill: COR },
-    { rotulo: 'Semana sem carga (repete a anterior)', cor: COR_SEM_CARGA, fill: COR_SEM_CARGA },
+    { rotulo: 'Semana sem carga', cor: COR_SEM_CARGA, fill: COR_SEM_CARGA },
     { rotulo: 'Semana em andamento', cor: COR, fill: 'var(--surface)' },
   ]
   return (

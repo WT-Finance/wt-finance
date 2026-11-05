@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { fixtureGeral } from './fixture'
 import { emCentavos } from './numeros'
 import {
-  LIMITE_TOP_PESSOAS, ROTULO_SEM_PESSOA, bandejaDosAnos, resumoDoAno, resumosDosAnos, rotuloDemaisPessoas,
-  tabelaPorPessoa,
+  LINHAS_CARD_PESSOAS, ROTULO_SEM_PESSOA, bandejaDosAnos, resumoDoAno, resumosDosAnos, tabelaPorPessoa,
 } from './prejuizos'
 import { prejuizosSchema, type Prejuizos } from './schemas'
 import type { LeituraAno } from './tipos'
@@ -82,7 +81,7 @@ describe('tabelaPorPessoa — uma tabela só, somando os anos carregados', () =>
     ])
     expect(t.linhas.map(l => l.posicao)).toEqual([1, 2, 3])
     expect(t.anos).toEqual([2025, 2026])
-    expect(t.demais).toBeNull()
+    expect(t.temMais).toBe(false)
   })
 
   it('% sobre o TOTAL (sinal positivo: prejuízo ÷ prejuízo)', () => {
@@ -107,27 +106,72 @@ describe('tabelaPorPessoa — uma tabela só, somando os anos carregados', () =>
     expect(t2.linhas).toHaveLength(2)
   })
 
-  it('top 10 + "demais N pessoas" + total; Σ linhas + demais ≡ total', () => {
+  describe('limite — o card mostra 5 e o drawer, todas', () => {
     const pessoas: Pessoa[] = Array.from({ length: 14 }, (_, i) => ({
       pessoa: `Pessoa ${String(i + 1).padStart(2, '0')}`, n: 1, valor: -(1000 - i * 10) - 0.07,
     }))
-    const t = tabelaPorPessoa([okComPessoas(2026, pessoas)])
-    expect(LIMITE_TOP_PESSOAS).toBe(10)
-    expect(t.linhas).toHaveLength(10)
-    expect(t.demais).toMatchObject({ pessoas: 4, rotulo: 'demais 4 pessoas', n: 4 })
-    const soma = t.linhas.reduce((s, l) => s + emCentavos(l.valor), 0) + emCentavos(t.demais!.valor)
-    expect(soma).toBe(emCentavos(t.total.valor))
-    expect(t.total.n).toBe(14)
-    expect(rotuloDemaisPessoas(1)).toBe('demais 1 pessoa')
+    const leituras = [okComPessoas(2026, pessoas)]
+
+    it('com limite: só as primeiras linhas, temMais, e o total é o de TODAS (não o das linhas mostradas)', () => {
+      const t = tabelaPorPessoa(leituras, LINHAS_CARD_PESSOAS)
+      expect(LINHAS_CARD_PESSOAS).toBe(5)
+      expect(t.linhas.map(l => l.pessoa)).toEqual(['Pessoa 01', 'Pessoa 02', 'Pessoa 03', 'Pessoa 04', 'Pessoa 05'])
+      expect(t.temMais).toBe(true)
+      expect(t.total.n).toBe(14)
+      const somaLinhas = t.linhas.reduce((s, l) => s + emCentavos(l.valor), 0)
+      expect(emCentavos(t.total.valor)).toBeLessThan(somaLinhas) // mais negativo: tem gente fora das linhas
+      expect(t.fecha).toBe(true)
+      expect('demais' in t).toBe(false)
+    })
+
+    it('sem limite: todas as pessoas, sem "Ver mais"; Σ linhas ≡ total ≡ Σ das séries', () => {
+      const t = tabelaPorPessoa(leituras)
+      expect(t.linhas).toHaveLength(14)
+      expect(t.temMais).toBe(false)
+      expect(t.linhas.reduce((s, l) => s + emCentavos(l.valor), 0)).toBe(emCentavos(t.total.valor))
+      expect(t.fecha).toBe(true)
+    })
+
+    it('o card e o drawer têm o MESMO total e os mesmos percentuais', () => {
+      const card = tabelaPorPessoa(leituras, LINHAS_CARD_PESSOAS)
+      const completa = tabelaPorPessoa(leituras)
+      expect(card.total).toEqual(completa.total)
+      expect(card.linhas).toEqual(completa.linhas.slice(0, 5))
+    })
+
+    it('limite igual ou maior que o nº de pessoas: sem "Ver mais"; limite 0 mostra nenhuma linha e temMais', () => {
+      expect(tabelaPorPessoa(leituras, 14).temMais).toBe(false)
+      expect(tabelaPorPessoa(leituras, 50)).toMatchObject({ temMais: false, linhas: expect.any(Array) })
+      expect(tabelaPorPessoa(leituras, 50).linhas).toHaveLength(14)
+      const zero = tabelaPorPessoa(leituras, 0)
+      expect(zero.linhas).toEqual([])
+      expect(zero.temMais).toBe(true)
+    })
+
+    it('"(sem pessoa)" fora do corte continua contado no total e aparece na lista completa', () => {
+      const t5 = tabelaPorPessoa([okComPessoas(2026, [
+        ...Array.from({ length: 5 }, (_, i): Pessoa => ({ pessoa: `P${i}`, n: 1, valor: -100 - i })),
+        { pessoa: null, n: 2, valor: -1 },
+      ])], 5)
+      expect(t5.linhas.some(l => l.semPessoa)).toBe(false)
+      expect(t5.temMais).toBe(true)
+      expect(t5.total.n).toBe(7)
+      expect(t5.fecha).toBe(true)
+      const completa = tabelaPorPessoa([okComPessoas(2026, [
+        ...Array.from({ length: 5 }, (_, i): Pessoa => ({ pessoa: `P${i}`, n: 1, valor: -100 - i })),
+        { pessoa: null, n: 2, valor: -1 },
+      ])])
+      expect(completa.linhas.at(-1)).toMatchObject({ semPessoa: true, pessoa: ROTULO_SEM_PESSOA })
+    })
   })
 
-  it('desempate determinístico: valores iguais caem no nome, e o corte top/demais não depende da ordem de entrada', () => {
+  it('desempate determinístico: valores iguais caem no nome, e o corte não depende da ordem de entrada', () => {
     const base: Pessoa[] = ['Zeca', 'Ana', 'Bia'].map(pessoa => ({ pessoa, n: 1, valor: -100 }))
     const a = tabelaPorPessoa([okComPessoas(2026, base)], 2)
     const b = tabelaPorPessoa([okComPessoas(2026, [...base].reverse())], 2)
     expect(a.linhas.map(l => l.pessoa)).toEqual(['Ana', 'Bia'])
     expect(b.linhas.map(l => l.pessoa)).toEqual(['Ana', 'Bia'])
-    expect(a.demais).toMatchObject({ pessoas: 1 })
+    expect(a.temMais).toBe(true)
   })
 
   it('Σ linhas ≡ Σ dos prejuizo.total dos anos carregados AO CENTAVO (centavos inteiros, valores que dão dízima em float)', () => {
@@ -135,7 +179,7 @@ describe('tabelaPorPessoa — uma tabela só, somando os anos carregados', () =>
       okComPessoas(2025, [{ pessoa: 'A', n: 1, valor: -0.1 }, { pessoa: 'B', n: 1, valor: -0.2 }]),
       okComPessoas(2026, [{ pessoa: 'A', n: 1, valor: -33333.33 }, { pessoa: 'C', n: 1, valor: -66666.67 }]),
     ])
-    const somaPessoas = t.linhas.reduce((s, l) => s + emCentavos(l.valor), 0) + emCentavos(t.demais?.valor ?? 0)
+    const somaPessoas = t.linhas.reduce((s, l) => s + emCentavos(l.valor), 0)
     const somaAnos = emCentavos(-0.1 - 0.2) + emCentavos(-33333.33 - 66666.67)
     expect(somaPessoas).toBe(somaAnos)
     expect(emCentavos(t.total.valor)).toBe(somaAnos)
@@ -154,7 +198,7 @@ describe('tabelaPorPessoa — uma tabela só, somando os anos carregados', () =>
 
   it('todos falharam / sem lançamento: tabela vazia, sem quebrar', () => {
     const f = tabelaPorPessoa([falha(2025), falha(2026)])
-    expect(f).toMatchObject({ linhas: [], demais: null, total: { n: 0, valor: 0 }, anos: [], anosFalha: [2025, 2026], fecha: true })
+    expect(f).toMatchObject({ linhas: [], temMais: false, total: { n: 0, valor: 0 }, anos: [], anosFalha: [2025, 2026], fecha: true })
     const vazio = tabelaPorPessoa([ok(2026, { prejuizo: serie(0), por_pessoa: null })])
     expect(vazio.linhas).toEqual([])
     expect(vazio.fecha).toBe(true)

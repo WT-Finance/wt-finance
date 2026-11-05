@@ -20,8 +20,8 @@ import { TD, TD_NUM, TD_TOTAL, TH_DIR, TH_ESQ } from './comum'
 const POSICOES_PADRAO = 4
 
 const AJUDA =
-  'Por devedor, só os títulos marcados como inadimplentes, do maior valor para o menor. O maior atraso é o do ' +
-  'título mais antigo do devedor, em dias.'
+  'Por pessoa, só os títulos marcados como inadimplentes, do maior valor para o menor. O atraso é o maior entre ' +
+  'os títulos da pessoa (o do título mais antigo), em dias.'
 
 /** Defesa: se algum dia o total da tabela não fechar com a inadimplência (completude, inv. 2), a tela diz. */
 export function AvisoNaoFecha() {
@@ -43,11 +43,11 @@ function TabelaDosDevedores({ tabela }: { tabela: TabelaDevedores }) {
         <thead>
           <tr>
             <th scope="col" className={TH_DIR}>#</th>
-            <th scope="col" className={TH_ESQ}>Devedor</th>
+            <th scope="col" className={TH_ESQ}>Pessoa</th>
             <th scope="col" className={TH_DIR}>Títulos</th>
             <th scope="col" className={TH_DIR}>Valor</th>
             <th scope="col" className={TH_DIR}>%</th>
-            <th scope="col" className={TH_DIR}>Maior atraso</th>
+            <th scope="col" className={TH_DIR}>Atraso</th>
           </tr>
         </thead>
         <tbody>
