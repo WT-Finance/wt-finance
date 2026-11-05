@@ -209,6 +209,14 @@ a página com **dado real** (M3 em diante) não foi vista por ninguém. Ver §6.
   com pills + "?" + botão (saíram selo "fluxo", recorte e data — decisão do orquestrador por coerência).
   Gates: build, tsc, lint ✅; `npm test` 2.653 ✅ (B-38). Uma rodada anterior da suíte teve 12 falhas transitórias em
   `rpc-contrato` que não se repetiram (isolado 242/242; suíte de novo verde) — causa não diagnosticada.
+- **Quarta rodada — Antecipações** (05/11): a seção fica **fixa no ano corrente e nos dois anteriores, sem pills**
+  (o Yan perguntou se só o gráfico dependia das pills; os cards de custo também dependiam — fixar a seção inteira
+  resolve os dois). Cards "Custo Efetivo" e "Custo efetivo percentual" sem subtítulo nem destaque de cor, Δ "vs
+  2025*" (o "?" explica o `*`); "Volume Mensal de Antecipações"; **"Comparativo por Conta"** unifica volume por conta
+  e comparativo (conta × ano, um bloco por ano com volume, custo efetivo e custo % — decisão do orquestrador: blocos
+  por ano, coerentes com os cards e o gráfico; trocar por "só o ano corrente" é simples). Saiu "Independe dos anos
+  selecionados" do card de dias (perdeu o sentido). Um teste novo nasceu com expectativa errada (300 × 900 da
+  fixture) — corrigida a expectativa, a função estava certa.
 - **Migration 0302** (`a24edcec`, APLICADA em 05/11, aditiva): `get_geral_recebiveis.devedores` passa de
   `{top[≤10], demais}` a **lista completa** (o drawer precisa de todos). Seguro para o front no ar (a v6.4.0 não lê a
   chave). Ensaio revertido: 22 verificações OK; `revisor-db`: aprovada com ressalvas (0 CRÍTICO/ALTO; a destrutiva tinha

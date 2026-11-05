@@ -69,7 +69,7 @@ o alinhamento é decisão própria (B-49), com conferência visual da grade inte
 A tabela de **leitura** dentro de um card (lista curta, ranking, composição, comparativo), sem
 cabeçalho sticky nem ordenação. Referências vivas, em `src/components/financeiro/geral/`:
 `comum.tsx` (as classes), `secao-recebiveis.tsx` (faixas de atraso e 10 maiores, com "demais"),
-`prejuizos-tabela-pessoa.tsx`, `antecipacoes-volume-conta.tsx`, `antecipacoes-comparativo-conta.tsx`
+`prejuizos-tabela-pessoa.tsx`, `antecipacoes-comparativo-conta.tsx`
 (bloco por ano, `rowSpan`, 1ª coluna presa). Exemplo vivo: `/admin/design-system` §7.
 
 - **Classes** — importe de `comum.tsx` quando estiver na Geral: `TH_ESQ`/`TH_DIR`

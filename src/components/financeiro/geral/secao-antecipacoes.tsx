@@ -10,68 +10,69 @@ import { fmtDate } from '@/lib/fmt'
 import { rotuloAnos } from '@/lib/marketing/periodo'
 import { custoPorAno, diasSemAntecipacao, rotuloDias } from '@/lib/financeiro-geral/antecipacoes'
 import { anosQueFalharam, dadosCarregados, serieMensalMultiAno } from '@/lib/financeiro-geral/composicao'
-import { recorteTexto, rotuloDoAno } from '@/lib/financeiro-geral/periodo'
+import { recorteTexto } from '@/lib/financeiro-geral/periodo'
 import type { Antecipacoes } from '@/lib/financeiro-geral/schemas'
 import type { LeituraAno } from '@/lib/financeiro-geral/tipos'
 import AntecipacoesCardCusto from './antecipacoes-card-custo'
 import AntecipacoesComparativoConta from './antecipacoes-comparativo-conta'
-import AntecipacoesVolumeConta from './antecipacoes-volume-conta'
 import { CascaEstado, Tile } from './comum'
-import FiltroAnos from './filtro-anos'
 import PainelAntecipacoes from './painel-antecipacoes'
 
-// Antecipações — FLUXO (uma leitura por ano selecionado; v6.5.0, segunda forma da página).
+// Antecipações — FLUXO, FIXO no ano corrente e nos dois anteriores (ex.: 2024, 2025, 2026*; v6.5.0). Sem pills
+// e sem parâmetro de URL: o servidor lê os 3 anos e a seção desenha todos.
 //
-// Linha de cima: as pills de ano da seção · "?" · "Registrar antecipação" (quem pode gerir). Sem selo "fluxo",
-// sem texto de recorte e sem data: a data de atualização ("Antecipações") mora no topo da página.
+// Linha de cima: "?" da seção · "Registrar antecipação" (quem pode gerir), à direita. Sem selo "fluxo", sem texto
+// de recorte e sem data: a data de atualização ("Antecipações") mora no topo da página.
 //
-// Linha 1: "Dias sem antecipação" (do ano CORRENTE, carregado SEMPRE — não depende das pills) | "Custo efetivo no
-// ano" | "Custo percentual no ano" (uma linha por ano selecionado). Linha 2: "Volume antecipado por mês/ano"
-// (gráfico compartilhado com Marketing, eixo normal: valores positivos). Linha 3: "Volume antecipado por conta"
-// | "Comparativo (custo efetivo e percentual por conta)". O rótulo na tela é "Conta", nunca "bandeira".
+// Linha 1: "Dias sem antecipação" (do ano CORRENTE) | "Custo Efetivo" | "Custo efetivo percentual" (uma linha por
+// ano). Linha 2: "Volume Mensal de Antecipações" (gráfico compartilhado com Marketing, eixo normal: valores
+// positivos). Linha 3: "Comparativo por Conta" (uma tabela só, largura total). O rótulo na tela é "Conta",
+// nunca "bandeira".
 //
 // As contas estão em `antecipacoes.ts`: o custo % dos cards e do comparativo sai de UMA fórmula
 // (`custoDoRecorte`); o percentual pronto que a RPC ainda devolve em `total` NÃO é lido. Cada ano falha sozinho:
-// cada card desenha os anos que chegaram e avisa dos ausentes. O "Dias sem antecipação" sobrevive mesmo
-// se todos os anos das pills falharem (ele lê só o ano corrente).
+// cada card desenha os anos que chegaram e avisa dos ausentes. O "Dias sem antecipação" lê só o ano corrente.
 //
 // O registro (botão "Registrar antecipação", painel, desfazer pelo diário) NÃO mudou (inv. 7): o botão só
 // existe para quem tem 'financeiro/geral/gestao' (`podeGerir`).
 
 const AJUDA =
-  'Volume antecipado pelas contas (Asaas, Blimboo), mês a mês, no regime de caixa. Custo efetivo = desconto ' +
-  '(antecipado − líquido), em R$; custo percentual = desconto ÷ valor antecipado do recorte (média ponderada ' +
-  'pelo volume). Dias sem antecipação contam da última antecipação registrada até hoje e não dependem dos ' +
-  'anos selecionados. Um ano em andamento leva * e vai até o mês corrente.'
+  'Volume antecipado pelas contas (Asaas, Blimboo), mês a mês, no regime de caixa, no ano corrente e nos dois ' +
+  'anteriores. Custo efetivo = desconto (antecipado − líquido), em R$; custo efetivo percentual = desconto ÷ ' +
+  'valor antecipado do recorte (média ponderada pelo volume). Dias sem antecipação contam da última antecipação ' +
+  'registrada até hoje. * = ano corrente parcial (vai até o mês corrente); o ano anterior é comparado no mesmo período.'
 
 const AJUDA_CUSTO_EFETIVO =
-  'Desconto que se pagou para antecipar: valor antecipado menos valor líquido recebido, somado no ano (o ano em ' +
-  'andamento vai até o mês corrente). Não é CET: o registro de antecipações não tem prazo, então o número não ' +
-  'considera por quantos dias o dinheiro foi antecipado.'
+  'Desconto que se pagou para antecipar: valor antecipado menos valor líquido recebido, somado no ano. Não é CET: ' +
+  'o registro de antecipações não tem prazo, então o número não considera por quantos dias o dinheiro foi ' +
+  'antecipado. * = ano corrente parcial, até o mês corrente; a variação compara com o mesmo período do ano anterior.'
+
+const AJUDA_CUSTO_PCT =
+  'Desconto ÷ valor antecipado do ano (média ponderada pelo volume, nunca a média simples das taxas). * = ano ' +
+  'corrente parcial, até o mês corrente; a variação, em pontos percentuais, compara com o mesmo período do ano anterior.'
+
+const AJUDA_VOLUME =
+  'Valor antecipado (bruto), mês a mês, no regime de caixa, no ano corrente e nos dois anteriores. * = ano ' +
+  'corrente parcial: vai até o mês corrente.'
 
 interface Props {
+  /** Os 3 anos fixos, crescente. */
   leituras: LeituraAno<Antecipacoes>[]
-  /** A leitura do ano CORRENTE, carregada sempre (mesmo com a pill desmarcada): alimenta "Dias sem antecipação". */
+  /** A leitura do ano CORRENTE: alimenta "Dias sem antecipação" (é a mesma leitura de `leituras`). */
   corrente: LeituraAno<Antecipacoes>
-  /** Anos selecionados (todos), crescente. */
+  /** Os anos da seção (os mesmos de `leituras`), crescente. */
   anos: number[]
-  /** Anos com pill, crescente. */
-  anosDisponiveis: number[]
-  /** Clique numa pill desta seção (a navegação é do container). */
-  onAlternarAno: (ano: number) => void
   hoje: string
   podeGerir: boolean
 }
 
-export default function SecaoAntecipacoes({
-  leituras, corrente, anos, anosDisponiveis, onAlternarAno, hoje, podeGerir,
-}: Props) {
+export default function SecaoAntecipacoes({ leituras, corrente, anos, hoje, podeGerir }: Props) {
   const [painelAberto, setPainelAberto] = useState(false)
 
   const carregadas = useMemo(() => dadosCarregados(leituras), [leituras])
   const falhas = useMemo(() => anosQueFalharam(leituras), [leituras])
   const mensal = useMemo(() => serieMensalMultiAno(leituras, d => d.meses.map(m => m.volume)), [leituras])
-  const custo = useMemo(() => custoPorAno(leituras, hoje), [leituras, hoje])
+  const custo = useMemo(() => custoPorAno(leituras), [leituras])
   const dias = useMemo(() => diasSemAntecipacao([corrente], hoje), [corrente, hoje])
 
   // Entrada genérica do gráfico: por ano carregado, 12 volumes (`null` = mês que o ano ainda não alcançou),
@@ -98,17 +99,12 @@ export default function SecaoAntecipacoes({
     </button>
   ) : null
 
-  const recorte = carregadas.length > 0
-    ? `${carregadas.map(c => rotuloDoAno(c.ano, c.dados)).join(' + ')} · regime de caixa`
-    : rotuloAnos(anos)
-
-  // A linha de cima da seção: as pills de ano (independentes das de Perdas e prejuízos), o "?" e, à direita, o
-  // botão de registrar. A data de atualização ("Antecipações") mora no topo da página.
+  // A linha de cima da seção: o "?" e, à direita, o botão de registrar. A data de atualização ("Antecipações")
+  // mora no topo da página.
   const meta = (
-    <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-      <FiltroAnos rotulo="Anos de Antecipações" selecionados={anos} anos={anosDisponiveis} onAlternar={onAlternarAno} />
-      <GatilhoAjuda rotulo="Antecipações" texto={AJUDA} />
-      {acao && <div className="ml-auto">{acao}</div>}
+    <div className="mb-4 flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
+      <GatilhoAjuda rotulo="Antecipações" texto={AJUDA} ancoraDireita />
+      {acao}
     </div>
   )
 
@@ -124,7 +120,6 @@ export default function SecaoAntecipacoes({
   const tileDias = (
     <Tile
       rotulo="Dias sem antecipação"
-      escopo="Independe dos anos selecionados"
       valor={dias.dias === null ? null : rotuloDias(dias.dias)}
       estado={dias.estado === 'erro' ? 'erro' : dias.estado === 'sem-registro' ? 'vazio' : 'ok'}
       mensagem={dias.estado === 'erro'
@@ -165,16 +160,15 @@ export default function SecaoAntecipacoes({
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
           {tileDias}
           <AntecipacoesCardCusto
-            rotulo="Custo efetivo no ano"
-            escopo="Antecipado − líquido, em R$"
-            ajuda={<GatilhoAjuda rotulo="Custo efetivo no ano" texto={AJUDA_CUSTO_EFETIVO} />}
+            rotulo="Custo Efetivo"
+            ajuda={<GatilhoAjuda rotulo="Custo Efetivo" texto={AJUDA_CUSTO_EFETIVO} />}
             modo="efetivo"
             linhas={custo.linhas}
             anosFalha={custo.anosFalha}
           />
           <AntecipacoesCardCusto
-            rotulo="Custo percentual no ano"
-            escopo="Desconto ÷ valor antecipado"
+            rotulo="Custo efetivo percentual"
+            ajuda={<GatilhoAjuda rotulo="Custo efetivo percentual" texto={AJUDA_CUSTO_PCT} />}
             modo="pct"
             linhas={custo.linhas}
             anosFalha={custo.anosFalha}
@@ -182,8 +176,8 @@ export default function SecaoAntecipacoes({
         </div>
 
         <GraficoMensalPorAno
-          titulo="Volume antecipado por mês/ano"
-          subtitulo={`Valor antecipado, bruto · ${recorte}`}
+          titulo="Volume Mensal de Antecipações"
+          ajuda={<GatilhoAjuda rotulo="Volume Mensal de Antecipações" texto={AJUDA_VOLUME} />}
           anos={anos}
           series={series}
           anosFalha={falhas}
@@ -195,15 +189,7 @@ export default function SecaoAntecipacoes({
           nomeSerie="Volume"
         />
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-          {/* `[&>*]:h-full`: os dois cards têm a mesma altura na linha (o `Card` é o filho direto). */}
-          <div className="min-w-0 xl:col-span-2 [&>*]:h-full">
-            <AntecipacoesVolumeConta leituras={leituras} />
-          </div>
-          <div className="min-w-0 xl:col-span-3 [&>*]:h-full">
-            <AntecipacoesComparativoConta leituras={leituras} />
-          </div>
-        </div>
+        <AntecipacoesComparativoConta leituras={leituras} />
       </div>
 
       {painel}

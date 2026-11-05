@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  PRIMEIRO_ANO, anosDaSecao, anosDasPillsGeral, mesesRealizados, recorteDaLeitura,
+  PRIMEIRO_ANO, anosDasPillsGeral, anosDeAntecipacoes, anosDosPrejuizos, mesesRealizados, recorteDaLeitura,
   recorteTexto, rotuloDoAno, rotuloReferencia,
 } from './periodo'
 
@@ -15,37 +15,40 @@ describe('anosDasPillsGeral — janela fixa (as RPCs não devolvem anosDisponive
   })
 })
 
-describe('anosDaSecao — ?prejuizos= e ?antecipacoes= independentes, com ?anos= como valor inicial', () => {
-  it('cada seção lê o próprio parâmetro, sem influenciar a outra', () => {
-    const p = { prejuizos: '2025,2026', antecipacoes: '2024,2026' }
-    expect(anosDaSecao(p, 'prejuizos', 2026)).toEqual([2025, 2026])
-    expect(anosDaSecao(p, 'antecipacoes', 2026)).toEqual([2024, 2026])
-    expect(anosDaSecao({ prejuizos: '2025' }, 'antecipacoes', 2026)).toEqual([2024, 2025, 2026])
+describe('anosDosPrejuizos — ?prejuizos= (com ?anos= como valor inicial); Antecipações não lê URL', () => {
+  it('lê o próprio parâmetro: desordem, repetição, formato repetido, ano fora das pills ou futuro', () => {
+    expect(anosDosPrejuizos({ prejuizos: '2025,2026' }, 2026)).toEqual([2025, 2026])
+    expect(anosDosPrejuizos({ prejuizos: '2026,2025,2025' }, 2026)).toEqual([2025, 2026])
+    expect(anosDosPrejuizos({ prejuizos: ['2024', '2026'] }, 2026)).toEqual([2024, 2026])
+    expect(anosDosPrejuizos({ prejuizos: '2019,2025' }, 2026)).toEqual([2025])
+    expect(anosDosPrejuizos({ prejuizos: '2019' }, 2026)).toEqual([2026])
+    expect(anosDosPrejuizos({ prejuizos: '2027,2026' }, 2026)).toEqual([2026])
   })
-  it('mesmas regras de ?anos=: desordem, repetição, formato repetido, ano fora das pills ou futuro', () => {
-    expect(anosDaSecao({ prejuizos: '2026,2025,2025' }, 'prejuizos', 2026)).toEqual([2025, 2026])
-    expect(anosDaSecao({ antecipacoes: ['2024', '2026'] }, 'antecipacoes', 2026)).toEqual([2024, 2026])
-    expect(anosDaSecao({ prejuizos: '2019,2025' }, 'prejuizos', 2026)).toEqual([2025])
-    expect(anosDaSecao({ prejuizos: '2019' }, 'prejuizos', 2026)).toEqual([2026])
-    expect(anosDaSecao({ antecipacoes: '2027,2026' }, 'antecipacoes', 2026)).toEqual([2026])
+  it('o antigo ?anos= (e ?ano=) é o valor inicial', () => {
+    expect(anosDosPrejuizos({ anos: '2025,2026' }, 2026)).toEqual([2025, 2026])
+    expect(anosDosPrejuizos({ ano: '2025' }, 2026)).toEqual([2025])
   })
-  it('o antigo ?anos= (e ?ano=) é o valor inicial das DUAS seções', () => {
-    expect(anosDaSecao({ anos: '2025,2026' }, 'prejuizos', 2026)).toEqual([2025, 2026])
-    expect(anosDaSecao({ anos: '2025,2026' }, 'antecipacoes', 2026)).toEqual([2025, 2026])
-    expect(anosDaSecao({ ano: '2025' }, 'prejuizos', 2026)).toEqual([2025])
-    expect(anosDaSecao({ ano: '2025' }, 'antecipacoes', 2026)).toEqual([2025])
-  })
-  it('o parâmetro próprio vence o antigo; o antigo só entra na seção que não tem o seu', () => {
-    const p = { anos: '2024', prejuizos: '2026' }
-    expect(anosDaSecao(p, 'prejuizos', 2026)).toEqual([2026])
-    expect(anosDaSecao(p, 'antecipacoes', 2026)).toEqual([2024])
+  it('o parâmetro próprio vence o antigo', () => {
+    expect(anosDosPrejuizos({ anos: '2024', prejuizos: '2026' }, 2026)).toEqual([2026])
   })
   it('parâmetro próprio sem ano válido (lixo, vazio) cai no antigo e, sem ele, no default; o próprio igual ao corrente vale', () => {
-    expect(anosDaSecao({ prejuizos: 'abc', anos: '2025' }, 'prejuizos', 2026)).toEqual([2025])
-    expect(anosDaSecao({ prejuizos: '', ano: '2025' }, 'prejuizos', 2026)).toEqual([2025])
-    expect(anosDaSecao({ prejuizos: 'abc' }, 'prejuizos', 2026)).toEqual([2024, 2025, 2026])
-    expect(anosDaSecao({ prejuizos: '2026', anos: '2024' }, 'prejuizos', 2026)).toEqual([2026])
-    expect(anosDaSecao({}, 'antecipacoes', 2026)).toEqual([2024, 2025, 2026])
+    expect(anosDosPrejuizos({ prejuizos: 'abc', anos: '2025' }, 2026)).toEqual([2025])
+    expect(anosDosPrejuizos({ prejuizos: '', ano: '2025' }, 2026)).toEqual([2025])
+    expect(anosDosPrejuizos({ prejuizos: 'abc' }, 2026)).toEqual([2024, 2025, 2026])
+    expect(anosDosPrejuizos({ prejuizos: '2026', anos: '2024' }, 2026)).toEqual([2026])
+    expect(anosDosPrejuizos({}, 2026)).toEqual([2024, 2025, 2026])
+  })
+  it('um `?antecipacoes=` antigo (link salvo) não influencia nada', () => {
+    const comLixo = (x: Record<string, string>) => x as unknown as Parameters<typeof anosDosPrejuizos>[0]
+    expect(anosDosPrejuizos(comLixo({ prejuizos: '2025', antecipacoes: '2024' }), 2026)).toEqual([2025])
+    expect(anosDosPrejuizos(comLixo({ antecipacoes: '2024' }), 2026)).toEqual([2024, 2025, 2026])
+  })
+})
+
+describe('anosDeAntecipacoes — recorte FIXO: o ano corrente e os dois anteriores', () => {
+  it('crescente, sem depender de URL', () => {
+    expect(anosDeAntecipacoes(2026)).toEqual([2024, 2025, 2026])
+    expect(anosDeAntecipacoes(2027)).toEqual([2025, 2026, 2027])
   })
 })
 

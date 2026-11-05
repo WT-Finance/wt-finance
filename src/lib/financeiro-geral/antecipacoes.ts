@@ -15,7 +15,7 @@
 import { fmtAxisPct } from '@/lib/fmt'
 import { anosQueFalharam, leituraDoAnoCorrente, type AnoDaSerie } from './composicao'
 import { diasEntre, emCentavos, pctDe } from './numeros'
-import { rotuloDoAno, rotuloReferencia } from './periodo'
+import { recorteTexto, rotuloDoAno } from './periodo'
 import type { Antecipacoes } from './schemas'
 import type { LeituraAno } from './tipos'
 import { variacao, type Polaridade, type Sentido, type Variacao } from './variacao'
@@ -85,7 +85,7 @@ export function fmtPontos(pp: number | null): string {
   return `${sinal}${nfPontos.format(Math.abs(r))} p.p.`
 }
 
-// ── Cards "Custo efetivo no ano" e "Custo percentual no ano" ───────────────────────────────────
+// ── Cards "Custo Efetivo" e "Custo efetivo percentual" ─────────────────────────────────────────
 
 /** Polaridade do custo: menor é melhor — o `desconto` chega POSITIVO (diferente da despesa da DRE, que
  *  é negativa), então subir o custo é desfavorável. */
@@ -95,8 +95,6 @@ export interface LinhaCustoAno {
   ano: number
   /** "2026*" quando parcial. */
   rotulo: string
-  /** O ano corrente: a linha em destaque. */
-  corrente: boolean
   /** Nenhuma antecipação no recorte do ano (n = 0): a UI escreve "—", nunca "R$ 0,00 / 0%" como dado. */
   semAntecipacao: boolean
   custo: CustoRecorte
@@ -104,7 +102,7 @@ export interface LinhaCustoAno {
   deltaEfetivo: Variacao
   /** Δ do custo percentual, em pontos percentuais. */
   deltaPct: DeltaPontos
-  /** "vs 2025 (jan–out)" */
+  /** "vs 2025*" (o `*` = mesmo período do ano anterior, quando o ano é parcial) */
   referencia: string
 }
 
@@ -115,8 +113,7 @@ export interface CustoPorAno {
   anosFalha: number[]
 }
 
-export function custoPorAno(leituras: readonly LeituraAno<Antecipacoes>[], hoje: string): CustoPorAno {
-  const anoCorrente = Number(hoje.slice(0, 4))
+export function custoPorAno(leituras: readonly LeituraAno<Antecipacoes>[]): CustoPorAno {
   const linhas = leituras
     .flatMap(x => (x.leitura.ok ? [{ ano: x.ano, l: x.leitura.dados }] : []))
     .sort((a, b) => b.ano - a.ano)
@@ -131,7 +128,6 @@ export function custoPorAno(leituras: readonly LeituraAno<Antecipacoes>[], hoje:
       return {
         ano,
         rotulo: rotuloDoAno(ano, l),
-        corrente: l.relacao === 'corrente' || ano === anoCorrente,
         semAntecipacao,
         custo,
         // Ausência não é zero: sem antecipação no ano, não há variação a mostrar.
@@ -141,7 +137,8 @@ export function custoPorAno(leituras: readonly LeituraAno<Antecipacoes>[], hoje:
         deltaPct: semAntecipacao
           ? { pp: null, sentido: null }
           : deltaPontos(pctAnterior, custo.pct, POLARIDADE_CUSTO),
-        referencia: `vs ${rotuloReferencia(ano - 1, l)}`,
+        // O `*` do ano anterior = o MESMO período (o "?" do card explica); ano inteiro compara com o inteiro.
+        referencia: `vs ${ano - 1}${recorteTexto(l) ? '*' : ''}`,
       }
     })
   return { linhas, anosFalha: anosQueFalharam(leituras) }
@@ -205,64 +202,11 @@ export function diasSemAntecipacao(
 
 // ── Por conta ──────────────────────────────────────────────────────────────────────────────────
 
-/** Soma por conta dos anos carregados, na ordem do maior volume (empate: nome). */
-function agruparPorConta(
-  leituras: readonly LeituraAno<Antecipacoes>[],
-): { conta: string; n: number; volumeC: number; descontoC: number }[] {
-  const grupos = new Map<string, { n: number; volumeC: number; descontoC: number }>()
-  for (const x of leituras) {
-    if (!x.leitura.ok) continue
-    for (const c of x.leitura.dados.por_conta) {
-      const g = grupos.get(c.conta) ?? { n: 0, volumeC: 0, descontoC: 0 }
-      g.n += c.n
-      g.volumeC += emCentavos(c.volume)
-      g.descontoC += emCentavos(c.desconto)
-      grupos.set(c.conta, g)
-    }
-  }
-  return [...grupos.entries()]
-    .map(([conta, g]) => ({ conta, ...g }))
-    .sort((a, b) => b.volumeC - a.volumeC || a.conta.localeCompare(b.conta, 'pt-BR'))
-}
-
-export interface LinhaConta {
-  conta: string
-  n: number
-  volume: number
-  /** % do volume total; `null` com total zero. */
-  pct: number | null
-}
-
-export interface TabelaVolumePorConta {
-  linhas: LinhaConta[]
-  total: { n: number; volume: number }
-  /** Anos que não carregaram (fora da soma) — a UI avisa. */
-  anosFalha: number[]
-  /** Σ por conta ≡ Σ `total.volume` (e `total.n`) dos anos carregados, ao centavo. */
-  fecha: boolean
-}
-
-/** "Volume antecipado por conta": soma dos anos selecionados que carregaram, por conta (rótulo "Conta"). */
-export function volumePorConta(leituras: readonly LeituraAno<Antecipacoes>[]): TabelaVolumePorConta {
-  const grupos = agruparPorConta(leituras)
-  const totalVolumeC = grupos.reduce((s, g) => s + g.volumeC, 0)
-  const totalN = grupos.reduce((s, g) => s + g.n, 0)
-  const carregadas = leituras.flatMap(x => (x.leitura.ok ? [x.leitura.dados] : []))
-  const registroVolumeC = carregadas.reduce((s, l) => s + emCentavos(l.total.volume), 0)
-  const registroN = carregadas.reduce((s, l) => s + l.total.n, 0)
-  return {
-    linhas: grupos.map(g => ({
-      conta: g.conta, n: g.n, volume: g.volumeC / 100, pct: pctDe(g.volumeC / 100, totalVolumeC / 100),
-    })),
-    total: { n: totalN, volume: totalVolumeC / 100 },
-    anosFalha: anosQueFalharam(leituras),
-    fecha: totalVolumeC === registroVolumeC && totalN === registroN,
-  }
-}
-
 export interface CelulaComparativo {
   ano: number
-  /** `null` = nenhuma antecipação dessa conta nesse ano ("—"): ausência não é custo zero. */
+  /** Volume antecipado (R$). `null` = a conta não antecipou nesse ano ("—"): ausência não é zero. */
+  volume: number | null
+  /** Custo efetivo (R$) e custo % do recorte, por `custoDoRecorte`; `null` junto com `volume`. */
   custo: CustoRecorte | null
 }
 
@@ -273,34 +217,58 @@ export interface LinhaComparativo {
 }
 
 export interface Comparativo {
-  /** Os anos que carregaram, CRESCENTE (a ordem das colunas e das cores, como nos gráficos). */
+  /** Os anos que carregaram, CRESCENTE (a ordem dos blocos de colunas). */
   anos: AnoDaSerie[]
-  /** Na ordem do volume por conta (as duas tabelas se alinham). */
+  /** Uma linha por conta, na ordem do maior volume somado dos anos (empate: nome). */
   linhas: LinhaComparativo[]
-  /** O custo do ano inteiro (todas as contas), pela MESMA função; `null` sem antecipação no ano. */
+  /** A linha de total: o `total` do REGISTRO de cada ano (não a soma das linhas), pela MESMA função de custo;
+   *  `null` sem antecipação no ano. */
   total: CelulaComparativo[]
+  /** Anos que não carregaram — a UI avisa. */
   anosFalha: number[]
+  /** Em CADA ano carregado, Σ por conta ≡ `total` do registro (volume, desconto e títulos), ao centavo. */
+  fecha: boolean
 }
 
-/** "Comparativo por conta": conta × ano selecionado, cada célula {efetivo, pct} por `custoDoRecorte`. */
+function celula(ano: number, r: { volume: number; desconto: number; n: number } | undefined): CelulaComparativo {
+  return r && r.n > 0
+    ? { ano, volume: r.volume, custo: custoDoRecorte(r) }
+    : { ano, volume: null, custo: null }
+}
+
+/** "Comparativo por Conta": conta × ano, cada célula com volume, custo efetivo e custo % (`custoDoRecorte`,
+ *  a fórmula única — o % nunca é média simples das contas nem o `desconto_pct` da RPC). */
 export function comparativoPorConta(leituras: readonly LeituraAno<Antecipacoes>[]): Comparativo {
   const carregadas = leituras
     .flatMap(x => (x.leitura.ok ? [{ ano: x.ano, l: x.leitura.dados }] : []))
     .sort((a, b) => a.ano - b.ano)
-  const contas = agruparPorConta(leituras).map(g => g.conta)
+
+  const volumePorNome = new Map<string, number>()
+  for (const { l } of carregadas) {
+    for (const c of l.por_conta) {
+      volumePorNome.set(c.conta, (volumePorNome.get(c.conta) ?? 0) + emCentavos(c.volume))
+    }
+  }
+  const contas = [...volumePorNome.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'pt-BR'))
+    .map(([conta]) => conta)
+
+  const fecha = carregadas.every(({ l }) => {
+    const soma = (campo: 'volume' | 'desconto') => l.por_conta.reduce((s, c) => s + emCentavos(c[campo]), 0)
+    return soma('volume') === emCentavos(l.total.volume)
+      && soma('desconto') === emCentavos(l.total.desconto)
+      && l.por_conta.reduce((s, c) => s + c.n, 0) === l.total.n
+  })
+
   return {
     anos: carregadas.map(({ ano, l }) => ({ ano, rotulo: rotuloDoAno(ano, l) })),
     linhas: contas.map(conta => ({
       conta,
-      celulas: carregadas.map(({ ano, l }): CelulaComparativo => {
-        const c = l.por_conta.find(x => x.conta === conta)
-        return { ano, custo: c && c.n > 0 ? custoDoRecorte(c) : null }
-      }),
+      celulas: carregadas.map(({ ano, l }) => celula(ano, l.por_conta.find(x => x.conta === conta))),
     })),
-    total: carregadas.map(({ ano, l }): CelulaComparativo => ({
-      ano, custo: l.total.n > 0 ? custoDoRecorte(l.total) : null,
-    })),
+    total: carregadas.map(({ ano, l }) => celula(ano, l.total)),
     anosFalha: anosQueFalharam(leituras),
+    fecha,
   }
 }
 

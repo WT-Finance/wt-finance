@@ -4,7 +4,8 @@ import {
 
 // Financeiro · Geral (v6.5.0): header + faixa de 3 indicadores + as 5 seções na ordem da página real (Vendas ·
 // Recebíveis e inadimplência · Perdas e prejuízos · Antecipações · Cartões de crédito): barra de TopSection
-// seguida do conteúdo aproximado (linha de metadados ou de pills de ano, tiles, tabelas, gráfico). Vendas e Cartões são
+// seguida do conteúdo aproximado (linha de metadados ou de pills de ano, tiles, tabelas, gráfico; Antecipações
+// não tem pills). Vendas e Cartões são
 // cascas "Em construção" (um card pequeno). Alturas fixas (sem CLS); tom neutro (zinc + animate-pulse), sem
 // sidebar (só o <main> é substituído). ADR-0144.
 
@@ -75,19 +76,16 @@ export default function Loading() {
         </div>
       </div>
 
-      {/* Antecipações: 3 cards · 1 gráfico · 2 tabelas */}
+      {/* Antecipações (sem pills: "?" e botão à direita): 3 cards · 1 gráfico · 1 tabela de largura total */}
       <div className="mb-8">
         <Barra />
-        <Meta />
+        <div className={`mb-4 ml-auto h-6 w-48 max-w-full ${BLOCO}`} />
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => <TileSkeleton key={i} />)}
           </div>
           <SkeletonGrafico altura="h-[220px]" />
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-            <div className="xl:col-span-2"><SkeletonTabela linhas={4} /></div>
-            <div className="xl:col-span-3"><SkeletonTabela linhas={4} /></div>
-          </div>
+          <SkeletonTabela linhas={4} />
         </div>
       </div>
 

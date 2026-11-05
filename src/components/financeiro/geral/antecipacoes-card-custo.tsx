@@ -6,7 +6,7 @@ import { rotuloAnos } from '@/lib/marketing/periodo'
 import { fmtCustoPct, fmtPontos, type LinhaCustoAno } from '@/lib/financeiro-geral/antecipacoes'
 import type { Sentido } from '@/lib/financeiro-geral/variacao'
 
-// Cards "Custo efetivo no ano" e "Custo percentual no ano" (v6.5.0): UMA LINHA POR ANO SELECIONADO, do mais
+// Cards "Custo Efetivo" e "Custo efetivo percentual" (v6.5.0): UMA LINHA POR ANO (os 3 fixos da seção), do mais
 // recente ao mais antigo, com o valor do ano e o Δ contra o MESMO PERÍODO do ano anterior (o Δ do custo %
 // é em pontos percentuais, não em %). Mesmo molde visual do card "Total de despesas no período" de
 // Marketing (`TilePorAno`), escrito aqui — sem importar componente de Marketing. Sem "Acumulado": somar
@@ -15,9 +15,9 @@ import type { Sentido } from '@/lib/financeiro-geral/variacao'
 // As contas vêm prontas de `custoPorAno` (`antecipacoes.ts`) e a fórmula do custo é uma só
 // (`custoDoRecorte`): aqui só se desenha. O custo % NUNCA lê o percentual pronto que a RPC ainda devolve em `total`.
 //
-// ANO CORRENTE EM DESTAQUE: a linha do ano em andamento ganha fundo suave (`--surface-soft`) e o rótulo em
-// tom primário; as demais ficam sem fundo e com o rótulo em tom discreto. O valor tem o mesmo tamanho em
-// todas — o destaque é de posição, não de escala.
+// Sem subtítulo de escopo (o "?" explica) e SEM destaque do ano corrente: todas as linhas iguais. O ano parcial
+// leva `*` (rótulo e referência do Δ) — o "?" do card diz que `*` = ano corrente parcial / mesmo período do
+// ano anterior.
 //
 // Ano sem nenhuma antecipação é AUSÊNCIA: "—" (nunca "R$ 0,00" / "0,00%") e sem Δ.
 // Variação: a palavra ("favorável"/"desfavorável") vai escrita ao lado e a tinta é a `-deep` (passa AA em
@@ -32,7 +32,7 @@ const PALAVRA: Record<Sentido, { texto: string; classe: string }> = {
   neutro: { texto: 'estável', classe: 'text-[var(--text-muted)]' },
 }
 
-/** "−4,2% favorável · vs 2025 (jan–out)" — o Δ já formatado, com a palavra, e a referência ao lado. */
+/** "−4,2% favorável · vs 2025*" — o Δ já formatado, com a palavra, e a referência ao lado. */
 function DeltaLinha({ texto, sentido, referencia }: { texto: string; sentido: Sentido | null; referencia: string }) {
   const palavra = sentido ? PALAVRA[sentido] : null
   return (
@@ -47,8 +47,6 @@ function DeltaLinha({ texto, sentido, referencia }: { texto: string; sentido: Se
 
 interface Props {
   rotulo: string
-  /** O que o número é, em uma linha, sob o rótulo ("Antecipado − líquido, em R$"). */
-  escopo?: string
   /** O "?" (`GatilhoAjuda`) ao lado do rótulo. */
   ajuda?: ReactNode
   /** `efetivo` = R$ + Δ%; `pct` = % + Δ em p.p. */
@@ -59,7 +57,7 @@ interface Props {
   anosFalha: readonly number[]
 }
 
-export default function AntecipacoesCardCusto({ rotulo, escopo, ajuda, modo, linhas, anosFalha }: Props) {
+export default function AntecipacoesCardCusto({ rotulo, ajuda, modo, linhas, anosFalha }: Props) {
   const todasVazias = linhas.length > 0 && linhas.every(l => l.semAntecipacao)
 
   return (
@@ -68,7 +66,6 @@ export default function AntecipacoesCardCusto({ rotulo, escopo, ajuda, modo, lin
         <p className={CLASSE_ROTULO}>{rotulo}</p>
         {ajuda}
       </div>
-      {escopo && <p className="mt-0.5 text-2xs text-[var(--text-subtle)]">{escopo}</p>}
 
       {linhas.length === 0 ? (
         <ErroCarregamento
@@ -89,14 +86,10 @@ export default function AntecipacoesCardCusto({ rotulo, escopo, ajuda, modo, lin
               ? (l.deltaEfetivo.pct === null ? null : { texto: fmtDeltaPct(l.deltaEfetivo.pct), sentido: l.deltaEfetivo.sentido })
               : (l.deltaPct.pp === null ? null : { texto: fmtPontos(l.deltaPct.pp), sentido: l.deltaPct.sentido })
             return (
-              <li
-                key={l.ano}
-                aria-current={l.corrente ? 'true' : undefined}
-                className={`-mx-3 rounded-lg px-3 py-1.5 ${l.corrente ? 'bg-[var(--surface-soft)]' : ''}`}
-              >
+              <li key={l.ano} className="py-1.5">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3">
                   <span
-                    className={`text-xs font-semibold ${l.corrente ? 'text-text-primary' : 'text-[var(--text-muted)]'}`}
+                    className="text-xs font-semibold text-[var(--text-muted)]"
                     title={l.rotulo !== String(l.ano) ? `${l.ano} em andamento` : undefined}
                   >
                     {l.rotulo}

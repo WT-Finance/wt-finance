@@ -4,7 +4,7 @@ import { requireArea } from '@/lib/auth/sessao'
 import { hojeSP } from '@/lib/fmt'
 import { type RpcLike } from '@/lib/rpc'
 import { parseRpc } from '@/lib/schemas-rpc'
-import { anosDaSecao, anosDasPillsGeral, type ParamsGeral } from '@/lib/financeiro-geral/periodo'
+import { anosDasPillsGeral, anosDeAntecipacoes, anosDosPrejuizos, type ParamsGeral } from '@/lib/financeiro-geral/periodo'
 import { podeGerirAntecipacoes } from '@/lib/financeiro-geral/gestao'
 import { antecipacoesSchema, prejuizosSchema, recebiveisSchema } from '@/lib/financeiro-geral/schemas'
 import type { Carregado, DadosGeral, LeituraAno } from '@/lib/financeiro-geral/tipos'
@@ -18,8 +18,8 @@ import GeralContent from '@/components/financeiro/geral/geral-content'
 //   FLUXO    Perdas e prejuízos          get_geral_prejuizos(p_ano)     — uma chamada por ano selecionado
 //   FLUXO    Antecipações                get_geral_antecipacoes(p_ano)  — idem
 //
-// As leituras do ANO CORRENTE (prejuízos e antecipações) vêm SEMPRE, mesmo com a pill desmarcada: a faixa
-// do topo e "Dias sem antecipação" não dependem das pills. Se o ano corrente está selecionado, a leitura da
+// As leituras do ANO CORRENTE (prejuízos e antecipações) vêm SEMPRE, mesmo com a pill de Prejuízos desmarcada: a
+// faixa do topo e "Dias sem antecipação" não dependem das pills. Se o ano corrente está na lista, a leitura da
 // lista é reaproveitada (uma chamada só).
 //
 // Todas as leituras partem EM PARALELO e cada uma falha SOZINHA (inv. 11): `Promise.allSettled` + `parseRpc`
@@ -27,9 +27,9 @@ import GeralContent from '@/components/financeiro/geral/geral-content'
 // de pé. O retorno de `.rpc()` é thenable (sem `.catch`): o tratamento de falha é o `status` de cada item.
 // As RPCs são tipadas pelo `database.ts` GERADO (nenhum helper frouxo) e `.rpc` é chamado sem destacar o método.
 //
-// Anos, por seção de fluxo: `?prejuizos=2025,2026` e `?antecipacoes=2024,2026` (o antigo `?anos=`/`?ano=` vale como
-// valor inicial das duas); default = os três últimos anos até o corrente em São Paulo. As pills são a janela fixa
-// PRIMEIRO_ANO..corrente (as RPCs não devolvem `anosDisponiveis`).
+// Anos: Perdas e prejuízos tem pills (`?prejuizos=2025,2026`; o antigo `?anos=`/`?ano=` vale como valor inicial;
+// default = os anos desde PRIMEIRO_ANO até o corrente em São Paulo; a janela é fixa porque as RPCs não devolvem
+// `anosDisponiveis`). Antecipações é FIXA: o ano corrente e os dois anteriores, sem pills e sem parâmetro.
 export const dynamic = 'force-dynamic'
 
 type Db = Awaited<ReturnType<typeof getServerClient>>
@@ -63,12 +63,13 @@ export default async function GeralPage({ searchParams }: { searchParams: Promis
   // próprio (mismatch de hidratação; perto da virada do ano erraria o ano corrente).
   const hoje = hojeSP()
   const anoCorrente = parseInt(hoje.slice(0, 4), 10)
-  // Cada seção de fluxo tem a sua seleção (`?prejuizos=`, `?antecipacoes=`; o antigo `?anos=` é o valor inicial das duas).
-  const anosPrejuizos = anosDaSecao(sp, 'prejuizos', anoCorrente)
-  const anosAntecipacoes = anosDaSecao(sp, 'antecipacoes', anoCorrente)
-  // O ano corrente entra na leitura mesmo fora da seleção (ver o cabeçalho); a lista de cada seção continua
-  // sendo só a dos anos selecionados nela.
-  const comCorrente = (anos: number[]) => (anos.includes(anoCorrente) ? anos : [...anos, anoCorrente])
+  // Perdas e prejuízos tem pills (`?prejuizos=`; o antigo `?anos=` é o valor inicial). Antecipações NÃO: o recorte
+  // é fixo — o ano corrente e os dois anteriores —, sem parâmetro de URL.
+  const anosPrejuizos = anosDosPrejuizos(sp, anoCorrente)
+  const anosAntecipacoes = anosDeAntecipacoes(anoCorrente)
+  // O ano corrente de Prejuízos entra na leitura mesmo fora da seleção (ver o cabeçalho); a lista da seção
+  // continua sendo só a dos anos selecionados nela. Em Antecipações o corrente já está nos 3 anos fixos.
+  const prejuizosALer = anosPrejuizos.includes(anoCorrente) ? anosPrejuizos : [...anosPrejuizos, anoCorrente]
 
   const db: Db = await getServerClient()
 
@@ -76,11 +77,10 @@ export default async function GeralPage({ searchParams }: { searchParams: Promis
   // `this`); o builder é thenable e só dispara quando `resolver` o aguarda — todos partem juntos.
   const [recebiveisRes, antecipacoesLidas, prejuizosLidos] = await Promise.all([
     resolver(db.rpc('get_geral_recebiveis')),
-    Promise.all(comCorrente(anosAntecipacoes).map(ano => lerAno(ano, db.rpc('get_geral_antecipacoes', { p_ano: ano }), antecipacoesSchema, 'get_geral_antecipacoes'))),
-    Promise.all(comCorrente(anosPrejuizos).map(ano => lerAno(ano, db.rpc('get_geral_prejuizos', { p_ano: ano }), prejuizosSchema, 'get_geral_prejuizos'))),
+    Promise.all(anosAntecipacoes.map(ano => lerAno(ano, db.rpc('get_geral_antecipacoes', { p_ano: ano }), antecipacoesSchema, 'get_geral_antecipacoes'))),
+    Promise.all(prejuizosALer.map(ano => lerAno(ano, db.rpc('get_geral_prejuizos', { p_ano: ano }), prejuizosSchema, 'get_geral_prejuizos'))),
   ])
 
-  const selecionadoEm = (anos: number[]) => (l: LeituraAno<unknown>) => anos.includes(l.ano)
   const doCorrente = <T,>(lidas: LeituraAno<T>[]): LeituraAno<T> =>
     lidas.find(l => l.ano === anoCorrente) ?? { ano: anoCorrente, leitura: { ok: false } }
 
@@ -90,8 +90,8 @@ export default async function GeralPage({ searchParams }: { searchParams: Promis
     anosDisponiveis: anosDasPillsGeral(anoCorrente),
     hoje,
     recebiveis: carregado(parseRpc(recebiveisSchema, recebiveisRes, 'get_geral_recebiveis')),
-    antecipacoes: antecipacoesLidas.filter(selecionadoEm(anosAntecipacoes)),
-    prejuizos: prejuizosLidos.filter(selecionadoEm(anosPrejuizos)),
+    antecipacoes: antecipacoesLidas,
+    prejuizos: prejuizosLidos.filter(l => anosPrejuizos.includes(l.ano)),
     corrente: {
       prejuizos: doCorrente(prejuizosLidos),
       antecipacoes: doCorrente(antecipacoesLidas),

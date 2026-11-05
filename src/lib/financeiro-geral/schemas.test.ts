@@ -63,10 +63,12 @@ describe('recebiveisSchema (o contrato novo é coberto em recebiveis.test.ts)', 
 
 describe('antecipacoesSchema', () => {
   it('as leituras da fixture (ano com dado e ano vazio) passam; maior_intervalo_ano NULL passa', () => {
-    const d = fixtureGeral('normal', '2026-10-26', [2026, 2027])
+    const d = fixtureGeral('normal', '2026-10-26', [2026])
     for (const x of d.antecipacoes) expect(x.leitura.ok).toBe(true)
-    const ano27 = d.antecipacoes.find(x => x.ano === 2027)!
-    expect(ano27.leitura.ok && ano27.leitura.dados.maior_intervalo_ano).toBeNull()
+    const vazio = fixtureGeral('vazio', '2026-10-26', [2026])
+    for (const x of vazio.antecipacoes) {
+      expect(x.leitura.ok && x.leitura.dados.maior_intervalo_ano).toBeNull()
+    }
   })
   it('maior_intervalo_ano com chave ausente é drift e reprova', () => {
     const d = fixtureGeral('normal', '2026-10-26', [2026])

@@ -233,7 +233,8 @@ Decisões do Yan (briefing `docs/briefings/briefing-v6-5-0-financeiro-geral-v2.m
   anos selecionados; por setor fica em construção até haver fonte. Nomes de pessoa podem aparecer (decisão do
   Yan no GATE 0).
 - **Antecipações:** custo efetivo (R$ de desconto) e custo % ponderado pelo volume, por uma fórmula única; por
-  conta (rótulo "Conta", nunca "bandeira"); "maior intervalo do ano" = maior intervalo que TERMINA no ano,
+  conta (rótulo "Conta", nunca "bandeira"); a seção é FIXA no ano corrente e nos dois anteriores, sem pills, e o
+  volume e o custo por conta ficam numa tabela só ("Comparativo por Conta", refino de 05/11); "maior intervalo do ano" = maior intervalo que TERMINA no ano,
   inclusive o da virada e o em curso.
 - **Contrato:** as três RPCs ganharam chaves por `CREATE OR REPLACE` aditivo (0301), sem RPC nova — devolvem
   `json` e o Zod não é estrito, então acrescentar chave não quebra o front no ar. A poda das chaves antigas

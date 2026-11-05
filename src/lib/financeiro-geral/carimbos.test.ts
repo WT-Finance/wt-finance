@@ -63,7 +63,7 @@ describe('carimbosDaPagina — uma linha por fonte, na ordem do topo', () => {
     expect(fontes({ ...d, antecipacoes: [], corrente: { ...d.corrente, antecipacoes: { ano: 2026, leitura: { ok: false } } } }))
       .toEqual([FONTE_CONTAS_A_RECEBER, FONTE_CAIXA])
   })
-  it('a leitura do ano corrente entra mesmo fora dos anos selecionados', () => {
+  it('a leitura do ano corrente entra mesmo fora das listas das seções', () => {
     const d = fixtureGeral('normal', '2026-10-26', [2026])
     const r: DadosGeral = { ...d, prejuizos: [], antecipacoes: [] }
     expect(carimbosDaPagina(r).map(c => c.fonte)).toEqual([FONTE_CONTAS_A_RECEBER, FONTE_CAIXA, FONTE_ANTECIPACOES])

@@ -7,7 +7,6 @@ import TopSection from '@/components/shared/top-section'
 import { alternarAno, serializarAnos } from '@/lib/marketing/anos'
 import { carimbosDaPagina } from '@/lib/financeiro-geral/carimbos'
 import { faixaDoTopo } from '@/lib/financeiro-geral/faixa-topo'
-import type { SecaoDeAnos } from '@/lib/financeiro-geral/periodo'
 import type { DadosGeral } from '@/lib/financeiro-geral/tipos'
 import CabecalhoGeral from './cabecalho-geral'
 import FaixaIndicadores from './faixa-indicadores'
@@ -22,12 +21,11 @@ import SecaoRecebiveis from './secao-recebiveis'
 //  • CINCO seções, nesta ordem (decisão do Yan): Vendas · Recebíveis e inadimplência · Perdas e prejuízos ·
 //    Antecipações · Cartões de crédito. Vendas e Cartões são cascas (`EmConstrucaoSecao`) até ganharem
 //    versão própria.
-//  • ANOS → URL, UMA LINHA DE PILLS POR SEÇÃO DE FLUXO, independentes: `?prejuizos=2025,2026` e
-//    `?antecipacoes=2024,2026` (seleção múltipla, sem teto). Cada ano é uma ida às RPCs, então a seleção é
-//    navegação (`startTransition` + `scroll: false` — filtro no LUGAR, sem salto ao topo, com o conteúdo
-//    esmaecido enquanto o servidor responde). Sem estado local: tudo deriva de `dados`. O antigo `?anos=`
-//    (uma linha só) segue aceito como valor inicial das duas; ao primeiro clique ele é trocado pelos dois
-//    parâmetros novos (a seção que NÃO foi clicada guarda o que já mostrava).
+//  • ANOS → URL, só em "Perdas e prejuízos" (`?prejuizos=2025,2026`, seleção múltipla, sem teto). Cada ano é
+//    uma ida às RPCs, então a seleção é navegação (`startTransition` + `scroll: false` — filtro no LUGAR, sem
+//    salto ao topo, com o conteúdo esmaecido enquanto o servidor responde). Sem estado local: tudo deriva de
+//    `dados`. O antigo `?anos=` segue aceito como valor inicial; ao primeiro clique é trocado por `?prejuizos=`.
+//    "Antecipações" NÃO tem pills: é fixa no ano corrente e nos dois anteriores.
 //  • Recebíveis (estoque) mostra a posição da última carga e não tem pills; a faixa do topo e "Dias sem
 //    antecipação" usam sempre o ano corrente.
 //  • A data de atualização de cada base mora no CABEÇALHO (uma linha por fonte), não nas seções.
@@ -42,18 +40,17 @@ export default function GeralContent({ dados }: { dados: DadosGeral }) {
   const indicadores = useMemo(() => faixaDoTopo(dados), [dados])
   const carimbos = useMemo(() => carimbosDaPagina(dados), [dados])
 
-  function alternar(secao: SecaoDeAnos, ano: number) {
-    const atuais = secao === 'prejuizos' ? anosPrejuizos : anosAntecipacoes
-    const novos = alternarAno(atuais, ano)
+  function alternarAnoPrejuizos(ano: number) {
+    const novos = alternarAno(anosPrejuizos, ano)
     // Nada mudou (clicou no único selecionado): sem navegação.
-    if (novos.length === atuais.length && novos.every((a, i) => a === atuais[i])) return
-    // Preserva o resto da query. Troca só os anos da seção clicada; a OUTRA fica explícita com o que já mostra
-    // (senão, ao descartar o `?anos=`/`?ano=` antigo, ela voltaria ao default). Os antigos saem da URL.
+    if (novos.length === anosPrejuizos.length && novos.every((a, i) => a === anosPrejuizos[i])) return
+    // Preserva o resto da query. Grava só `?prejuizos=`; o antigo `?anos=`/`?ano=` e o extinto `?antecipacoes=`
+    // (links salvos) saem da URL — Antecipações é fixa e não lê parâmetro nenhum.
     const params = new URLSearchParams(searchParams.toString())
-    params.set('prejuizos', serializarAnos(secao === 'prejuizos' ? novos : anosPrejuizos))
-    params.set('antecipacoes', serializarAnos(secao === 'antecipacoes' ? novos : anosAntecipacoes))
+    params.set('prejuizos', serializarAnos(novos))
     params.delete('anos')
     params.delete('ano')
+    params.delete('antecipacoes')
     startTransition(() => router.push(`${pathname}?${params.toString()}`, { scroll: false }))
   }
 
@@ -78,7 +75,7 @@ export default function GeralContent({ dados }: { dados: DadosGeral }) {
               leituras={dados.prejuizos}
               anos={anosPrejuizos}
               anosDisponiveis={anosDisponiveis}
-              onAlternarAno={ano => alternar('prejuizos', ano)}
+              onAlternarAno={alternarAnoPrejuizos}
               hoje={dados.hoje}
             />
           </TopSection>
@@ -88,8 +85,6 @@ export default function GeralContent({ dados }: { dados: DadosGeral }) {
               leituras={dados.antecipacoes}
               corrente={dados.corrente.antecipacoes}
               anos={anosAntecipacoes}
-              anosDisponiveis={anosDisponiveis}
-              onAlternarAno={ano => alternar('antecipacoes', ano)}
               hoje={dados.hoje}
               podeGerir={dados.podeGerir}
             />

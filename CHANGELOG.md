@@ -47,7 +47,11 @@ DEPOIS do deploy). Sem ADR novo; Emenda 1 do ADR-0183.
   "Contas a receber", "Caixa" e "Antecipações · Última atualização em …"; as seções perdem a linha de metadados
   (`MetaSecao` removido). Regra em `/admin/design-system` e na skill `ui-design-system`; telas fora do padrão no B-50.
 - **Pills de ano por seção** (`?prejuizos=` e `?antecipacoes=`; o `?anos=` antigo vale para as duas). Perdas e
-  prejuízos: "Prejuízo por Pessoa" com 5 linhas + total + "Ver mais" (drawer com todos); "Prejuízo Mensal". **Migration 0302 APLICADA** (aditiva): `devedores` passa a ser a lista completa.
+  prejuízos: "Prejuízo por Pessoa" com 5 linhas + total + "Ver mais" (drawer com todos); "Prejuízo Mensal".
+- **Antecipações fixa no ano corrente e nos dois anteriores, sem pills** (refino do Yan): cards "Custo Efetivo" e
+  "Custo efetivo percentual" sem subtítulo e sem destaque de cor, referência "vs 2025*"; "Volume Mensal de
+  Antecipações"; "Volume antecipado por conta" + "Comparativo" unificados em "Comparativo por Conta" (conta × ano:
+  volume, custo efetivo, custo %). `?antecipacoes=` deixa de existir; `?anos=` antigo vale só para Prejuízos. **Migration 0302 APLICADA** (aditiva): `devedores` passa a ser a lista completa.
 - **CLI do Supabase fixado em `supabase@2.122.1`** no wrapper do gate (`scripts/db-gate/migrate.mjs`): a 3.0.0
   (major, resolvida pelo `npx` sem versão) recusa o `config.toml` e exige consentimento em produção por agente.
   Decisão do Yan; subir para a v3 é patch próprio.

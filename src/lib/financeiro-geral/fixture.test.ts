@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { volumePorConta } from './antecipacoes'
+import { comparativoPorConta } from './antecipacoes'
 import { fixtureGeral } from './fixture'
 import { emCentavos } from './numeros'
 import { tabelaPorPessoa } from './prejuizos'
@@ -88,7 +88,7 @@ describe('fixtureGeral — estado normal (números da M0)', () => {
     expect(porAno).toEqual({
       2024: [1521381.14, 43964.39], 2025: [3926091.12, 102130.34], 2026: [1797940.19, 41968.28],
     })
-    const t = volumePorConta(d.antecipacoes)
+    const t = comparativoPorConta(d.antecipacoes)
     expect(t.linhas.map(l => l.conta).sort()).toEqual(['Asaas', 'Blimboo'])
     expect(t.fecha).toBe(true)
   })
@@ -125,11 +125,11 @@ describe('fixtureGeral — estado normal (números da M0)', () => {
 })
 
 describe('fixtureGeral — anos e tempo', () => {
-  it('só entram os anos de `anos`, crescente e sem repetir; as pills vão até o ano de hoje', () => {
+  it('Prejuízos: só entram os anos de `anos`, crescente e sem repetir; Antecipações é FIXA (corrente e dois anteriores); as pills vão até o ano de hoje', () => {
     const d = fixtureGeral('normal', HOJE, [2026, 2025, 2025])
     expect(d.anosPrejuizos).toEqual([2025, 2026])
-    expect(d.anosAntecipacoes).toEqual([2025, 2026])
-    expect(d.antecipacoes.map(x => x.ano)).toEqual([2025, 2026])
+    expect(d.anosAntecipacoes).toEqual([2024, 2025, 2026])
+    expect(d.antecipacoes.map(x => x.ano)).toEqual([2024, 2025, 2026])
     expect(d.prejuizos.map(x => x.ano)).toEqual([2025, 2026])
     expect(d.anosDisponiveis).toEqual([2024, 2025, 2026])
     expect(d.hoje).toBe(HOJE)
@@ -141,7 +141,10 @@ describe('fixtureGeral — anos e tempo', () => {
       if (!x.leitura.ok) throw new Error('fixture')
       return [x.ano, [x.leitura.dados.relacao, x.leitura.dados.mes_corrente]]
     }))
-    expect(rel).toEqual({ 2025: ['fechado', null], 2026: ['fechado', null], 2027: ['corrente', 3], 2028: ['futuro', null] })
+    expect(rel).toEqual({ 2025: ['fechado', null], 2026: ['fechado', null], 2027: ['corrente', 3] })
+    expect(fixtureGeral('normal', '2027-03-10', [2028]).prejuizos[0].leitura).toMatchObject({
+      ok: true, dados: { relacao: 'futuro', mes_corrente: null },
+    })
     expect(d.anosDisponiveis).toEqual([2024, 2025, 2026, 2027])
   })
 

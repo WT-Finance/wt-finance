@@ -17,21 +17,21 @@ export interface LeituraAno<T> {
 export interface DadosGeral {
   /** Anos selecionados em "Perdas e prejuízos" (`?prejuizos=`; ao menos 1), CRESCENTE. */
   anosPrejuizos: number[]
-  /** Anos selecionados em "Antecipações" (`?antecipacoes=`; ao menos 1), CRESCENTE. Independente dos de prejuízos. */
+  /** Os anos FIXOS de "Antecipações" (sem pills, sem URL): o corrente e os dois anteriores, CRESCENTE. */
   anosAntecipacoes: number[]
-  /** Anos com pill (as duas seções usam a mesma janela), crescente. */
+  /** Anos com pill em "Perdas e prejuízos", crescente. */
   anosDisponiveis: number[]
   /** Hoje em São Paulo ('YYYY-MM-DD'), calculado NO SERVIDOR (o cliente não usa relógio próprio). */
   hoje: string
   /** Estoque: ignora as pills de ano. */
   recebiveis: Carregado<Recebiveis>
-  /** Fluxo: uma leitura por ano selecionado na respectiva seção (`antecipacoes` ↔ `anosAntecipacoes`,
+  /** Fluxo: uma leitura por ano da respectiva seção (`antecipacoes` ↔ `anosAntecipacoes`,
    *  `prejuizos` ↔ `anosPrejuizos`), na MESMA ordem. */
   antecipacoes: LeituraAno<Antecipacoes>[]
   prejuizos: LeituraAno<Prejuizos>[]
-  /** As leituras do ANO CORRENTE, carregadas SEMPRE (v6.5.0), mesmo com a pill desmarcada: a faixa do topo
-   *  (prejuízo do ano corrente, dias sem antecipação) e o card "Dias sem antecipação" não dependem das pills.
-   *  Se o ano corrente está selecionado, é a MESMA leitura da lista (uma chamada só). */
+  /** As leituras do ANO CORRENTE, carregadas SEMPRE (v6.5.0), mesmo com a pill de Prejuízos desmarcada: a faixa
+   *  do topo (prejuízo do ano corrente, dias sem antecipação) e o card "Dias sem antecipação" não dependem das
+   *  pills. É a MESMA leitura da lista quando o ano está nela (uma chamada só; em Antecipações sempre está). */
   corrente: {
     prejuizos: LeituraAno<Prejuizos>
     antecipacoes: LeituraAno<Antecipacoes>

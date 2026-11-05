@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   comparativoPorConta, contasDosAnos, custoDoRecorte, custoPorAno, deltaPontos, diasEntre, diasSemAntecipacao,
-  diasSemAntecipar, fmtCustoPct, fmtPontos, rotuloDias, volumePorConta,
+  diasSemAntecipar, fmtCustoPct, fmtPontos, rotuloDias,
 } from './antecipacoes'
 import { fixtureGeral } from './fixture'
 import { emCentavos } from './numeros'
@@ -102,28 +102,29 @@ describe('deltaPontos — subtração de taxas, não Δ relativo', () => {
 // ── Cards de custo ─────────────────────────────────────────────────────────────────────────────
 
 describe('custoPorAno — uma linha por ano selecionado (cards de custo efetivo e percentual)', () => {
-  it('do mais recente ao mais antigo, ano corrente em destaque, "*" no parcial', () => {
-    const r = custoPorAno([ok(2024), ok(2026), ok(2025)], '2026-10-26')
+  it('do mais recente ao mais antigo, "*" no parcial, sem marca de ano corrente (todas as linhas iguais)', () => {
+    const r = custoPorAno([ok(2024), ok(2026), ok(2025)])
     expect(r.linhas.map(l => l.ano)).toEqual([2026, 2025, 2024])
     expect(r.linhas.map(l => l.rotulo)).toEqual(['2026*', '2025', '2024'])
-    expect(r.linhas.map(l => l.corrente)).toEqual([true, false, false])
+    expect(r.linhas.every(l => !('corrente' in l))).toBe(true)
     expect(r.anosFalha).toEqual([])
   })
 
   it('uma linha mesmo com um ano só', () => {
-    expect(custoPorAno([ok(2025)], '2026-10-26').linhas).toHaveLength(1)
+    expect(custoPorAno([ok(2025)]).linhas).toHaveLength(1)
   })
 
   it('o custo vem de custoDoRecorte sobre o total — NUNCA do desconto_pct da RPC (que aqui é 99)', () => {
-    const [l] = custoPorAno([ok(2026)], '2026-10-26').linhas
+    const [l] = custoPorAno([ok(2026)]).linhas
     expect(l.custo).toEqual(custoDoRecorte({ volume: 1000, desconto: 30 }))
     expect(l.custo.pct).toBeCloseTo(3, 10)
     expect(l.custo.efetivo).toBe(30)
   })
 
   it('Δ contra o MESMO PERÍODO do ano anterior (ano_anterior_ytd), com a referência no recorte', () => {
-    const [corrente, fechado] = custoPorAno([ok(2026), ok(2025)], '2026-10-26').linhas
-    expect(corrente.referencia).toBe('vs 2025 (jan–out)')
+    const [corrente, fechado] = custoPorAno([ok(2026), ok(2025)]).linhas
+    // `*` no ano anterior = o mesmo período do ano parcial; ano inteiro compara com o inteiro, sem `*`
+    expect(corrente.referencia).toBe('vs 2025*')
     expect(fechado.referencia).toBe('vs 2024')
     // efetivo: 32 → 30 = −6,25%; menor é melhor → favorável
     expect(corrente.deltaEfetivo.pct).toBeCloseTo(-6.25, 10)
@@ -138,7 +139,7 @@ describe('custoPorAno — uma linha por ano selecionado (cards de custo efetivo 
       ok(2026, { ano_anterior_ytd: { volume: 0, desconto: 0, n: 0 } }),
       ok(2025, { ano_anterior_ytd: { volume: null, desconto: null, n: null } }),
       ok(2024, { ano_anterior_ytd: null }),
-    ], '2026-10-26').linhas
+    ]).linhas
     for (const l of r) {
       expect(l.deltaPct).toEqual({ pp: null, sentido: null })
       expect(l.deltaEfetivo).toEqual({ pct: null, sentido: null })
@@ -146,7 +147,7 @@ describe('custoPorAno — uma linha por ano selecionado (cards de custo efetivo 
   })
 
   it('custo subiu → desfavorável (o desconto é POSITIVO: subir é ruim)', () => {
-    const [l] = custoPorAno([ok(2026, { total: { volume: 1000, liquido: 940, desconto: 60, n: 4, desconto_pct: null } })], '2026-10-26').linhas
+    const [l] = custoPorAno([ok(2026, { total: { volume: 1000, liquido: 940, desconto: 60, n: 4, desconto_pct: null } })]).linhas
     expect(l.deltaEfetivo.sentido).toBe('desfavoravel')
     expect(l.deltaPct.sentido).toBe('desfavoravel')
   })
@@ -155,7 +156,7 @@ describe('custoPorAno — uma linha por ano selecionado (cards de custo efetivo 
     const [l] = custoPorAno([ok(2026, {
       total: { volume: 0, liquido: 0, desconto: 0, n: 0, desconto_pct: null },
       ano_anterior_ytd: { volume: 800, desconto: 32, n: 3 },
-    })], '2026-10-26').linhas
+    })]).linhas
     expect(l.semAntecipacao).toBe(true)
     expect(l.custo).toEqual({ efetivo: 0, pct: null })
     expect(l.deltaEfetivo.pct).toBeNull()
@@ -163,10 +164,10 @@ describe('custoPorAno — uma linha por ano selecionado (cards de custo efetivo 
   })
 
   it('ano que falhou: fora das linhas e em anosFalha (a UI avisa; os outros seguem)', () => {
-    const r = custoPorAno([ok(2025), falha(2026)], '2026-10-26')
+    const r = custoPorAno([ok(2025), falha(2026)])
     expect(r.linhas.map(l => l.ano)).toEqual([2025])
     expect(r.anosFalha).toEqual([2026])
-    expect(custoPorAno([falha(2025), falha(2026)], '2026-10-26')).toEqual({ linhas: [], anosFalha: [2025, 2026] })
+    expect(custoPorAno([falha(2025), falha(2026)])).toEqual({ linhas: [], anosFalha: [2025, 2026] })
   })
 })
 
@@ -236,56 +237,7 @@ describe('diasSemAntecipacao — o card global (não depende das pills)', () => 
 
 // ── Por conta ──────────────────────────────────────────────────────────────────────────────────
 
-describe('volumePorConta — soma dos anos carregados, por conta', () => {
-  it('soma a mesma conta entre os anos; ordem do maior volume; % do total', () => {
-    const t = volumePorConta([
-      ok(2025),
-      ok(2026, {
-        por_conta: [{ conta: 'Asaas', volume: 100, desconto: 3, n: 1 }, { conta: 'Blimboo', volume: 900, desconto: 27, n: 3 }],
-      }),
-    ])
-    expect(t.linhas.map(l => [l.conta, l.n, l.volume])).toEqual([['Blimboo', 4, 1200], ['Asaas', 4, 800]])
-    expect(t.linhas[0].pct).toBeCloseTo(60, 10)
-    expect(t.linhas[1].pct).toBeCloseTo(40, 10)
-    expect(t.total).toEqual({ n: 8, volume: 2000 })
-  })
-
-  it('Σ por conta ≡ Σ total.volume dos anos carregados AO CENTAVO (centavos inteiros)', () => {
-    const t = volumePorConta([
-      ok(2025, {
-        total: { volume: 0.3, liquido: 0.3, desconto: 0, n: 2, desconto_pct: null },
-        por_conta: [{ conta: 'A', volume: 0.1, desconto: 0, n: 1 }, { conta: 'B', volume: 0.2, desconto: 0, n: 1 }],
-      }),
-      ok(2026, {
-        total: { volume: 1234.57, liquido: 1234.57, desconto: 0, n: 2, desconto_pct: null },
-        por_conta: [{ conta: 'A', volume: 1000.01, desconto: 0, n: 1 }, { conta: 'B', volume: 234.56, desconto: 0, n: 1 }],
-      }),
-    ])
-    const somaContas = t.linhas.reduce((s, l) => s + emCentavos(l.volume), 0)
-    expect(somaContas).toBe(emCentavos(0.3) + emCentavos(1234.57))
-    expect(emCentavos(t.total.volume)).toBe(somaContas)
-    expect(t.fecha).toBe(true)
-  })
-
-  it('não fecha → fecha=false', () => {
-    const t = volumePorConta([ok(2026, { por_conta: [{ conta: 'Asaas', volume: 999.99, desconto: 20, n: 4 }] })])
-    expect(t.fecha).toBe(false)
-  })
-
-  it('ano que falhou fica fora da soma e é reportado', () => {
-    const t = volumePorConta([ok(2025), falha(2026)])
-    expect(t.anosFalha).toEqual([2026])
-    expect(t.total.volume).toBe(1000)
-    expect(t.fecha).toBe(true)
-  })
-
-  it('sem conta nenhuma: tabela vazia, total zero, % — não existe', () => {
-    const t = volumePorConta([ok(2026, { por_conta: null, total: { volume: 0, liquido: 0, desconto: 0, n: 0, desconto_pct: null } })])
-    expect(t).toMatchObject({ linhas: [], total: { n: 0, volume: 0 }, fecha: true })
-  })
-})
-
-describe('comparativoPorConta — conta × ano, MESMA fórmula dos cards', () => {
+describe('comparativoPorConta — conta × ano com volume, custo efetivo e custo %, MESMA fórmula dos cards', () => {
   const diverso = (ano: number) => ok(ano, {
     total: { volume: 1000, liquido: 981, desconto: 19, n: 4, desconto_pct: null },
     por_conta: [{ conta: 'Asaas', volume: 100, desconto: 10, n: 1 }, { conta: 'Blimboo', volume: 900, desconto: 9, n: 3 }],
@@ -297,8 +249,54 @@ describe('comparativoPorConta — conta × ano, MESMA fórmula dos cards', () =>
     expect(c.linhas.map(l => l.conta)).toEqual(['Blimboo', 'Asaas'])
     const asaas = c.linhas.find(l => l.conta === 'Asaas')!
     expect(asaas.celulas.map(x => x.ano)).toEqual([2025, 2026])
+    expect(asaas.celulas[0].volume).toBe(100)
     expect(asaas.celulas[0].custo).toEqual(custoDoRecorte({ volume: 100, desconto: 10 }))
     expect(asaas.celulas[0].custo?.pct).toBeCloseTo(10, 10)
+    expect(asaas.celulas[0].custo?.efetivo).toBe(10)
+  })
+
+  it('soma a mesma conta entre os anos na ordenação: a de maior volume somado vem primeiro', () => {
+    const c = comparativoPorConta([
+      ok(2025),
+      ok(2026, {
+        total: { volume: 1000, liquido: 970, desconto: 30, n: 4, desconto_pct: null },
+        por_conta: [{ conta: 'Asaas', volume: 100, desconto: 3, n: 1 }, { conta: 'Blimboo', volume: 900, desconto: 27, n: 3 }],
+      }),
+    ])
+    // Asaas 700 + 100 = 800; Blimboo 300 + 900 = 1200
+    expect(c.linhas.map(l => l.conta)).toEqual(['Blimboo', 'Asaas'])
+  })
+
+  it('Σ por conta ≡ total do registro AO CENTAVO, ano a ano (volume, desconto, títulos)', () => {
+    const c = comparativoPorConta([
+      ok(2025, {
+        total: { volume: 0.3, liquido: 0.3, desconto: 0, n: 2, desconto_pct: null },
+        por_conta: [{ conta: 'A', volume: 0.1, desconto: 0, n: 1 }, { conta: 'B', volume: 0.2, desconto: 0, n: 1 }],
+      }),
+      ok(2026, {
+        total: { volume: 1234.57, liquido: 1234.57, desconto: 0, n: 2, desconto_pct: null },
+        por_conta: [{ conta: 'A', volume: 1000.01, desconto: 0, n: 1 }, { conta: 'B', volume: 234.56, desconto: 0, n: 1 }],
+      }),
+    ])
+    for (let i = 0; i < c.anos.length; i++) {
+      const somaContas = c.linhas.reduce((s, l) => s + emCentavos(l.celulas[i].volume ?? 0), 0)
+      expect(somaContas).toBe(emCentavos(c.total[i].volume ?? 0))
+    }
+    expect(c.total.map(t => t.volume)).toEqual([0.3, 1234.57])
+    expect(c.fecha).toBe(true)
+  })
+
+  it('não fecha → fecha=false (volume, desconto ou títulos divergentes em QUALQUER ano)', () => {
+    expect(comparativoPorConta([ok(2026, { por_conta: [{ conta: 'Asaas', volume: 999.99, desconto: 30, n: 4 }] })]).fecha).toBe(false)
+    expect(comparativoPorConta([ok(2025), ok(2026, { por_conta: [{ conta: 'Asaas', volume: 1000, desconto: 29.99, n: 4 }] })]).fecha).toBe(false)
+    expect(comparativoPorConta([ok(2026, { por_conta: [{ conta: 'Asaas', volume: 1000, desconto: 30, n: 3 }] })]).fecha).toBe(false)
+  })
+
+  it('sem conta nenhuma: sem linhas, total "ausente", fecha', () => {
+    const c = comparativoPorConta([ok(2026, { por_conta: null, total: { volume: 0, liquido: 0, desconto: 0, n: 0, desconto_pct: null } })])
+    expect(c.linhas).toEqual([])
+    expect(c.total).toEqual([{ ano: 2026, volume: null, custo: null }])
+    expect(c.fecha).toBe(true)
   })
 
   it('o total do ano usa a MESMA função e é a média PONDERADA (1,9%), não a simples das contas (5,5%)', () => {
@@ -310,7 +308,7 @@ describe('comparativoPorConta — conta × ano, MESMA fórmula dos cards', () =>
 
   it('cards e comparativo concordam no custo do ano (um único módulo, inv. 2)', () => {
     const leituras = [diverso(2025), diverso(2026)]
-    const cards = custoPorAno(leituras, '2026-10-26').linhas
+    const cards = custoPorAno(leituras).linhas
     const comp = comparativoPorConta(leituras)
     for (const cel of comp.total) {
       expect(cel.custo).toEqual(cards.find(l => l.ano === cel.ano)!.custo)
@@ -327,13 +325,14 @@ describe('comparativoPorConta — conta × ano, MESMA fórmula dos cards', () =>
     ])
     const blimboo = c.linhas.find(l => l.conta === 'Blimboo')!
     expect(blimboo.celulas.map(x => x.custo === null)).toEqual([false, true])
+    expect(blimboo.celulas.map(x => x.volume)).toEqual([900, null])
   })
 
   it('ano que falhou: fora das colunas e em anosFalha', () => {
     const c = comparativoPorConta([diverso(2025), falha(2026)])
     expect(c.anos.map(a => a.ano)).toEqual([2025])
     expect(c.anosFalha).toEqual([2026])
-    expect(comparativoPorConta([falha(2026)])).toEqual({ anos: [], linhas: [], total: [], anosFalha: [2026] })
+    expect(comparativoPorConta([falha(2026)])).toEqual({ anos: [], linhas: [], total: [], anosFalha: [2026], fecha: true })
   })
 })
 
@@ -376,17 +375,19 @@ describe('a fixture normal reproduz a M0 e fecha as contas das antecipações (i
       expect(contas).toBe(emCentavos(l.total.volume))
       expect(l.meses.reduce((s, m) => s + m.n, 0)).toBe(l.total.n)
     }
-    const t = volumePorConta(d.antecipacoes)
+    const t = comparativoPorConta(d.antecipacoes)
     expect(t.fecha).toBe(true)
-    expect(emCentavos(t.total.volume)).toBe(emCentavos(7245412.45))
+    // Σ dos 3 anos, em centavos: total, Asaas e Blimboo (M0)
+    const soma = (cs: { volume: number | null }[]) => cs.reduce((s, c) => s + emCentavos(c.volume ?? 0), 0)
+    expect(soma(t.total)).toBe(emCentavos(7245412.45))
     const asaas = t.linhas.find(l => l.conta === 'Asaas')!
     const blimboo = t.linhas.find(l => l.conta === 'Blimboo')!
-    expect([asaas.n, emCentavos(asaas.volume)]).toEqual([22, emCentavos(3688686.34)])
-    expect([blimboo.n, emCentavos(blimboo.volume)]).toEqual([16, emCentavos(3556726.11)])
+    expect(soma(asaas.celulas)).toBe(emCentavos(3688686.34))
+    expect(soma(blimboo.celulas)).toBe(emCentavos(3556726.11))
   })
 
   it('custo % ponderado de cada ano = o da M0', () => {
-    const linhas = custoPorAno(d.antecipacoes, d.hoje).linhas
+    const linhas = custoPorAno(d.antecipacoes).linhas
     const pct = Object.fromEntries(linhas.map(l => [l.ano, l.custo.pct]))
     expect(pct[2024]).toBeCloseTo(2.8898, 4)
     expect(pct[2025]).toBeCloseTo(2.6013, 4)
