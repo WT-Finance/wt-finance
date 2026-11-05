@@ -33,10 +33,15 @@ const AJUDA =
   'recorte (média ponderada pelo valor antecipado, também no total). "—" = a conta não antecipou no ano. * = ano ' +
   'corrente parcial (até o mês corrente); o período comparado do ano anterior é o mesmo.'
 
-const LARG_PRIMEIRA = 140
-const LARG_VOLUME = 148
-const LARG_CUSTO = 136
-const LARG_PCT = 84
+// Larguras MÍNIMAS: com a tabela `w-full table-fixed`, num card mais largo que a soma o navegador reparte a sobra
+// em proporção a estas larguras (sem barra); só abaixo da soma (mobile) o `ScrollAutoHide` rola por dentro.
+// Cabem "R$ 999.999.999,99" (maior valor esperado) com padding horizontal `px-2` (ver `PAD`).
+const LARG_PRIMEIRA = 112
+const LARG_VOLUME = 118
+const LARG_CUSTO = 108
+const LARG_PCT = 64
+/** Padding horizontal enxuto (o `R$` do `ValorContabil` já ocupa espaço); `!` vence o `px-3` das classes de `comum`. */
+const PAD = 'px-2!'
 const LARG_ANO = LARG_VOLUME + LARG_CUSTO + LARG_PCT
 /** Régua à esquerda do bloco de cada ano a partir do 2º (a 1ª coluna já separa o 1º). */
 const SEP = 'border-l border-l-wt-border'
@@ -51,9 +56,9 @@ function CelulasDoAno({ c, i, classe }: { c: CelulaComparativo; i: number; class
   const num = classe === TD ? TD_NUM : `${classe} text-right tabular-nums`
   return (
     <>
-      <td className={`${classe} ${sep}`}>{c.volume !== null ? <ValorContabil valor={c.volume} /> : AUSENTE}</td>
-      <td className={classe}>{c.custo ? <ValorContabil valor={c.custo.efetivo} /> : AUSENTE}</td>
-      <td className={num}>{c.custo ? fmtCustoPct(c.custo.pct) : '—'}</td>
+      <td className={`${classe} ${PAD} ${sep}`}>{c.volume !== null ? <ValorContabil valor={c.volume} /> : AUSENTE}</td>
+      <td className={`${classe} ${PAD}`}>{c.custo ? <ValorContabil valor={c.custo.efetivo} /> : AUSENTE}</td>
+      <td className={`${num} ${PAD}`}>{c.custo ? fmtCustoPct(c.custo.pct) : '—'}</td>
     </>
   )
 }
@@ -92,14 +97,14 @@ export default function AntecipacoesComparativoConta({ leituras }: { leituras: L
                     "última linha" não é preciso. */}
                 <th rowSpan={2} scope="col" className={`${TH_ESQ} ${PRIMEIRA} bg-white align-bottom`}>Conta</th>
                 {comp.anos.map((a, i) => (
-                  <th key={a.ano} colSpan={3} scope="colgroup" className={`${TH_DIR} ${sep(i)}`}>{a.rotulo}</th>
+                  <th key={a.ano} colSpan={3} scope="colgroup" className={`${TH_DIR} ${PAD} ${sep(i)}`}>{a.rotulo}</th>
                 ))}
               </tr>
               <tr>
                 {comp.anos.flatMap((a, i) => [
-                  <th key={`${a.ano}-volume`} scope="col" className={`${TH_DIR} ${sep(i)}`}>Antecipado</th>,
-                  <th key={`${a.ano}-custo`} scope="col" className={TH_DIR}>Custo Efetivo</th>,
-                  <th key={`${a.ano}-pct`} scope="col" className={TH_DIR}>%</th>,
+                  <th key={`${a.ano}-volume`} scope="col" className={`${TH_DIR} ${PAD} ${sep(i)}`}>Antecipado</th>,
+                  <th key={`${a.ano}-custo`} scope="col" className={`${TH_DIR} ${PAD}`}>Custo Efetivo</th>,
+                  <th key={`${a.ano}-pct`} scope="col" className={`${TH_DIR} ${PAD}`}>%</th>,
                 ])}
               </tr>
             </thead>

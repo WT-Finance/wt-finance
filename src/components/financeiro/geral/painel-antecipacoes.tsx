@@ -138,7 +138,7 @@ export default function PainelAntecipacoes({ hoje, onFechar }: Props) {
       <ModalCentral
         titulo="Registro de Antecipações"
         subtitulo="Registro do histórico de antecipações realizadas"
-        largura="2xl"
+        largura="4xl"
         onClose={onFechar}
       >
         {mensagem && <FaixaMensagem tipo="sucesso" texto={mensagem} onFechar={() => setMensagem(null)} />}
@@ -178,9 +178,9 @@ export default function PainelAntecipacoes({ hoje, onFechar }: Props) {
                     <tr>
                       <ThOrdenavel rotulo="Data" col="data" colAtiva={colAtiva} dir={dirOrd} onOrdenar={ordenarPor} className="text-left border-b border-zinc-100" />
                       <ThOrdenavel rotulo="Conta" col="conta" colAtiva={colAtiva} dir={dirOrd} onOrdenar={ordenarPor} className="text-left border-b border-zinc-100" />
-                      <ThOrdenavel rotulo="Antecipado" col="antecipado" colAtiva={colAtiva} dir={dirOrd} onOrdenar={ordenarPor} className="text-right border-b border-zinc-100" />
-                      <ThOrdenavel rotulo="Líquido" col="liquido" colAtiva={colAtiva} dir={dirOrd} onOrdenar={ordenarPor} className="text-right border-b border-zinc-100" />
-                      <ThOrdenavel rotulo="Desconto (custo)" col="desconto" colAtiva={colAtiva} dir={dirOrd} onOrdenar={ordenarPor} className="text-right border-b border-zinc-100" />
+                      <ThOrdenavel rotulo="Antecipado" col="antecipado" colAtiva={colAtiva} dir={dirOrd} onOrdenar={ordenarPor} className="text-right px-5! border-b border-zinc-100" />
+                      <ThOrdenavel rotulo="Líquido" col="liquido" colAtiva={colAtiva} dir={dirOrd} onOrdenar={ordenarPor} className="text-right px-5! border-b border-zinc-100" />
+                      <ThOrdenavel rotulo="Taxa" col="desconto" colAtiva={colAtiva} dir={dirOrd} onOrdenar={ordenarPor} className="text-right px-5! border-b border-zinc-100" />
                       <th scope="col" className="border-b border-zinc-100"><span className="sr-only">Ações</span></th>
                     </tr>
                   </thead>
@@ -192,9 +192,9 @@ export default function PainelAntecipacoes({ hoje, onFechar }: Props) {
                       <tr key={r.id}>
                         <td className="px-2 py-2 text-xs text-zinc-700 border-b border-zinc-50 tabular-nums">{fmtDate(r.data)}</td>
                         <td className="px-2 py-2 text-xs text-zinc-700 border-b border-zinc-50 truncate" title={r.conta}>{r.conta}</td>
-                        <td className="px-2 py-2 text-xs text-zinc-700 border-b border-zinc-50"><ValorContabil valor={r.valor_antecipado} /></td>
-                        <td className="px-2 py-2 text-xs text-zinc-700 border-b border-zinc-50"><ValorContabil valor={r.valor_liquido} /></td>
-                        <td className="px-2 py-2 text-xs text-zinc-700 border-b border-zinc-50"><ValorContabil valor={r.desconto} /></td>
+                        <td className="px-5 py-2 text-xs text-zinc-700 border-b border-zinc-50"><ValorContabil valor={r.valor_antecipado} /></td>
+                        <td className="px-5 py-2 text-xs text-zinc-700 border-b border-zinc-50"><ValorContabil valor={r.valor_liquido} /></td>
+                        <td className="px-5 py-2 text-xs text-zinc-700 border-b border-zinc-50"><ValorContabil valor={r.desconto} /></td>
                         <td className="px-1 py-1 border-b border-zinc-50">
                           <div className="flex justify-end gap-0.5">
                             <Button variant="icone" aria-label={`Editar antecipação de ${fmtDate(r.data)} (${r.conta})`} title="Editar" onClick={() => setEdicao(r)}>

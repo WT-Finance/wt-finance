@@ -25,6 +25,8 @@ interface Props {
 // Tela de plataforma é NEUTRA (ui-design-system): nada de `--brand`; foco via `foco-neutro`.
 const CAMPO = 'foco-neutro w-full rounded border border-zinc-200 bg-white px-1 py-0.5 text-xs disabled:opacity-50'
 const CEL = 'px-2 py-1 border-b border-zinc-300'
+/** Colunas de valor: mesmo `px-5` da lista (painel), para os campos ficarem alinhados com os valores abaixo. */
+const CEL_VALOR = 'px-5 py-1 border-b border-zinc-300'
 
 export default function AntecipacoesLinhaNova({ contas, hoje, onCancelar, onSalvo }: Props) {
   const [contaId, setContaId] = useState('')
@@ -97,7 +99,7 @@ export default function AntecipacoesLinhaNova({ contas, hoje, onCancelar, onSalv
             {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
         </td>
-        <td className={CEL}>
+        <td className={CEL_VALOR}>
           <input
             type="text"
             inputMode="numeric"
@@ -110,7 +112,7 @@ export default function AntecipacoesLinhaNova({ contas, hoje, onCancelar, onSalv
             className={`${CAMPO} text-right tabular-nums`}
           />
         </td>
-        <td className={CEL}>
+        <td className={CEL_VALOR}>
           <input
             type="text"
             inputMode="numeric"
@@ -123,7 +125,7 @@ export default function AntecipacoesLinhaNova({ contas, hoje, onCancelar, onSalv
             className={`${CAMPO} text-right tabular-nums`}
           />
         </td>
-        <td className={`${CEL} text-right text-xs tabular-nums text-zinc-500`}>
+        <td className={`${CEL_VALOR} text-right text-xs tabular-nums text-zinc-500`}>
           {descontoFormatado(antecipado, liquido) ?? '—'}
         </td>
         <td className={CEL}>
