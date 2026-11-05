@@ -227,7 +227,8 @@ Decisões do Yan (briefing `docs/briefings/briefing-v6-5-0-financeiro-geral-v2.m
 - **Recebíveis:** funil em aberto ⊃ vencido ⊃ inadimplente (a marcação continua sendo a definição); Δ contra a
   última foto ANTES da semana da posição; faixas de atraso só sobre os inadimplentes (com "a vencer" quando a
   marcação antecede o vencimento); 10 maiores por devedor; evolução semanal (última foto de cada semana; semana
-  sem carga é lacuna).
+  sem carga aparece em cinza repetindo o valor da última carga — refino do Yan em 05/11; o dado da RPC continua
+  sem a semana, e o tooltip avisa "sem carga").
 - **Prejuízos:** só bruto (reversão e líquido saem); por pessoa = `fato_fluxo.pessoa`, uma tabela somando os
   anos selecionados; por setor fica em construção até haver fonte. Nomes de pessoa podem aparecer (decisão do
   Yan no GATE 0).

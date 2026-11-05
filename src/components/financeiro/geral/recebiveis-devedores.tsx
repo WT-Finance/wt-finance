@@ -16,8 +16,8 @@ import { TD, TD_NUM, TD_TOTAL, TH_DIR, TH_ESQ } from './comum'
 // um "Ver mais" que abre o drawer com a lista completa. A tabela é a mesma nos dois lugares; só muda o corte.
 // Todo número vem de `tabelaDevedores` (módulo puro); aqui só se desenha. O estado de abrir/fechar é local.
 
-/** Posições exibidas no card; o resto fica no drawer. */
-const LIMITE_CARD = 4
+/** Posições exibidas no card quando a seção não informa; o resto fica no drawer. */
+const POSICOES_PADRAO = 4
 
 const AJUDA =
   'Por devedor, só os títulos marcados como inadimplentes, do maior valor para o menor. O maior atraso é o do ' +
@@ -78,13 +78,16 @@ function TabelaDosDevedores({ tabela }: { tabela: TabelaDevedores }) {
 }
 
 export default function CardMaioresInadimplentes({
-  devedores, inadimplente,
+  devedores, inadimplente, posicoes,
 }: {
   devedores: Recebiveis['devedores']
   inadimplente: Pick<Recebiveis['inadimplente'], 'n' | 'valor'>
+  /** Posições mostradas no card: o nº de linhas da tabela de faixas ao lado (a seção calcula), para os dois
+   *  cards casarem linha a linha. Sem a prop, `POSICOES_PADRAO`. */
+  posicoes?: number
 }) {
   const [aberto, setAberto] = useState(false)
-  const card = tabelaDevedores(devedores, inadimplente, LIMITE_CARD)
+  const card = tabelaDevedores(devedores, inadimplente, posicoes ?? POSICOES_PADRAO)
   // A lista completa só é montada com o drawer aberto.
   const completa = aberto ? tabelaDevedores(devedores, inadimplente) : null
 

@@ -193,6 +193,12 @@ a página com **dado real** (M3 em diante) não foi vista por ninguém. Ver §6.
   cards da linha 2 em colunas e alturas iguais; "Faixas em Atraso"; sem subtítulos; "Evolução da Inadimplência". A
   ajuda da seção foi redistribuída nos "?" dos cards (sem a frase da variação, que saiu). Nota: o inv. 11 previa a
   data de carga na seção; o Yan preferiu tirá-la — fica só o carimbo do cabeçalho.
+- **Segunda rodada de Recebíveis** (05/11): "Maiores Inadimplentes" mostra tantas posições quanto as linhas de faixa
+  (5 com "A vencer", 4 sem — decisão do orquestrador para os dois cards casarem), com o "Ver mais" no espaço que
+  sobra; o aviso do inv. 3 virou "!" âmbar com tooltip ao lado de "Inadimplência" (slot `alerta` novo no `Tile`);
+  na evolução, **semana sem carga deixa de ser lacuna**: ponto cinza repetindo o valor da última carga (decisão do
+  Yan; o módulo separa o valor real — null — do exibido, e o tooltip diz "sem carga · repete DD/MM"); legenda
+  horizontal com os 3 tipos de ponto; semana de hoje sem carga conta como "sem carga", não "em andamento".
 - **Migration 0302** (`a24edcec`, APLICADA em 05/11, aditiva): `get_geral_recebiveis.devedores` passa de
   `{top[≤10], demais}` a **lista completa** (o drawer precisa de todos). Seguro para o front no ar (a v6.4.0 não lê a
   chave). Ensaio revertido: 22 verificações OK; `revisor-db`: aprovada com ressalvas (0 CRÍTICO/ALTO; a destrutiva tinha

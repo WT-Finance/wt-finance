@@ -204,12 +204,17 @@ export interface PontoSemana {
   rotulo: string
   /** A foto que representa a semana; `null` na lacuna. */
   dataPosicao: string | null
-  /** `null` = semana SEM carga: lacuna, nunca zero. */
+  /** O valor REAL: `null` = semana SEM carga (lacuna), nunca zero. É o único campo que é dado. */
   inadimplenteValor: number | null
   inadimplenteN: number | null
   /** Para o tooltip ("vencido no tooltip", briefing §2.1). */
   vencidoValor: number | null
-  /** A semana de `hoje`: a foto dela (se houver) ainda pode mudar. */
+  /** O valor DESENHADO: o real; na lacuna, o da última semana com carga anterior (carry-forward, para a
+   *  linha não quebrar); `null` na lacuna sem carga anterior. NUNCA é dado — só desenho. */
+  valorExibido: number | null
+  /** Só na lacuna: a `data_posicao` da carga cujo valor está sendo repetido ("repete DD/MM"). */
+  repeteDataPosicao: string | null
+  /** A semana de `hoje` COM carga: a foto dela ainda pode mudar. Semana de hoje sem carga é lacuna. */
   parcial: boolean
   lacuna: boolean
 }
@@ -222,7 +227,8 @@ export function rotuloIntervaloSemana(semana: string): string {
 /**
  * Um ponto por semana (segunda a domingo), da semana de `historico_desde` até a semana de `hoje`.
  * `hoje` é a string 'AAAA-MM-DD' do SERVIDOR (fuso de SP): a aritmética é de calendário puro em UTC,
- * nunca o relógio do cliente. Semana sem item em `evolucao_semanal` ⇒ valores `null` (LACUNA). Sem
+ * nunca o relógio do cliente. Semana sem item em `evolucao_semanal` ⇒ valores reais `null` (LACUNA), mas
+ * `valorExibido` repete o da última carga anterior (a linha do gráfico fica contínua; o real segue null). Sem
  * histórico ⇒ `[]` (a seção diz que ainda não há foto; não desenha zero).
  *
  * Toda semana PRESENTE em `evolucao_semanal` aparece na saída, mesmo que caia fora do intervalo
@@ -245,9 +251,12 @@ export function pontosSemanais(
   const semanas = Math.round(diasEntre(inicio, fim) / 7)
   if (!Number.isFinite(semanas) || semanas < 0) return []
 
+  // Carry-forward: a última carga vista (semanas em ordem). Só alimenta `valorExibido`/`repeteDataPosicao`.
+  let ultima: { valor: number; dataPosicao: string } | null = null
   return Array.from({ length: semanas + 1 }, (_, i): PontoSemana => {
     const semana = somarDias(inicio, i * 7)
     const e = porSemana.get(semana)
+    if (e !== undefined) ultima = { valor: e.inadimplente_valor, dataPosicao: e.data_posicao }
     return {
       semana,
       rotulo: diaMes(semana),
@@ -255,7 +264,9 @@ export function pontosSemanais(
       inadimplenteValor: e?.inadimplente_valor ?? null,
       inadimplenteN: e?.inadimplente_n ?? null,
       vencidoValor: e?.vencido_valor ?? null,
-      parcial: semana === semanaDeHoje,
+      valorExibido: e !== undefined ? e.inadimplente_valor : (ultima?.valor ?? null),
+      repeteDataPosicao: e === undefined ? (ultima?.dataPosicao ?? null) : null,
+      parcial: semana === semanaDeHoje && e !== undefined,
       lacuna: e === undefined,
     }
   })

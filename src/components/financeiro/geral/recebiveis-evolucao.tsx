@@ -14,16 +14,41 @@ import { rotuloIntervaloSemana, type PontoSemana } from '@/lib/financeiro-geral/
 
 // Evolução da Inadimplência (v6.5.0) — UMA linha (o valor inadimplente na última carga de cada
 // semana, segunda a domingo). Decisões do Yan (briefing §2.1):
-//  • semana sem carga é LACUNA — `connectNulls` falso: a linha quebra, nunca desce a zero (zero afirmaria
-//    "não havia inadimplência");
-//  • a semana corrente é PARCIAL (a última foto dela ainda pode mudar): ponto vazado e `*` no eixo;
+//  • semana sem carga (refino 05/11): a linha é contínua — o ponto é CINZA e repete o valor da última carga
+//    anterior (`valorExibido`; o real `inadimplenteValor` segue null). Nunca zero (zero afirmaria "não havia
+//    inadimplência"); o tooltip avisa "sem carga na semana · repete DD/MM";
+//  • a semana corrente COM carga é PARCIAL (a última foto dela ainda pode mudar): ponto vazado; sem carga, é cinza;
 //  • o VENCIDO e o nº de títulos vão no tooltip, não numa segunda linha;
 //  • com UMA carga só (o caso do primeiro dia) o gráfico continua legível: o ponto é desenhado (sem ele
 //    seriam zero segmentos de linha e o gráfico ficaria em branco) e a nota explica.
 // Só o dado muda entre mockup e produção: os pontos vêm de `pontosSemanais` (módulo puro).
 
 const COR = 'var(--action-primary)'
+/** Semana sem carga: ponto cinza (o valor repetido da anterior — desenho, não dado). */
+const COR_SEM_CARGA = 'var(--text-muted)'
 const ALTURA = 220
+
+/** Legenda horizontal dos 3 tipos de ponto, desenhados como no gráfico (o primitivo `ChartLegend` não tem o
+ *  marcador vazado, por isso a legenda é local, com os mesmos tokens). */
+function LegendaDosPontos() {
+  const itens = [
+    { rotulo: 'Semana com carga', cor: COR, fill: COR },
+    { rotulo: 'Semana sem carga (repete a anterior)', cor: COR_SEM_CARGA, fill: COR_SEM_CARGA },
+    { rotulo: 'Semana em andamento', cor: COR, fill: 'var(--surface)' },
+  ]
+  return (
+    <ul className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-[var(--text-muted)]">
+      {itens.map(i => (
+        <li key={i.rotulo} className="flex items-center gap-1.5">
+          <svg width="12" height="12" className="shrink-0" aria-hidden="true">
+            <circle cx="6" cy="6" r="4" fill={i.fill} stroke={i.cor} strokeWidth={2} />
+          </svg>
+          {i.rotulo}
+        </li>
+      ))}
+    </ul>
+  )
+}
 /** Até este nº de semanas, todo rótulo do eixo aparece; acima, o Recharts omite os que se sobrepõem. */
 const SEMANAS_COM_TODOS_OS_ROTULOS = 12
 
@@ -51,7 +76,8 @@ export default function EvolucaoInadimplente({
       rotulo="Evolução da Inadimplência"
       texto={
         'Usa a última carga de cada semana (segunda a domingo)' +
-        (desde ? ` e começa na primeira carga desta base (${desde}).` : ' e começa na primeira carga desta base.')
+        (desde ? ` e começa na primeira carga desta base (${desde}).` : ' e começa na primeira carga desta base.') +
+        ' Semana sem carga repete o valor da semana anterior com carga (ponto cinza) — não é zero nem dado novo.'
       }
     />
   )
@@ -67,11 +93,10 @@ export default function EvolucaoInadimplente({
     )
   }
 
-  const dados: LinhaGrafico[] = pontos.map(p => ({ ...p, rotuloEixo: p.parcial && !p.lacuna ? `${p.rotulo}*` : p.rotulo }))
+  const dados: LinhaGrafico[] = pontos.map(p => ({ ...p, rotuloEixo: p.rotulo }))
   const comCarga = pontos.filter(p => !p.lacuna)
-  const temParcial = pontos.some(p => p.parcial && !p.lacuna)
   const temLacuna = pontos.some(p => p.lacuna)
-  const escala = escalaDoEixo(comCarga.map(p => p.inadimplenteValor ?? 0))
+  const escala = escalaDoEixo(pontos.map(p => p.valorExibido ?? 0))
   const primeiro = pontos[0]
   const ultimo = pontos[pontos.length - 1]
 
@@ -82,7 +107,7 @@ export default function EvolucaoInadimplente({
         role="img"
         aria-label={
           `Inadimplente na última carga de cada semana, de ${rotuloIntervaloSemana(primeiro.semana)} a ${rotuloIntervaloSemana(ultimo.semana)}` +
-          (temLacuna ? '; semanas sem carga ficam em branco' : '')
+          (temLacuna ? '; semanas sem carga repetem o valor da última carga anterior' : '')
         }
       >
         <ResponsiveContainer width="100%" height={ALTURA}>
@@ -122,7 +147,12 @@ export default function EvolucaoInadimplente({
                     payload={entradas}
                     labelFormatter={() => rotulo}
                     formatter={(_v, nome) => {
-                      if (ponto.lacuna) return ['sem carga na semana', nome]
+                      if (ponto.lacuna) {
+                        return [
+                          'sem carga na semana' + (ponto.repeteDataPosicao ? ` · repete ${diaMes(ponto.repeteDataPosicao)}` : ''),
+                          nome,
+                        ]
+                      }
                       if (nome === 'Títulos') return [String(ponto.inadimplenteN ?? 0), nome]
                       if (nome === 'Vencido') return [fmtBRL2(ponto.vencidoValor ?? 0), nome]
                       return [fmtBRL2(ponto.inadimplenteValor ?? 0), nome]
@@ -133,26 +163,39 @@ export default function EvolucaoInadimplente({
             />
             <Line
               type="monotone"
-              dataKey="inadimplenteValor"
+              dataKey="valorExibido"
               name="Inadimplente"
               stroke={COR}
               strokeWidth={strokeWidths.line}
               connectNulls={false}
               isAnimationActive={false}
-              activeDot={{ r: 5, fill: COR }}
-              // Um círculo por ponto COM carga (lacuna não tem ponto). Parcial = vazado. É o dot explícito
-              // que mantém legível a semana isolada entre duas lacunas e o caso de uma carga só.
+              activeDot={p => {
+                const ponto = p.payload as LinhaGrafico | undefined
+                return (
+                  <circle
+                    key={`ativo-${ponto?.semana}`}
+                    cx={p.cx}
+                    cy={p.cy}
+                    r={5}
+                    fill={ponto?.lacuna ? COR_SEM_CARGA : COR}
+                  />
+                )
+              }}
+              // Um círculo por ponto COM valor exibido. Com carga = cheio na cor da linha; sem carga = cheio
+              // cinza (repete a anterior); em andamento = vazado. É o dot explícito que mantém legível a
+              // semana isolada e o caso de uma carga só.
               dot={p => {
                 const ponto = p.payload as LinhaGrafico | undefined
-                if (!ponto || ponto.inadimplenteValor === null || p.cx == null || p.cy == null) return null
+                if (!ponto || ponto.valorExibido === null || p.cx == null || p.cy == null) return null
+                const cor = ponto.lacuna ? COR_SEM_CARGA : COR
                 return (
                   <circle
                     key={`ponto-${ponto.semana}`}
                     cx={p.cx}
                     cy={p.cy}
                     r={4}
-                    fill={ponto.parcial ? 'var(--surface)' : COR}
-                    stroke={COR}
+                    fill={ponto.parcial ? 'var(--surface)' : cor}
+                    stroke={cor}
                     strokeWidth={2}
                   />
                 )
@@ -162,16 +205,13 @@ export default function EvolucaoInadimplente({
         </ResponsiveContainer>
       </div>
 
-      <div className="mt-2 space-y-0.5 text-xs text-[var(--text-subtle)]">
-        {comCarga.length === 1 && (
-          <p>
-            Só há uma carga até agora{comCarga[0].dataPosicao ? ` (${diaMes(comCarga[0].dataPosicao)})` : ''}: a
-            evolução aparece como um ponto e a linha se forma a partir da próxima semana com carga.
-          </p>
-        )}
-        {temParcial && <p>* Semana em andamento (ponto vazado): a última carga dela ainda pode mudar.</p>}
-        {temLacuna && <p>Semana sem carga fica em branco e a linha se interrompe: não é zero.</p>}
-      </div>
+      <LegendaDosPontos />
+      {comCarga.length === 1 && (
+        <p className="mt-1 text-center text-xs text-[var(--text-subtle)]">
+          Só há uma carga até agora{comCarga[0].dataPosicao ? ` (${diaMes(comCarga[0].dataPosicao)})` : ''}: a
+          evolução aparece como um ponto e a linha se forma a partir da próxima semana com carga.
+        </p>
+      )}
     </Card>
   )
 }

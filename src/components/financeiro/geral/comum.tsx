@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import { TriangleAlert } from 'lucide-react'
+import Tooltip from '@/components/ui/tooltip'
 import ErroCarregamento from '@/components/shared/erro-carregamento'
 import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import Badge from '@/components/ui/badge'
@@ -57,14 +59,39 @@ interface TileProps {
   estado?: 'ok' | 'vazio' | 'erro'
   /** Explicação de `vazio`/`erro`. */
   mensagem?: string | null
+  /** Alerta opcional ao lado do rótulo: ícone "!" âmbar com o texto num balão (hover/foco/toque). */
+  alerta?: { rotulo: string; texto: string } | null
+}
+
+/** Ícone de aviso em âmbar (token `--warning*`) com balão — mesmo padrão de acessibilidade do
+ *  `GatilhoAjuda` (botão com rótulo, balão por hover e foco), mas com outro ícone e cor. */
+function AlertaDoTile({ rotulo, texto }: { rotulo: string; texto: string }) {
+  return (
+    <Tooltip conteudo={texto} className="z-30 w-64 !whitespace-normal font-normal normal-case tracking-normal leading-snug">
+      <button
+        type="button"
+        aria-label={`${rotulo}: ${texto}`}
+        className="foco-neutro inline-flex h-4 w-4 items-center justify-center rounded-full text-warning-deep"
+      >
+        <TriangleAlert size={14} aria-hidden="true" />
+      </button>
+    </Tooltip>
+  )
 }
 
 /** Tile local (no molde dos tiles do Marketing), e não `KpiCard`: o `KpiCard` pertence ao domínio de
  *  Performance e desenha seta ↑/↓, que numa despesa (negativa, no sinal da DRE) reforçaria a leitura errada. */
-export function Tile({ rotulo, valor, escopo, apoio = [], variacao, referencia, estado = 'ok', mensagem }: TileProps) {
+export function Tile({ rotulo, valor, escopo, apoio = [], variacao, referencia, estado = 'ok', mensagem, alerta }: TileProps) {
   return (
     <div className="flex h-full min-w-0 flex-col rounded-xl bg-white px-5 py-4 shadow-sm">
-      <p className={CLASSE_ROTULO}>{rotulo}</p>
+      {alerta ? (
+        <div className="flex items-center gap-1.5">
+          <p className={CLASSE_ROTULO}>{rotulo}</p>
+          <AlertaDoTile {...alerta} />
+        </div>
+      ) : (
+        <p className={CLASSE_ROTULO}>{rotulo}</p>
+      )}
       {escopo && <p className="mt-0.5 text-2xs text-[var(--text-subtle)]">{escopo}</p>}
 
       {estado === 'erro' && (

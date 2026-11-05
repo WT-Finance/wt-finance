@@ -265,14 +265,52 @@ describe('pontosSemanais — segunda a domingo, lacuna é null, nunca zero', () 
     expect(p.some(x => x.lacuna && x.inadimplenteValor === 0)).toBe(false)
   })
 
-  it('a semana de hoje é a ÚNICA marcada parcial — com e sem foto nela', () => {
+  it('carry-forward: semana sem carga repete o valor EXIBIDO da última carga; o real segue null (nunca zero)', () => {
+    const r = recebiveis({
+      historico_desde: '2026-09-14',
+      evolucao_semanal: [
+        item('2026-09-14', '2026-09-17', 100),
+        // 21/09 e 28/09: duas semanas seguidas sem carga
+        item('2026-10-05', '2026-10-08', 300),
+      ],
+    })
+    const p = pontosSemanais(r, '2026-10-08')
+    expect(p.map(x => x.semana)).toEqual(['2026-09-14', '2026-09-21', '2026-09-28', '2026-10-05'])
+    expect(p.map(x => x.inadimplenteValor)).toEqual([100, null, null, 300])
+    expect(p.map(x => x.valorExibido)).toEqual([100, 100, 100, 300])
+    expect(p.map(x => x.lacuna)).toEqual([false, true, true, false])
+    // as duas lacunas repetem a MESMA carga (a de 17/09), não a anterior encadeada
+    expect(p.map(x => x.repeteDataPosicao)).toEqual([null, '2026-09-17', '2026-09-17', null])
+    expect(p.some(x => x.valorExibido === 0)).toBe(false)
+  })
+
+  it('a primeira semana tem carga (valorExibido = o real); sem carga anterior, nada é inventado', () => {
+    const r = recebiveis({
+      historico_desde: '2026-09-17',
+      evolucao_semanal: [item('2026-09-14', '2026-09-17', 100)],
+    })
+    const p = pontosSemanais(r, '2026-09-17')
+    expect(p[0]).toMatchObject({ lacuna: false, valorExibido: 100, repeteDataPosicao: null })
+    // histórico declarado ANTES da primeira carga: a semana inicial sem carga não tem o que repetir
+    const antes = pontosSemanais(recebiveis({
+      historico_desde: '2026-09-07',
+      evolucao_semanal: [item('2026-09-14', '2026-09-17', 100)],
+    }), '2026-09-17')
+    expect(antes[0]).toMatchObject({ lacuna: true, inadimplenteValor: null, valorExibido: null, repeteDataPosicao: null })
+    expect(antes[1].valorExibido).toBe(100)
+  })
+
+  it('só a semana de hoje COM carga é parcial; sem carga é lacuna (cinza, repetindo a anterior), não parcial', () => {
     const r = recebiveis({
       historico_desde: '2026-10-15',
       evolucao_semanal: [item('2026-10-12', '2026-10-15', 199767.74)],
     })
     const sem = pontosSemanais(r, '2026-10-20') // terça de 19/10, ainda sem carga na semana
-    expect(sem.map(x => x.parcial)).toEqual([false, true])
-    expect(sem[1]).toMatchObject({ semana: '2026-10-19', lacuna: true })
+    expect(sem.map(x => x.parcial)).toEqual([false, false])
+    expect(sem[1]).toMatchObject({
+      semana: '2026-10-19', lacuna: true, parcial: false, inadimplenteValor: null,
+      valorExibido: 199767.74, repeteDataPosicao: '2026-10-15',
+    })
 
     const com = pontosSemanais(r, '2026-10-15') // hoje cai na semana que já tem foto
     expect(com).toHaveLength(1)
@@ -283,7 +321,9 @@ describe('pontosSemanais — segunda a domingo, lacuna é null, nunca zero', () 
     const r = recebiveis({ historico_desde: '2026-10-15', evolucao_semanal: [item('2026-10-12', '2026-10-15', 1)] })
     const p = pontosSemanais(r, '2026-10-26')
     expect(p.map(x => x.semana)).toEqual(['2026-10-12', '2026-10-19', '2026-10-26'])
-    expect(p.map(x => x.parcial)).toEqual([false, false, true])
+    // hoje (26/10) ainda sem foto: lacuna, não parcial
+    expect(p.map(x => x.parcial)).toEqual([false, false, false])
+    expect(p.map(x => x.valorExibido)).toEqual([1, 1, 1])
     // domingo ainda é a semana anterior
     expect(pontosSemanais(r, '2026-10-25').at(-1)?.semana).toBe('2026-10-19')
   })

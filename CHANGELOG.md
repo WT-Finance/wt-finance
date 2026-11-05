@@ -38,7 +38,10 @@ DEPOIS do deploy). Sem ADR novo; Emenda 1 do ADR-0183.
 - **Refinos de Recebíveis e inadimplência** (Yan, antes do merge): sem a linha de metadados da seção; os 3 cards
   só com valor e nº de títulos; "Maiores Inadimplentes" com 4 linhas + total + "Ver mais" (drawer com a lista
   completa), do tamanho de "Faixas em Atraso"; sem subtítulos; "Evolução da Inadimplência". A ajuda da seção foi
-  para os "?" dos cards. **Migration 0302 APLICADA** (aditiva): `devedores` passa a ser a lista completa.
+  para os "?" dos cards. Segunda rodada: o card de devedores mostra tantas posições quanto as linhas de faixa (5
+  com "A vencer", 4 sem); o aviso de inadimplente ainda não vencido vira "!" âmbar com tooltip no card Inadimplência;
+  na evolução, semana sem carga ganha ponto cinza repetindo o valor da última carga (linha contínua; tooltip avisa)
+  e a legenda mostra os 3 tipos de ponto. **Migration 0302 APLICADA** (aditiva): `devedores` passa a ser a lista completa.
 - **CLI do Supabase fixado em `supabase@2.122.1`** no wrapper do gate (`scripts/db-gate/migrate.mjs`): a 3.0.0
   (major, resolvida pelo `npx` sem versão) recusa o `config.toml` e exige consentimento em produção por agente.
   Decisão do Yan; subir para a v3 é patch próprio.

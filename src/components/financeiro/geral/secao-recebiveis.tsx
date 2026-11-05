@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertTriangle, FileSpreadsheet } from 'lucide-react'
+import { FileSpreadsheet } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import CabecalhoCard from '@/components/shared/cabecalho-card'
@@ -24,11 +24,12 @@ import EvolucaoInadimplente from './recebiveis-evolucao'
 // "?" de cada card (`GatilhoAjuda` no `CabecalhoCard`).
 // Decisões do Yan (briefing §1/§2.1 + refinos de 05/11):
 //  • Linha 1: Recebíveis em aberto | vencidos | Inadimplência — SÓ o valor e o nº de títulos.
-//  • Linha 2: Faixas em Atraso | Maiores Inadimplentes (`recebiveis-devedores.tsx`: 4 posições + total +
-//    "Ver mais" no drawer) — AMBAS só sobre os títulos marcados como inadimplentes, em colunas e altura iguais.
+//  • Linha 2: Faixas em Atraso | Maiores Inadimplentes (`recebiveis-devedores.tsx`: tantas posições quanto
+//    linhas de faixa + total + "Ver mais" no drawer) — AMBAS só sobre os títulos marcados como
+//    inadimplentes, em colunas e altura iguais.
 //  • Linha 3: Evolução da Inadimplência (`recebiveis-evolucao.tsx`).
 //  • Inadimplência = SÓ a marcação `Conferido = Inadimplente`. Marcado e ainda não vencido continua contando e
-//    gera o aviso (inv. 3). Nada some (inv. 4): "(sem nome)" e semana sem carga aparecem.
+//    gera o alerta "!" ao lado do rótulo do card (inv. 3). Nada some (inv. 4): "(sem nome)" e semana sem carga aparecem.
 // Todo cálculo (funil, faixas, devedores, semanas) vem de `lib/financeiro-geral/recebiveis.ts`; aqui só se desenha.
 
 const AJUDA_FAIXAS =
@@ -76,12 +77,15 @@ function Corpo({ dados, hoje }: { dados: Recebiveis; hoje: string }) {
 
   return (
     <div className="space-y-4">
-      {aviso && <AvisoAVencer n={aviso.n} valor={aviso.valor} />}
-
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <Tile rotulo="Recebíveis em aberto" valor={fmtBRL2(funil.emAberto.valor)} apoio={[titulos(funil.emAberto.n)]} />
         <Tile rotulo="Recebíveis vencidos" valor={fmtBRL2(funil.vencido.valor)} apoio={[titulos(funil.vencido.n)]} />
-        <Tile rotulo="Inadimplência" valor={fmtBRL2(funil.inadimplente.valor)} apoio={[titulos(dados.inadimplente.n)]} />
+        <Tile
+          rotulo="Inadimplência"
+          valor={fmtBRL2(funil.inadimplente.valor)}
+          apoio={[titulos(dados.inadimplente.n)]}
+          alerta={aviso ? { rotulo: 'Aviso da Inadimplência', texto: textoAlertaAVencer(aviso) } : null}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
@@ -122,7 +126,12 @@ function Corpo({ dados, hoje }: { dados: Recebiveis; hoje: string }) {
           {!faixas.fecha && <AvisoNaoFecha />}
         </Card>
 
-        <CardMaioresInadimplentes devedores={dados.devedores} inadimplente={dados.inadimplente} />
+        {/* Posições no card = linhas de faixa exibidas (5 com "A vencer", 4 sem): os dois cards casam. */}
+        <CardMaioresInadimplentes
+          devedores={dados.devedores}
+          inadimplente={dados.inadimplente}
+          posicoes={faixas.linhas.length}
+        />
       </div>
 
       <EvolucaoInadimplente pontos={pontos} desde={rotuloHistoricoDesde(dados.historico_desde)} />
@@ -130,20 +139,15 @@ function Corpo({ dados, hoje }: { dados: Recebiveis; hoje: string }) {
   )
 }
 
-// ── Avisos ─────────────────────────────────────────────────────────────────────────────────────
+// ── Alerta ─────────────────────────────────────────────────────────────────────────────────────
 
 /** Inv. 3: título marcado como inadimplente que ainda não venceu. Continua contando (a marcação é manual);
- *  o aviso não some e não força o funil. */
-function AvisoAVencer({ n, valor }: { n: number; valor: number }) {
+ *  o alerta (ícone ao lado do rótulo "Inadimplência") não some e não força o funil. */
+function textoAlertaAVencer({ n, valor }: { n: number; valor: number }): string {
   return (
-    <div role="note" className="flex items-start gap-2 rounded-lg bg-warning-bg px-4 py-3 text-[13px] text-warning-deep">
-      <AlertTriangle size={15} aria-hidden="true" className="mt-0.5 shrink-0" />
-      <p>
-        {plural(n, 'título marcado como inadimplente ainda não venceu', 'títulos marcados como inadimplentes ainda não venceram')}{' '}
-        ({fmtBRL2(valor)}). A marcação é manual: {n === 1 ? 'ele continua' : 'eles continuam'} contando na
-        inadimplência e {n === 1 ? 'aparece' : 'aparecem'} como &quot;A vencer&quot; nas faixas de atraso — por isso a
-        inadimplência pode passar dos vencidos.
-      </p>
-    </div>
+    `${plural(n, 'título marcado como inadimplente ainda não venceu', 'títulos marcados como inadimplentes ainda não venceram')} ` +
+    `(${fmtBRL2(valor)}). A marcação é manual: ${n === 1 ? 'ele continua' : 'eles continuam'} contando na ` +
+    `inadimplência e ${n === 1 ? 'aparece' : 'aparecem'} como "A vencer" nas faixas de atraso — por isso a ` +
+    'inadimplência pode passar dos vencidos.'
   )
 }
