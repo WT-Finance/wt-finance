@@ -5,13 +5,14 @@ import {
   ChartGrid, ChartXAxisCategoria, ChartYAxisBRL, CustomTooltip, chartMargins, strokeWidths,
 } from '@/components/charts'
 import { Card } from '@/components/ui/card'
+import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import CabecalhoCard from '@/components/shared/cabecalho-card'
 import { passoRedondo } from '@/lib/escala-grafico'
 import { fmtBRL2 } from '@/lib/fmt'
 import { diaMes } from '@/lib/financeiro-geral/numeros'
 import { rotuloIntervaloSemana, type PontoSemana } from '@/lib/financeiro-geral/recebiveis'
 
-// Evolução do inadimplente, por semana (v6.5.0) — UMA linha (o valor inadimplente na última carga de cada
+// Evolução da Inadimplência (v6.5.0) — UMA linha (o valor inadimplente na última carga de cada
 // semana, segunda a domingo). Decisões do Yan (briefing §2.1):
 //  • semana sem carga é LACUNA — `connectNulls` falso: a linha quebra, nunca desce a zero (zero afirmaria
 //    "não havia inadimplência");
@@ -45,12 +46,20 @@ export default function EvolucaoInadimplente({
   /** "histórico desde 25/09/2026" (`rotuloHistoricoDesde`); `null` = sem histórico. */
   desde: string | null
 }) {
-  const subtitulo = desde ? `Última carga de cada semana · ${desde}` : 'Última carga de cada semana'
+  const ajuda = (
+    <GatilhoAjuda
+      rotulo="Evolução da Inadimplência"
+      texto={
+        'Usa a última carga de cada semana (segunda a domingo)' +
+        (desde ? ` e começa na primeira carga desta base (${desde}).` : ' e começa na primeira carga desta base.')
+      }
+    />
+  )
 
   if (pontos.length === 0) {
     return (
       <Card>
-        <CabecalhoCard titulo="Evolução do inadimplente, por semana" subtitulo={subtitulo} />
+        <CabecalhoCard titulo="Evolução da Inadimplência" ajuda={ajuda} />
         <p className="py-8 text-center text-sm text-[var(--text-muted)]">
           A evolução começa com a primeira carga e cresce a cada semana.
         </p>
@@ -68,7 +77,7 @@ export default function EvolucaoInadimplente({
 
   return (
     <Card>
-      <CabecalhoCard titulo="Evolução do inadimplente, por semana" subtitulo={subtitulo} />
+      <CabecalhoCard titulo="Evolução da Inadimplência" ajuda={ajuda} />
       <div
         role="img"
         aria-label={

@@ -35,13 +35,16 @@ describe('fixtureGeral — estado normal (números da M0)', () => {
     expect(r.inadimplente).toMatchObject({ n: 21, valor: 199767.74 })
   })
 
-  it('18 devedores rotulados, sem nome real: 10 no top e 8 em "demais"', () => {
+  it('18 devedores rotulados, sem nome real, em valor decrescente; Σ ≡ inadimplente ao centavo', () => {
     const r = recebiveisDe(d)
-    expect(r.devedores.top).toHaveLength(10)
-    expect(r.devedores.demais.devedores).toBe(8)
-    expect(r.devedores.top.map(t => t.pessoa)).toEqual(
-      ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].map(l => `Devedor ${l}`),
+    expect(r.devedores).toHaveLength(18)
+    expect(r.devedores.map(t => t.pessoa)).toEqual(
+      'ABCDEFGHIJKLMNOPQR'.split('').map(l => `Devedor ${l}`),
     )
+    const valores = r.devedores.map(t => t.valor)
+    expect([...valores].sort((a, b) => b - a)).toEqual(valores)
+    expect(r.devedores.reduce((s, t) => s + emCentavos(t.valor), 0)).toBe(emCentavos(r.inadimplente.valor))
+    expect(r.devedores.reduce((s, t) => s + t.n, 0)).toBe(r.inadimplente.n)
   })
 
   it('completudes do inv. 2 nos recebíveis, em centavos inteiros', () => {
@@ -50,8 +53,7 @@ describe('fixtureGeral — estado normal (números da M0)', () => {
     expect(faixas.linhas.reduce((s, l) => s + emCentavos(l.valor), 0)).toBe(emCentavos(r.inadimplente.valor))
     expect(faixas.fecha).toBe(true)
     const dev = tabelaDevedores(r.devedores, r.inadimplente)
-    expect(dev.linhas.reduce((s, l) => s + emCentavos(l.valor), 0) + emCentavos(dev.demais?.valor ?? 0))
-      .toBe(emCentavos(r.inadimplente.valor))
+    expect(dev.linhas.reduce((s, l) => s + emCentavos(l.valor), 0)).toBe(emCentavos(r.inadimplente.valor))
     expect(dev.fecha).toBe(true)
   })
 
@@ -111,7 +113,7 @@ describe('fixtureGeral — estado normal (números da M0)', () => {
   it('nenhum nome real: só rótulos "Devedor X" e "Pessoa NN"', () => {
     const nomes: string[] = []
     const r = recebiveisDe(d)
-    r.devedores.top.forEach(t => nomes.push(String(t.pessoa)))
+    r.devedores.forEach(t => nomes.push(String(t.pessoa)))
     for (const x of d.prejuizos) if (x.leitura.ok) x.leitura.dados.por_pessoa.forEach(p => nomes.push(String(p.pessoa)))
     expect(nomes.length).toBeGreaterThan(100)
     expect(nomes.every(n => /^(Devedor [A-R]|Pessoa \d{2})$/.test(n))).toBe(true)
@@ -169,7 +171,7 @@ describe('fixtureGeral — estado vazio e estado erro', () => {
     expect(r.carga).toBeNull()
     expect(r.em_aberto).toEqual({ n: 0, valor: 0 })
     expect(r.inadimplente.faixas).toEqual([])
-    expect(r.devedores.top).toEqual([])
+    expect(r.devedores).toEqual([])
     expect(r.evolucao_semanal).toEqual([])
     expect(r.referencia_semana).toBeNull()
     expect(r.historico_desde).toBeNull()

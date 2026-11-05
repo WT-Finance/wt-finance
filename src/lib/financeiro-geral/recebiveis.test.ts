@@ -3,7 +3,7 @@ import { fixtureGeral } from './fixture'
 import { emCentavos, pctDe } from './numeros'
 import {
   ROTULO_SEM_NOME, avisoInadimplenteAVencer, faixasDeAtraso, funilDosRecebiveis, pontosSemanais,
-  rotuloDemaisDevedores, rotuloHistoricoDesde, rotuloIntervaloSemana, rotuloMaiorAtraso, rotuloPosicao,
+  rotuloHistoricoDesde, rotuloIntervaloSemana, rotuloMaiorAtraso, rotuloPosicao,
   semBase, tabelaDevedores,
 } from './recebiveis'
 import { recebiveisSchema, type Recebiveis } from './schemas'
@@ -16,7 +16,7 @@ function recebiveis(over: Record<string, unknown> = {}): Recebiveis {
     em_aberto: contagem(4830, 12146832.84),
     vencido: contagem(182, 1029384.12),
     inadimplente: { n: 21, valor: 199767.74, faixas: [] },
-    devedores: { top: [], demais: { devedores: 0, n: 0, valor: 0 } },
+    devedores: [],
     referencia_semana: null,
     evolucao_semanal: [],
     historico_desde: null,
@@ -159,15 +159,18 @@ describe('avisoInadimplenteAVencer — inv. 3', () => {
   })
 })
 
-describe('tabelaDevedores — top 10 por devedor + demais + total', () => {
+describe('tabelaDevedores — lista completa, limite do card, total de todos', () => {
   const dev = (valor: number, over: Record<string, unknown> = {}) =>
     ({ pessoa: 'Devedor X', n: 1, valor, maior_atraso: 30, ...over })
 
-  it('posição 1..N, % sobre o TOTAL inadimplente (não sobre o top) e maior atraso', () => {
-    const r = recebiveis({ devedores: {
-      top: [dev(50, { pessoa: 'Devedor A', n: 2, maior_atraso: 142 }), dev(25, { pessoa: 'Devedor B' })],
-      demais: { devedores: 0, n: 0, valor: 0 },
-    } })
+  /** Os 18 devedores da M0 (21 títulos, 199.767,74): 10 fixos + 8 abaixo do 10º, decrescentes. */
+  const lista18 = () => [
+    48210.6, 31875.25, 24100, 19320.4, 14780.95, 11250, 8640.3, 6420.15, 5105.8, 3890.45,
+    3800, 3700, 3550, 3400, 3250, 3100, 2950, 2423.84,
+  ].map((v, i) => dev(v, { pessoa: `Devedor ${String.fromCharCode(65 + i)}`, n: i < 2 || i === 10 ? 2 : 1 }))
+
+  it('posição 1..N, % sobre o TOTAL inadimplente e maior atraso', () => {
+    const r = recebiveis({ devedores: [dev(50, { pessoa: 'Devedor A', n: 2, maior_atraso: 142 }), dev(25, { pessoa: 'Devedor B' })] })
     const t = tabelaDevedores(r.devedores, { n: 3, valor: 100 })
     expect(t.linhas.map(l => l.posicao)).toEqual([1, 2])
     expect(t.linhas.map(l => l.pct)).toEqual([50, 25])
@@ -175,51 +178,50 @@ describe('tabelaDevedores — top 10 por devedor + demais + total', () => {
   })
 
   it('devedor null vira "(sem nome)", VISÍVEL e contado (inv. 4)', () => {
-    const r = recebiveis({ devedores: {
-      top: [dev(80), dev(20, { pessoa: null })], demais: { devedores: 0, n: 0, valor: 0 },
-    } })
+    const r = recebiveis({ devedores: [dev(80), dev(20, { pessoa: null })] })
     const t = tabelaDevedores(r.devedores, { n: 2, valor: 100 })
     expect(t.linhas[1]).toMatchObject({ devedor: ROTULO_SEM_NOME, semNome: true, valor: 20 })
     expect(ROTULO_SEM_NOME).toBe('(sem nome)')
     expect(t.fecha).toBe(true)
   })
 
-  it('"demais N devedores" só quando houver; singular no 1; total = Σ top + demais', () => {
-    const r = recebiveis({ devedores: {
-      top: [dev(60)], demais: { devedores: 8, n: 9, valor: 40 },
-    } })
-    const t = tabelaDevedores(r.devedores, { n: 10, valor: 100 })
-    expect(t.demais).toMatchObject({ devedores: 8, rotulo: 'demais 8 devedores', n: 9, valor: 40, pct: 40 })
-    expect(t.total).toEqual({ n: 10, valor: 100, pct: 100 })
-    expect(rotuloDemaisDevedores(1)).toBe('demais 1 devedor')
-    const sem = tabelaDevedores(recebiveis({ devedores: { top: [dev(100)], demais: { devedores: 0, n: 0, valor: 0 } } }).devedores, { n: 1, valor: 100 })
-    expect(sem.demais).toBeNull()
+  it('limite 4 com 18 devedores: 4 linhas, temMais, total = inadimplente (de TODOS, 100%)', () => {
+    const r = recebiveis({ devedores: lista18() })
+    const t = tabelaDevedores(r.devedores, { n: 21, valor: 199767.74 }, 4)
+    expect(t.linhas).toHaveLength(4)
+    expect(t.linhas.map(l => l.posicao)).toEqual([1, 2, 3, 4])
+    expect(t.temMais).toBe(true)
+    expect(emCentavos(t.total.valor)).toBe(19976774)
+    expect(t.total).toMatchObject({ n: 21, pct: 100 })
+    expect(t.fecha).toBe(true)
   })
 
-  it('Σ top + demais ≡ inadimplente AO CENTAVO, com os números reais da M0 (21 títulos, 18 devedores)', () => {
-    const top = [
-      48210.6, 31875.25, 24100, 19320.4, 14780.95, 11250, 8640.3, 6420.15, 5105.8, 3890.45,
-    ].map((v, i) => dev(v, { pessoa: `Devedor ${String.fromCharCode(65 + i)}`, n: i < 2 ? 2 : 1 }))
-    const r = recebiveis({ devedores: { top, demais: { devedores: 8, n: 9, valor: 26173.84 } } })
+  it('sem limite: as 18 linhas, sem temMais, mesmo total, Σ linhas ≡ inadimplente AO CENTAVO', () => {
+    const r = recebiveis({ devedores: lista18() })
     const t = tabelaDevedores(r.devedores, { n: 21, valor: 199767.74 })
-    const somaCentavos = t.linhas.reduce((s, l) => s + emCentavos(l.valor), 0) + emCentavos(t.demais?.valor ?? 0)
-    expect(somaCentavos).toBe(emCentavos(199767.74))
-    expect(emCentavos(t.total.valor)).toBe(19976774)
+    expect(t.linhas).toHaveLength(18)
+    expect(t.temMais).toBe(false)
+    expect(t.linhas.reduce((s, l) => s + emCentavos(l.valor), 0)).toBe(emCentavos(199767.74))
     expect(t.total.n).toBe(21)
     expect(t.fecha).toBe(true)
   })
 
-  it('não fecha → fecha=false; demais com devedores=0 mas valor não nulo entra no total (nada descartado)', () => {
-    const r = recebiveis({ devedores: { top: [dev(60)], demais: { devedores: 0, n: 1, valor: 39.99 } } })
+  it('limite maior ou igual ao nº de devedores: sem temMais', () => {
+    const r = recebiveis({ devedores: [dev(60), dev(40)] })
+    expect(tabelaDevedores(r.devedores, { n: 2, valor: 100 }, 2).temMais).toBe(false)
+    expect(tabelaDevedores(r.devedores, { n: 2, valor: 100 }, 4).temMais).toBe(false)
+  })
+
+  it('não fecha → fecha=false (o total é o da lista, nada descartado nem inventado)', () => {
+    const r = recebiveis({ devedores: [dev(60), dev(39.99)] })
     const t = tabelaDevedores(r.devedores, { n: 2, valor: 100 })
-    expect(t.demais).toBeNull()
     expect(emCentavos(t.total.valor)).toBe(emCentavos(99.99))
     expect(t.fecha).toBe(false)
   })
 
   it('sem inadimplente: tabela vazia, total zero, % null', () => {
-    const t = tabelaDevedores(recebiveis().devedores, { n: 0, valor: 0 })
-    expect(t).toEqual({ linhas: [], demais: null, total: { n: 0, valor: 0, pct: null }, fecha: true })
+    const t = tabelaDevedores(recebiveis().devedores, { n: 0, valor: 0 }, 4)
+    expect(t).toEqual({ linhas: [], total: { n: 0, valor: 0, pct: null }, fecha: true, temMais: false })
   })
 
   it('rótulo do maior atraso', () => {
@@ -344,7 +346,7 @@ describe('contrato: o retorno SEM BASE passa no schema e é lido como sem base',
     em_aberto: contagem(0, 0),
     vencido: contagem(0, 0),
     inadimplente: { n: 0, valor: 0, faixas: [] },
-    devedores: { top: [], demais: { devedores: 0, n: 0, valor: 0 } },
+    devedores: [],
     referencia_semana: null,
     evolucao_semanal: [],
     historico_desde: null,
@@ -355,11 +357,11 @@ describe('contrato: o retorno SEM BASE passa no schema e é lido como sem base',
     const comNulls = recebiveisSchema.parse({
       ...semCarga,
       inadimplente: { n: 0, valor: 0, faixas: null },
-      devedores: { top: null, demais: { devedores: 0, n: 0, valor: 0 } },
+      devedores: null,
       evolucao_semanal: null,
     })
     expect(comNulls.inadimplente.faixas).toEqual([])
-    expect(comNulls.devedores.top).toEqual([])
+    expect(comNulls.devedores).toEqual([])
     expect(comNulls.evolucao_semanal).toEqual([])
   })
   it('chave que SOME é drift e reprova (referencia_semana, devedores)', () => {
@@ -374,7 +376,7 @@ describe('contrato: o retorno SEM BASE passa no schema e é lido como sem base',
       ...semCarga, inadimplente: { n: 1, valor: 1, faixas: [{ faixa: '5-10', n: 1, valor: 1 }] },
     }).success).toBe(false)
     expect(recebiveisSchema.safeParse({
-      ...semCarga, devedores: { top: [{ pessoa: null, n: 1, valor: 1, maior_atraso: null }], demais: { devedores: 0, n: 0, valor: 0 } },
+      ...semCarga, devedores: [{ pessoa: null, n: 1, valor: 1, maior_atraso: null }],
     }).success).toBe(true)
   })
 })

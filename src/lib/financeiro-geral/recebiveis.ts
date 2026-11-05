@@ -8,7 +8,7 @@
 //    referência, o Δ some (nunca zero) e a tela diz que não há base.
 //  • Nada some (inv. 4): devedor sem nome vira "(sem nome)", semana sem carga é LACUNA — `null`, nunca
 //    zero (zero afirmaria "não havia inadimplência").
-//  • Completude ao centavo (inv. 2): Σ faixas ≡ inadimplente e Σ top + demais ≡ inadimplente. Cada tabela
+//  • Completude ao centavo (inv. 2): Σ faixas ≡ inadimplente e Σ devedores ≡ inadimplente. Cada tabela
 //    traz `fecha` — a conferência feita em centavos inteiros —, para a UI poder avisar se algum dia não fechar.
 
 import { fmtDate } from '@/lib/fmt'
@@ -131,7 +131,7 @@ export function avisoInadimplenteAVencer(
   return { n, valor: somarCentavos(itens.map(f => f.valor)) }
 }
 
-// ── 10 maiores inadimplentes (por devedor) ─────────────────────────────────────────────────────
+// ── Maiores inadimplentes (por devedor) ─────────────────────────────────────────────────────
 
 export const ROTULO_SEM_NOME = '(sem nome)'
 
@@ -144,33 +144,21 @@ export interface LinhaDevedor {
   /** Títulos inadimplentes do devedor. */
   n: number
   valor: number
-  /** % do TOTAL inadimplente (não do top). */
+  /** % do TOTAL inadimplente (não das linhas exibidas). */
   pct: number | null
   /** Maior atraso entre os títulos, em dias (≤ 0 = ainda não venceu; `null` = sem vencimento). */
   maiorAtraso: number | null
 }
 
-export interface LinhaDemaisDevedores {
-  devedores: number
-  /** "demais 8 devedores" */
-  rotulo: string
-  n: number
-  valor: number
-  pct: number | null
-}
-
 export interface TabelaDevedores {
+  /** As primeiras `limite` posições (todas, sem limite). A posição é sempre a da lista completa. */
   linhas: LinhaDevedor[]
-  /** `null` quando não há devedor além do top. */
-  demais: LinhaDemaisDevedores | null
-  /** Σ top + demais. */
+  /** Σ de TODOS os devedores (não só das linhas exibidas): com a lista fechada, é o inadimplente. */
   total: { n: number; valor: number; pct: number | null }
-  /** Σ top + demais ≡ inadimplente, ao centavo e em nº de títulos. */
+  /** Σ da lista completa ≡ inadimplente, ao centavo e em nº de títulos. */
   fecha: boolean
-}
-
-export function rotuloDemaisDevedores(devedores: number): string {
-  return `demais ${devedores} ${devedores === 1 ? 'devedor' : 'devedores'}`
+  /** Há mais devedores do que as linhas exibidas (habilita o "Ver mais"). */
+  temMais: boolean
 }
 
 /** "—" (sem vencimento) / "a vencer" (≤ 0) / "1 dia" / "142 dias". */
@@ -180,11 +168,14 @@ export function rotuloMaiorAtraso(dias: number | null): string {
   return dias === 1 ? '1 dia' : `${dias} dias`
 }
 
+/** `d` é a lista COMPLETA (valor decrescente, como a RPC emite). `limite` corta as linhas exibidas (4 no
+ *  card); sem `limite`, todas (o drawer). O total e o `fecha` sempre olham a lista inteira. */
 export function tabelaDevedores(
   d: Recebiveis['devedores'],
   inad: Pick<Recebiveis['inadimplente'], 'n' | 'valor'>,
+  limite?: number,
 ): TabelaDevedores {
-  const linhas = d.top.map((t, i): LinhaDevedor => ({
+  const todas = d.map((t, i): LinhaDevedor => ({
     posicao: i + 1,
     devedor: t.pessoa ?? ROTULO_SEM_NOME,
     semNome: t.pessoa === null,
@@ -193,23 +184,14 @@ export function tabelaDevedores(
     pct: pctDe(t.valor, inad.valor),
     maiorAtraso: t.maior_atraso,
   }))
-  const demais: LinhaDemaisDevedores | null = d.demais.devedores > 0
-    ? {
-      devedores: d.demais.devedores,
-      rotulo: rotuloDemaisDevedores(d.demais.devedores),
-      n: d.demais.n,
-      valor: d.demais.valor,
-      pct: pctDe(d.demais.valor, inad.valor),
-    }
-    : null
-  // O total entra com o "demais" mesmo quando a linha não aparece (devedores = 0): nunca descarta valor.
-  const n = linhas.reduce((s, l) => s + l.n, 0) + d.demais.n
-  const valor = somarCentavos([...linhas.map(l => l.valor), d.demais.valor])
+  const linhas = limite === undefined ? todas : todas.slice(0, Math.max(0, limite))
+  const n = todas.reduce((s, l) => s + l.n, 0)
+  const valor = somarCentavos(todas.map(l => l.valor))
   return {
     linhas,
-    demais,
     total: { n, valor, pct: pctDe(valor, inad.valor) },
     fecha: emCentavos(valor) === emCentavos(inad.valor) && n === inad.n,
+    temMais: linhas.length < todas.length,
   }
 }
 

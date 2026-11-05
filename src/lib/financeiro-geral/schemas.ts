@@ -104,17 +104,15 @@ export const recebiveisSchema = z.object({
     })),
   }),
   // Inadimplentes agregados por DEVEDOR (`pessoa` aparada de espaço/tab/CR/LF/`\xa0`; NULL = sem nome),
-  // em valor decrescente. `top` traz no máximo 10; `demais` fecha a conta: Σ top + demais ≡ inadimplente.
-  devedores: z.object({
-    top: lista(z.object({
-      pessoa: z.string().nullable(),
-      n: inteiro,
-      valor: z.number(),
-      // Maior atraso entre os títulos do devedor, em dias (≤ 0 = ainda não venceu; NULL = sem vencimento).
-      maior_atraso: inteiro.nullable(),
-    })),
-    demais: z.object({ devedores: inteiro, n: inteiro, valor: z.number() }),
-  }),
+  // em valor decrescente. É a lista COMPLETA (a tela corta no card e mostra tudo no drawer):
+  // Σ da lista ≡ inadimplente (n e valor).
+  devedores: lista(z.object({
+    pessoa: z.string().nullable(),
+    n: inteiro,
+    valor: z.number(),
+    // Maior atraso entre os títulos do devedor, em dias (≤ 0 = ainda não venceu; NULL = sem vencimento).
+    maior_atraso: inteiro.nullable(),
+  })),
   // Referência do Δ dos três cards: a ÚLTIMA foto ANTERIOR à semana (seg–dom) da posição atual. Se a
   // semana passada não teve carga, é a mais recente antes dela — a tela diz "vs DD/MM", nunca finge que
   // é a semana anterior. `null` = não há foto anterior (o Δ some; não é erro).
@@ -138,7 +136,7 @@ export const recebiveisSchema = z.object({
 })
 export type Recebiveis = z.infer<typeof recebiveisSchema>
 export type FaixaAtraso = (typeof FAIXAS_ATRASO)[number]
-export type Devedor = Recebiveis['devedores']['top'][number]
+export type Devedor = Recebiveis['devedores'][number]
 export type SemanaInadimplente = Recebiveis['evolucao_semanal'][number]
 
 // ── get_geral_antecipacoes(p_ano) ───────────────────────────────────────────────────────────────

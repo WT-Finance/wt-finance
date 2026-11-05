@@ -57,20 +57,25 @@ function recebiveisNormal(): Recebiveis {
   const f1 = 18432.15, f2 = 22610.48, f3 = 14985.3
   const f4 = (emCentavos(INADIMPLENTE.valor) - emCentavos(f1) - emCentavos(f2) - emCentavos(f3)) / 100
 
-  // 18 devedores: 10 no top e 8 em "demais"; o "demais" é o resíduo de valor e de títulos.
+  // 18 devedores (A..R), valor decrescente. Os 10 primeiros têm valor e atraso fixos; os 8 últimos
+  // repartem o resíduo (valor e títulos) para a soma fechar EXATO com o inadimplente.
   const valoresTop = [48210.6, 31875.25, 24100, 19320.4, 14780.95, 11250, 8640.3, 6420.15, 5105.8, 3890.45]
-  const atrasos = [142, 118, 97, 203, 66, 45, 188, 31, 22, 12]
-  const top = valoresTop.map((valor, i) => ({
+  const atrasos = [142, 118, 97, 203, 66, 45, 188, 31, 22, 12, 9, 40, 75, 15, 120, 5, 28, 60]
+  const nTop = valoresTop.map((_, i) => (i < 2 ? 2 : 1))
+  const nResto = INADIMPLENTE.n - nTop.reduce((s, x) => s + x, 0) // 9 títulos nos 8 últimos
+  const centavosResto = emCentavos(INADIMPLENTE.valor) - emCentavos(somar(valoresTop))
+  // 8 devedores abaixo do 10º (3.890,45), decrescentes; o último é o resíduo (fecha exato, em centavos).
+  const valoresResto = [3800, 3700, 3550, 3400, 3250, 3100, 2950]
+  valoresResto.push((centavosResto - emCentavos(somar(valoresResto))) / 100)
+  const devedores = [
+    ...valoresTop.map((valor, i) => ({ valor, n: nTop[i] })),
+    ...valoresResto.map((valor, i) => ({ valor, n: i === 0 ? nResto - 7 : 1 })),
+  ].map((d, i) => ({
     pessoa: `Devedor ${String.fromCharCode(65 + i)}`,
-    n: i < 2 ? 2 : 1,
-    valor,
+    n: d.n,
+    valor: d.valor,
     maior_atraso: atrasos[i],
   }))
-  const demais = {
-    devedores: 8,
-    n: INADIMPLENTE.n - top.reduce((s, t) => s + t.n, 0),
-    valor: (emCentavos(INADIMPLENTE.valor) - emCentavos(somar(valoresTop))) / 100,
-  }
 
   const semana = (s: string, data: string, n: number, valor: number, vencido: number) => ({
     semana: s, data_posicao: data, inadimplente_n: n, inadimplente_valor: valor, vencido_valor: vencido,
@@ -90,7 +95,7 @@ function recebiveisNormal(): Recebiveis {
         { faixa: '90+', n: 12, valor: f4 },
       ],
     },
-    devedores: { top, demais },
+    devedores,
     // FICTÍCIA: a última foto da semana de 05/10 (a posição atual é da semana de 12/10).
     referencia_semana: {
       data_posicao: '2026-10-08',
@@ -120,7 +125,7 @@ function recebiveisVazio(): Recebiveis {
     em_aberto: { n: 0, valor: 0 },
     vencido: { n: 0, valor: 0 },
     inadimplente: { n: 0, valor: 0, faixas: null },
-    devedores: { top: null, demais: { devedores: 0, n: 0, valor: 0 } },
+    devedores: null,
     referencia_semana: null,
     evolucao_semanal: null,
     historico_desde: null,

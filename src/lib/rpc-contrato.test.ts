@@ -2922,7 +2922,7 @@ describe.skipIf(!ON || !DB_URL)('contrato RBAC — Gastos de Marketing: usuário
 //      curada `geral_perda_map`. O mapa NÃO é alcançável por REST (tabela sem acesso direto), então é lido
 //      por `pg` (READ ONLY, como os demais casos deste arquivo) — por id, não pelo rótulo, porque a DRE
 //      exibe `dre_categoria_map.rotulo` (override) e casar por texto seria frágil.
-//   3. INV. 2 — COMPLETUDES, em centavos inteiros: Recebíveis Σ faixas ≡ inadimplente e Σ top + demais ≡
+//   3. INV. 2 — COMPLETUDES, em centavos inteiros: Recebíveis Σ faixas ≡ inadimplente e Σ devedores ≡
 //      inadimplente (valor e nº); Prejuízos Σ `por_pessoa` ≡ `prejuizo.total` ≡ Σ meses; Antecipações
 //      Σ `por_conta` ≡ `total` ≡ Σ meses.
 //   4. INV. 3 — FUNIL: inadimplente ⊂ vencido ⊂ em aberto, em nº de títulos. O inadimplente é a MARCAÇÃO:
@@ -2935,7 +2935,7 @@ describe.skipIf(!ON || !DB_URL)('contrato RBAC — Gastos de Marketing: usuário
 //      mais novo que 21/09/2026 entrou. `antecipacao_listar` NÃO tem EXECUTE para o `verificador` (0296 só
 //      concede a `authenticated`/`service_role`), então o "oráculo vivo por outra RPC" não é alcançável
 //      pela credencial — daí o piso.
-//   6. PII — `get_geral_recebiveis` (`devedores.top[].pessoa`) e `get_geral_prejuizos`
+//   6. PII — `get_geral_recebiveis` (`devedores[].pessoa`) e `get_geral_prejuizos`
 //      (`por_pessoa[].pessoa`) devolvem NOMES REAIS. O vitest imprime o valor comparado quando um `expect`
 //      falha, então NENHUM `expect` deste bloco recebe esse campo: só forma (chaves, tipos como booleano,
 //      contagem, somas de `valor`). Mensagens de drift de schema listam só `caminho:código` do issue
@@ -3350,7 +3350,7 @@ describe.skipIf(!ON)('contrato RPC — Financeiro · Geral: recebíveis e inadim
   /** Chaves do item, ordenadas e coladas — para a lista fechada (só NOMES de chave, nunca valor). */
   const chaves = (o: unknown): string => Object.keys((o ?? {}) as Record<string, unknown>).sort().join(',')
 
-  it('lista FECHADA de chaves por item (JSON cru, só nomes de chave): devedores.top[] = {maior_atraso, n, pessoa, valor}, sem coluna extra da base', async () => {
+  it('lista FECHADA de chaves por item (JSON cru, só nomes de chave): devedores[] = {maior_atraso, n, pessoa, valor}, sem coluna extra da base', async () => {
     const { cru } = await dadosRecebiveisGeral()
     // Os NOMES das colunas, nunca os valores: o schema Zod descarta chave extra em silêncio e aprovaria um
     // vazamento (Descricao / Operacao Propria da base contêm nomes de pessoas — migration 0295). A lista é
@@ -3359,10 +3359,8 @@ describe.skipIf(!ON)('contrato RPC — Financeiro · Geral: recebíveis e inadim
     for (const k of ['carga', 'em_aberto', 'vencido', 'inadimplente', 'devedores', 'referencia_semana', 'evolucao_semanal', 'historico_desde']) {
       expect(k in cru, `chave de contrato ausente: ${k} (a RPC viva ainda é a anterior à v6.5.0?)`).toBe(true)
     }
-    const devedores = cru.devedores as { top?: unknown[] | null; demais?: unknown }
-    expect(chaves(devedores), 'devedores com chave fora de {demais, top}').toBe('demais,top')
-    expect((devedores.top ?? []).every(t => chaves(t) === 'maior_atraso,n,pessoa,valor'), 'item de devedores.top com chave fora de {maior_atraso, n, pessoa, valor}').toBe(true)
-    expect(chaves(devedores.demais), 'devedores.demais com chave fora de {devedores, n, valor}').toBe('devedores,n,valor')
+    expect(Array.isArray(cru.devedores), 'devedores não é lista (a RPC viva ainda é a {top, demais}, anterior à 0302?)').toBe(true)
+    expect((cru.devedores as unknown[]).every(t => chaves(t) === 'maior_atraso,n,pessoa,valor'), 'item de devedores com chave fora de {maior_atraso, n, pessoa, valor}').toBe(true)
     expect(chaves(cru.em_aberto), 'em_aberto com chave fora de {n, valor}').toBe('n,valor')
     expect(chaves(cru.vencido), 'vencido com chave fora de {n, valor}').toBe('n,valor')
     const inad = cru.inadimplente as { faixas?: unknown[] | null }
@@ -3381,8 +3379,7 @@ describe.skipIf(!ON)('contrato RPC — Financeiro · Geral: recebíveis e inadim
     expect(r.inadimplente.n).toBe(0)
     expect(r.inadimplente.valor).toBe(0)
     expect(r.inadimplente.faixas).toEqual([])
-    expect(r.devedores.top.length).toBe(0)
-    expect(r.devedores.demais).toEqual({ devedores: 0, n: 0, valor: 0 })
+    expect(r.devedores).toEqual([])
     expect(r.referencia_semana).toBeNull()
     expect(r.evolucao_semanal).toEqual([])
     expect(r.historico_desde).toBeNull()
@@ -3419,13 +3416,12 @@ describe.skipIf(!ON)('contrato RPC — Financeiro · Geral: recebíveis e inadim
     expect(r.inadimplente.faixas.reduce((s, f) => s + centavos(f.valor), 0), 'Σ faixas.valor ≠ inadimplente.valor (centavos)').toBe(centavos(r.inadimplente.valor))
   }, 30_000)
 
-  it('devedores (SÓ FORMA): ≤ 10, decrescente por valor; Σ top + demais ≡ inadimplente em nº e em valor (centavos)', async () => {
+  it('devedores (SÓ FORMA): lista COMPLETA, decrescente por valor, pessoa aparada e única; Σ devedores ≡ inadimplente em nº e em valor (centavos)', async () => {
     const { r } = await dadosRecebiveisGeral()
     if (r.carga === null) return   // coberto pelo caso "sem base"
-    const { top, demais } = r.devedores
+    const top = r.devedores
     // Só números e booleanos entram nos `expect`: o campo `pessoa` (nome real) NUNCA é comparado, ecoado
     // em mensagem ou passado a `toEqual` — o vitest imprimiria o valor na falha.
-    expect(top.length, 'mais de 10 em devedores.top').toBeLessThanOrEqual(10)
     expect(top.every(t => typeof t.pessoa === 'string' || t.pessoa === null), 'pessoa fora de string|null').toBe(true)
     const comNome = top.map(t => t.pessoa).filter((p): p is string => p !== null)
     expect(comNome.every(p => p.length > 0 && p === p.trim()), 'devedor vazio ou com espaço/tab/CR/LF/NBSP nas pontas (aparo falhou)').toBe(true)
@@ -3435,16 +3431,9 @@ describe.skipIf(!ON)('contrato RPC — Financeiro · Geral: recebíveis e inadim
     expect(valores.every((v, i) => i === 0 || v <= valores[i - 1]), 'top fora de ordem decrescente de valor').toBe(true)
     expect(top.every(t => Number.isInteger(t.n) && t.n >= 1), 'devedor com n < 1').toBe(true)
 
-    expect(top.reduce((s, t) => s + t.n, 0) + demais.n, 'Σ top.n + demais.n ≠ inadimplente.n').toBe(r.inadimplente.n)
-    expect(valores.reduce((s, v) => s + v, 0) + centavos(demais.valor), 'Σ top.valor + demais.valor ≠ inadimplente.valor (centavos)').toBe(centavos(r.inadimplente.valor))
-    // O "demais" só existe quando o top está cheio; e sem devedor sobrando não sobra título nem valor.
-    if (demais.devedores === 0) {
-      expect(demais.n, 'demais sem devedor mas com títulos').toBe(0)
-      expect(centavos(demais.valor), 'demais sem devedor mas com valor').toBe(0)
-    } else {
-      expect(top.length, 'demais com devedores mas o top não está cheio (10)').toBe(10)
-      expect(demais.n, 'demais com devedores mas sem títulos').toBeGreaterThanOrEqual(demais.devedores)
-    }
+    // A lista é COMPLETA (sem corte nem "demais"): a soma fecha com o inadimplente por construção.
+    expect(top.reduce((s, t) => s + t.n, 0), 'Σ devedores.n ≠ inadimplente.n').toBe(r.inadimplente.n)
+    expect(valores.reduce((s, v) => s + v, 0), 'Σ devedores.valor ≠ inadimplente.valor (centavos)').toBe(centavos(r.inadimplente.valor))
   }, 30_000)
 
   // Semana (referência do Δ e evolução): duas leituras da MESMA série de fotos têm de concordar.
