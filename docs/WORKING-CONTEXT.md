@@ -9,30 +9,35 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-26 (fechamento da v6.5.0, PR draft aberto).
+Última atualização: 2026-11-05 (pós-merge da v6.5.0; destrutiva 0303 aplicada).
 
 ---
 
-## Em voo — v6.5.0 "Financeiro · Geral v2" (PR draft, aguardando merge)
+## Em produção — v6.5.0 "Financeiro · Geral v2" (PR #308, mergeado 05/11 às 17:25)
 
-Branch `feat/v6-5-0-financeiro-geral-v2`. Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v6-5-0_Financeiro_Geral_v2.md`.
+Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v6-5-0_Financeiro_Geral_v2.md`.
 
 - `/financeiro/geral` em cinco seções: Vendas (casca) · Recebíveis e inadimplência · Perdas e prejuízos · Antecipações ·
   Cartões de crédito (casca). Custos financeiros e Prazos médios saíram; a carga do Aberto não grava mais a foto de prazos.
-- Migration **0301 APLICADA** em 26/10 (aditiva: chaves novas nas 3 RPCs `get_geral_*`). **0302 APLICADA** em 05/11 (aditiva: `devedores` = lista completa). Banco na **0302**; **0303 reservada**
-  para a destrutiva `supabase/patches/financeiro-geral-v2-poda-destrutiva.sql` (**NÃO aplicada**). ADR livre **0184**
-  (Emenda 1 do ADR-0183, sem ADR novo).
-- Até a 0303: as RPCs de custos/prazos e a série `geral_prazo_foto` seguem no banco; `rpc-contrato.test.ts` mantém a lista
-  `RPCS_GERAL_APOSENTADAS` para a allowlist derivada não divergir dos grants. Sai no commit da 0303.
+  Antecipações e o "Prejuízo Mensal" ficam fixos no ano corrente e nos dois anteriores; as pills de Perdas e prejuízos
+  (nascem só com o ano corrente) valem só para "Prejuízo por Pessoa". Despesas de Marketing também fixa em 3 anos.
+- Padrões novos (skills/DS): carimbo de atualização SÓ no topo, uma linha por fonte; tabela simples padrão A; Δ
+  favorável em `text-positive` em card branco.
+- Migrations **0301** (26/10) e **0302** (05/11) **APLICADAS** (aditivas) e **0303 APLICADA** (05/11, destrutiva, pelo
+  Yan em TTY após o deploy): saíram as RPCs de custos/prazos, `registrar_foto_prazos`, `geral_prazo_calcular`, a série
+  `geral_prazo_foto` (6 fotos exportadas em `~/projects/arquivo-worktrees-janus/v6-5-0-gate2/`) e `geral_fin_grupo`; as
+  chaves antigas de recebíveis/prejuízos foram podadas. Banco na **0303**, livre **0304**. ADR livre **0184** (Emenda 1
+  do ADR-0183). O commit da aplicação (contrato sem `RPCS_GERAL_APOSENTADAS`, baseline, `database.ts`) é o PR #310.
+  Rollback do app para v6.4.x agora exige voltar o banco antes (DOWN no header da 0303).
 - CLI do Supabase **fixado em 2.122.1** no wrapper do gate (a 3.0.0 quebra o push). Subir para a v3 é patch próprio.
 
 > 🔴 **Yan:**
 >
-> 1. Conferir no preview com **dado real** (out-briefing §6.1): as cinco seções, o tile sem corte, Marketing sem mudança.
-> 2. Checkpoint do briefing (out-briefing §6.2) e **mostrar à diretoria**.
-> 3. Mergear; **depois do deploy**, aplicar a **0303 em TTY** pelo roteiro do header do patch (pré-voo com deploy e md5,
->    export da série com hora no nome, `git mv` → 0303, `db:migrate -- --destrutiva`, limpeza do teste + baseline +
->    `database.ts` no mesmo commit, em branch + PR). Rollback do app para v6.4.x depois da 0303 exige voltar o banco antes.
+> 1. Mergear o **#309** (este) e o **#310** (commit da 0303).
+> 2. Conferir no ar e **mostrar à diretoria** (out-briefing §6.2); anotar o que ela pedir.
+> 3. Limpeza na raiz, depois dos dois merges: `git pull --ff-only`; remover a worktree da v6.5.0
+>    (`git worktree remove .claude/worktrees/feat-v6-5-0-financeiro-geral-v2 --force && git worktree prune`) e as
+>    branches `feat/v6-5-0-financeiro-geral-v2`, `docs/pos-merge-v6-5-0` e `chore/v6-5-0-0303`.
 
 ---
 
