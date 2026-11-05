@@ -373,8 +373,7 @@ const CONTRATOS_PARSE_RPC: Array<{ fn: string; params: Record<string, unknown>; 
   // usa, contra os schemas dela. As com `p_ano` rodam no último ano FECHADO e no CORRENTE (o ramo
   // `corrente` é o que o ano fechado não exercita: mes_corrente, recorte do ano anterior). As invariantes
   // (paridade com a DRE de caixa, completudes, funil, oráculo do registro, PII, negações) têm bloco próprio
-  // no fim do arquivo. As duas RPCs que a página deixou de usar (e que seguem no banco até o GATE 2) estão
-  // na lista `RPCS_GERAL_APOSENTADAS` do bloco "Financeiro · Geral", não aqui.
+  // no fim do arquivo. As duas RPCs que a página deixou de usar (custos, prazos) caíram na 0303 (v6.5.0).
   { fn: 'get_geral_prejuizos',               params: { p_ano: ANO_FECHADO_MKT },                                       schema: prejuizosSchema },
   { fn: 'get_geral_prejuizos',               params: { p_ano: ANO_SP_MKT },                                            schema: prejuizosSchema },
   { fn: 'get_geral_antecipacoes',            params: { p_ano: ANO_FECHADO_MKT },                                       schema: antecipacoesSchema },
@@ -2940,8 +2939,8 @@ describe.skipIf(!ON || !DB_URL)('contrato RBAC — Gastos de Marketing: usuário
 //      falha, então NENHUM `expect` deste bloco recebe esse campo: só forma (chaves, tipos como booleano,
 //      contagem, somas de `valor`). Mensagens de drift de schema listam só `caminho:código` do issue
 //      (nunca o valor). O JSON cru de `get_geral_*` nunca vai a `console`. A lista FECHADA de chaves vale
-//      por item (é onde a coluna extra da base vazaria) e não no topo do objeto: as RPCs vivas ainda
-//      emitem, até a poda do GATE 2, chaves que a página aposentou — chave a mais no topo não é contrato.
+//      por item (é onde a coluna extra da base vazaria) e não no topo do objeto: chave a mais no topo não
+//      é contrato (as chaves que a página aposentou foram podadas na 0303).
 //   7. NEGAÇÕES — anon (HTTP 401/403 + 42501); o `verificador` NÃO executa as RPCs de escrita do módulo
 //      (catálogo primeiro, depois REST); usuário ATIVO sem a área (`pg`, identidade por claims).
 //
@@ -2951,8 +2950,8 @@ describe.skipIf(!ON || !DB_URL)('contrato RBAC — Gastos de Marketing: usuário
 // antecipações e carga de Contas a receber) só aparecem aqui como ASSINATURA COMPLETA
 // (`public.<nome>(<tipos>)`) ou como string solta passada a `statusVerificador`/`verificadorTemExecute`/
 // `chamarComoGeral` — formas que o derivador NÃO casa; (b) nenhuma chave `fn` é usada para elas. Nomes que
-// o derivador vê aqui: as 3 `get_geral_*` vivas + as 2 aposentadas (todas que o `verificador` JÁ TEM,
-// 0297); `get_dre_mensal` já estava na allowlist. As leituras `antecipacao_listar`/`antecipacao_historico`
+// o derivador vê aqui: as 3 `get_geral_*` vivas (que o `verificador` JÁ TEM, 0297; as 2 aposentadas
+// caíram na 0303); `get_dre_mensal` já estava na allowlist. As leituras `antecipacao_listar`/`antecipacao_historico`
 // só são chamadas por `pg` com identidade de usuário (nunca pela credencial), logo também não entram.
 
 const RPCS_GERAL_VIVAS = [
@@ -2961,22 +2960,9 @@ const RPCS_GERAL_VIVAS = [
   { fn: 'get_geral_antecipacoes',       comAno: true,  schema: antecipacoesSchema as ZodType },
 ] as const
 
-// APOSENTADAS ATÉ O GATE 2. A página deixou de chamá-las na v6.5.0, mas as duas CONTINUAM no banco, com
-// EXECUTE para o `verificador` (0297), até a destrutiva do GATE 2 (que roda DEPOIS do deploy: até lá a
-// ingestão da versão anterior, ainda no ar, chama a função de foto de prazos; a v6.5.0 já não chama). A
-// lista fica AQUI, explícita, para a
-// allowlist DERIVADA deste arquivo não divergir dos grants vivos nesse meio-tempo (nome que some do arquivo
-// some da derivação; o grant, não). O shape é só "um objeto JSON qualquer" — o contrato delas morreu com os
-// schemas; o que segue valendo são as negações (anon negado, usuário sem a área negado).
-// ⚠️ NO COMMIT DO GATE 2: apagar esta lista junto do DROP — função inexistente no catálogo faz o derivador
-// terminar com código 1 ("SEM função no catálogo") e estes casos darem 404.
-const RPCS_GERAL_APOSENTADAS = [
-  { fn: 'get_geral_custos_financeiros', comAno: true,  schema: z.object({}).passthrough() as ZodType },
-  { fn: 'get_geral_prazos',             comAno: false, schema: z.object({}).passthrough() as ZodType },
-] as const
-
-/** As 5 RPCs de leitura do módulo que existem no banco hoje: as negações valem para todas. */
-const RPCS_GERAL = [...RPCS_GERAL_VIVAS, ...RPCS_GERAL_APOSENTADAS]
+/** As 3 RPCs de leitura do módulo (as 2 aposentadas — custos, prazos — caíram na 0303): as negações valem
+ *  para todas. */
+const RPCS_GERAL = [...RPCS_GERAL_VIVAS]
 /** Parâmetros nomeados de cada RPC: as sem `p_ano` NÃO aceitam o argumento (PostgREST responderia 404). */
 const paramsGeral = (comAno: boolean, ano: number): Record<string, unknown> => (comAno ? { p_ano: ano } : {})
 
@@ -3084,15 +3070,6 @@ describe.skipIf(!ON)('contrato RPC — Financeiro · Geral: shape e janela (v6.5
   }, 30_000)
 })
 
-// As 2 aposentadas: o contrato delas morreu; resta provar que a RPC ainda responde com um objeto JSON (a
-// credencial de verificação mantém o grant até o GATE 2 e a página não depende mais do conteúdo). SAI NO GATE 2.
-describe.skipIf(!ON)('contrato RPC — Financeiro · Geral: aposentadas até o GATE 2 respondem (objeto JSON qualquer)', () => {
-  it.each(RPCS_GERAL_APOSENTADAS)('$fn: objeto JSON', async ({ fn, comAno, schema }) => {
-    const d = await rpc(fn, paramsGeral(comAno, ANO_FECHADO_MKT))
-    expect(schema.safeParse(d).success, `${fn}: a resposta não é um objeto JSON`).toBe(true)
-  }, 30_000)
-})
-
 // ── 2. PERDAS E PREJUÍZOS: paridade com a DRE de caixa (inv. 1) + completude por pessoa (inv. 2) ─────
 describe.skipIf(!ON || !DB_URL)('contrato RPC — Financeiro · Geral: prejuízo bruto ≡ linhas de categoria da DRE (inv. 1, v6.5.0)', () => {
   /** Ids da categoria de PREJUÍZO, lidos de `financeiro.geral_perda_map` por `pg` READ ONLY (a tabela não tem acesso direto). */
@@ -3172,8 +3149,7 @@ describe.skipIf(!ON)('contrato RPC — Financeiro · Geral: prejuízos — compl
     expect(new Set(comNome).size, 'a mesma pessoa em mais de uma entrada (agregação por pessoa falhou)').toBe(comNome.length)
     // Lista FECHADA de chaves por item, sobre o JSON CRU (só NOMES de chave): o schema descarta chave extra
     // em silêncio, e é por aqui que uma coluna a mais do lançamento (descrição, documento, favorecido)
-    // vazaria. A chave `por_pessoa` em si é do contrato; chave a mais no TOPO do objeto não é checada (as
-    // chaves aposentadas, até o GATE 2).
+    // vazaria. A chave `por_pessoa` em si é do contrato; chave a mais no TOPO do objeto não é checada.
     expect('por_pessoa' in cru, 'a chave por_pessoa não veio (a RPC viva ainda é a anterior à v6.5.0?)').toBe(true)
     const itens = (cru.por_pessoa ?? []) as Array<Record<string, unknown>>
     expect(itens.every(i => Object.keys(i).sort().join(',') === 'n,pessoa,valor'), 'item de por_pessoa com chave fora de {n, pessoa, valor}').toBe(true)
@@ -3355,7 +3331,7 @@ describe.skipIf(!ON)('contrato RPC — Financeiro · Geral: recebíveis e inadim
     // Os NOMES das colunas, nunca os valores: o schema Zod descarta chave extra em silêncio e aprovaria um
     // vazamento (Descricao / Operacao Propria da base contêm nomes de pessoas — migration 0295). A lista é
     // fechada POR ITEM, onde a coluna extra vazaria; no topo do objeto exige-se só que as chaves do contrato
-    // estejam todas presentes — a RPC viva ainda emite, até a poda do GATE 2, chaves que a página aposentou.
+    // estejam todas presentes (as chaves que a página aposentou foram podadas na 0303).
     for (const k of ['carga', 'em_aberto', 'vencido', 'inadimplente', 'devedores', 'referencia_semana', 'evolucao_semanal', 'historico_desde']) {
       expect(k in cru, `chave de contrato ausente: ${k} (a RPC viva ainda é a anterior à v6.5.0?)`).toBe(true)
     }
@@ -3488,7 +3464,7 @@ describe.skipIf(!ON)('contrato RPC — Financeiro · Geral: recebíveis e inadim
 })
 
 // ── 4a. NEGAÇÃO: anon (sem JWT) ──────────────────────────────────────────────────────────────────
-// REVOKE EXECUTE de PUBLIC/anon nas 5 que existem no banco (0297; 3 vivas + 2 aposentadas) → o PostgREST responde com erro de permissão (42501), que
+// REVOKE EXECUTE de PUBLIC/anon nas 3 que existem no banco (0297; as 2 aposentadas caíram na 0303) → o PostgREST responde com erro de permissão (42501), que
 // para o papel `anon` vira HTTP 401 (403 para `authenticated`). Aceita-se as duas faixas; o que se EXIGE é
 // o código do Postgres no corpo — não uma resposta 200 vazia. Cada RPC leva só os parâmetros que tem.
 describe.skipIf(!ON || !ANON)('contrato RBAC — Financeiro · Geral: anon negado (v6.5.0)', () => {
@@ -3544,7 +3520,7 @@ describe.skipIf(!ON || !DB_URL)('contrato RBAC — Financeiro · Geral: a creden
 // sessão READ ONLY): o REST do `verificador` (que TEM as duas áreas) e a service_role (que faz bypass do
 // guard) não alcançam este ramo. O usuário é escolhido DINAMICAMENTE por role (nunca id fixo) e o
 // `exigir_acesso` para antes do corpo, com PERMISSAO_NEGADA (42501). Duas negações:
-//   · sem `financeiro/geral`        → as 3 `get_geral_*` vivas e as 2 aposentadas (até o GATE 2);
+//   · sem `financeiro/geral`        → as 3 `get_geral_*`;
 //   · com `financeiro/geral` mas SEM `financeiro/geral/gestao` ("só lê") → a escrita do registro de
 //     antecipações e as leituras de gestão. Os argumentos da escrita reprovariam a validação mesmo se a
 //     permissão vazasse, e a sessão é READ ONLY (nada grava).
@@ -3570,7 +3546,7 @@ describe.skipIf(!ON || !DB_URL)('contrato RBAC — Financeiro · Geral: usuário
     return r.rows
   }
 
-  it('um usuário ATIVO de cada role SEM financeiro/geral recebe PERMISSAO_NEGADA (42501) nas 3 RPCs vivas e nas 2 aposentadas até o GATE 2', async () => {
+  it('um usuário ATIVO de cada role SEM financeiro/geral recebe PERMISSAO_NEGADA (42501) nas 3 RPCs de leitura', async () => {
     await comPgGeral(async c => {
       const usuarios = await usuariosPorRole(c, [], [AREA])
       expect(usuarios.length, `não há usuário ativo fora de ${AREA} — a negação ficaria sem prova (o caso REPROVA, não pula)`).toBeGreaterThan(0)
@@ -3610,7 +3586,7 @@ describe.skipIf(!ON || !DB_URL)('contrato RBAC — Financeiro · Geral: usuário
     })
   }, 30_000)
 
-  it('contraprova: um usuário ATIVO COM financeiro/geral é atendido pelas 3 RPCs vivas (e pelas 2 aposentadas); COM a gestão, pelas 2 leituras do registro', async () => {
+  it('contraprova: um usuário ATIVO COM financeiro/geral é atendido pelas 3 RPCs de leitura; COM a gestão, pelas 2 leituras do registro', async () => {
     await comPgGeral(async c => {
       const uid = async (area: string) => {
         const r = await c.query(
@@ -3626,7 +3602,7 @@ describe.skipIf(!ON || !DB_URL)('contrato RBAC — Financeiro · Geral: usuário
         return String(r.rows[0].uid)
       }
       const leitor = await uid(AREA)
-      // As 3 vivas contra o schema da página; as 2 aposentadas só como objeto JSON (a lista leva o schema).
+      // As 3 RPCs contra o schema da página (a lista leva o schema).
       for (const { fn, comAno, schema } of RPCS_GERAL) {
         const res = await chamarComoGeral(c, leitor, fn, comAno ? '$1::int' : '', comAno ? [ANO_FECHADO_MKT] : [])
         expect(res.ok, `${fn}: ${res.ok ? '' : res.msg}`).toBe(true)

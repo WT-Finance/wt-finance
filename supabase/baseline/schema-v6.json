@@ -549,25 +549,6 @@
       "security_definer": false,
       "volatilidade": "VOLATILE"
     },
-    "financeiro.geral_prazo_calcular()": {
-      "acl": {
-        "postgres": {
-          "EXECUTE": false
-        },
-        "service_role": {
-          "EXECUTE": false
-        }
-      },
-      "dono": "postgres",
-      "hash_corpo": "12c5d4e3551ac1c33eee65c25310451b725c3cc1709f7122b798b0abae647703",
-      "linguagem": "plpgsql",
-      "proconfig": [
-        "search_path=\"\""
-      ],
-      "retorno": "record",
-      "security_definer": true,
-      "volatilidade": "STABLE"
-    },
     "financeiro.reverter_diario(bigint[])": {
       "acl": {
         "postgres": {
@@ -3438,56 +3419,6 @@
       "security_definer": true,
       "volatilidade": "STABLE"
     },
-    "public.get_geral_custos_financeiros(integer)": {
-      "acl": {
-        "authenticated": {
-          "EXECUTE": false
-        },
-        "postgres": {
-          "EXECUTE": false
-        },
-        "service_role": {
-          "EXECUTE": false
-        },
-        "verificador": {
-          "EXECUTE": false
-        }
-      },
-      "dono": "postgres",
-      "hash_corpo": "160865651c677ab275eecde960615d663ccd0e4ae70136c8730b4e574c9546ad",
-      "linguagem": "plpgsql",
-      "proconfig": [
-        "search_path=\"\""
-      ],
-      "retorno": "json",
-      "security_definer": true,
-      "volatilidade": "STABLE"
-    },
-    "public.get_geral_prazos()": {
-      "acl": {
-        "authenticated": {
-          "EXECUTE": false
-        },
-        "postgres": {
-          "EXECUTE": false
-        },
-        "service_role": {
-          "EXECUTE": false
-        },
-        "verificador": {
-          "EXECUTE": false
-        }
-      },
-      "dono": "postgres",
-      "hash_corpo": "7ca2c9e188d10857a9a0981c2237c7640a509e9ab68d7995cc6e5a74a0fb6153",
-      "linguagem": "plpgsql",
-      "proconfig": [
-        "search_path=\"\""
-      ],
-      "retorno": "json",
-      "security_definer": true,
-      "volatilidade": "STABLE"
-    },
     "public.get_geral_prejuizos(integer)": {
       "acl": {
         "authenticated": {
@@ -3504,7 +3435,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "8995e5dca0c1c3208e0505dd59cf66a2711536cafd0bd8f09002a8ea2e71a24e",
+      "hash_corpo": "2fded00869ba2b0dc8f23bd8eed092e0818592a39c9cb260be42db763264629c",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -3529,7 +3460,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "74617e627f67a466cc115e655d55943f6813b88fe9e90559ab2008828d600801",
+      "hash_corpo": "f82ee47bcdec451ec90810afb00cb426badc25ccc2e0519f97abeee942619d20",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -6687,25 +6618,6 @@
       "security_definer": true,
       "volatilidade": "VOLATILE"
     },
-    "public.registrar_foto_prazos(uuid)": {
-      "acl": {
-        "postgres": {
-          "EXECUTE": false
-        },
-        "service_role": {
-          "EXECUTE": false
-        }
-      },
-      "dono": "postgres",
-      "hash_corpo": "a196962bc7e2c3c779cbcfed5a5155122aa99518fb7ae576662b10b2a9318fc3",
-      "linguagem": "plpgsql",
-      "proconfig": [
-        "search_path=\"\""
-      ],
-      "retorno": "jsonb",
-      "security_definer": true,
-      "volatilidade": "VOLATILE"
-    },
     "public.registrar_nota(jsonb)": {
       "acl": {
         "authenticated": {
@@ -7709,8 +7621,6 @@
         "public.get_fluxo_ranking(integer)",
         "public.get_fluxo_runway_semanal()",
         "public.get_geral_antecipacoes(integer)",
-        "public.get_geral_custos_financeiros(integer)",
-        "public.get_geral_prazos()",
         "public.get_geral_prejuizos(integer)",
         "public.get_geral_recebiveis()",
         "public.get_marketing_gastos_fornecedores(integer)",
@@ -12944,60 +12854,6 @@
       "tipo": "tabela",
       "triggers": {}
     },
-    "financeiro.geral_fin_grupo": {
-      "acl": {
-        "postgres": {
-          "DELETE": false,
-          "INSERT": false,
-          "MAINTAIN": false,
-          "REFERENCES": false,
-          "SELECT": false,
-          "TRIGGER": false,
-          "TRUNCATE": false,
-          "UPDATE": false
-        },
-        "service_role": {
-          "SELECT": false
-        }
-      },
-      "colunas": {
-        "categoria_id": {
-          "default": null,
-          "generated": null,
-          "identity": null,
-          "not_null": true,
-          "tipo": "integer"
-        },
-        "grupo": {
-          "default": null,
-          "generated": null,
-          "identity": null,
-          "not_null": true,
-          "tipo": "text"
-        },
-        "ordem": {
-          "default": "0",
-          "generated": null,
-          "identity": null,
-          "not_null": true,
-          "tipo": "integer"
-        }
-      },
-      "constraints": {
-        "geral_fin_grupo_categoria_id_fkey": "FOREIGN KEY (categoria_id) REFERENCES financeiro.dim_categoria(id)",
-        "geral_fin_grupo_grupo_check": "CHECK (grupo = ANY (ARRAY['cartao'::text, 'antecipacao'::text, 'juros_iof'::text, 'tarifas'::text, 'cambio'::text, 'receitas_financeiras'::text]))",
-        "geral_fin_grupo_pkey": "PRIMARY KEY (categoria_id)"
-      },
-      "dono": "postgres",
-      "indices": {
-        "geral_fin_grupo_pkey": "CREATE UNIQUE INDEX geral_fin_grupo_pkey ON financeiro.geral_fin_grupo USING btree (categoria_id)"
-      },
-      "policies": {},
-      "rls_forcado": false,
-      "rls_habilitado": true,
-      "tipo": "tabela",
-      "triggers": {}
-    },
     "financeiro.geral_perda_map": {
       "acl": {
         "postgres": {
@@ -13038,130 +12894,6 @@
       "dono": "postgres",
       "indices": {
         "geral_perda_map_pkey": "CREATE UNIQUE INDEX geral_perda_map_pkey ON financeiro.geral_perda_map USING btree (categoria_id)"
-      },
-      "policies": {},
-      "rls_forcado": false,
-      "rls_habilitado": true,
-      "tipo": "tabela",
-      "triggers": {}
-    },
-    "financeiro.geral_prazo_foto": {
-      "acl": {
-        "postgres": {
-          "DELETE": false,
-          "INSERT": false,
-          "MAINTAIN": false,
-          "REFERENCES": false,
-          "SELECT": false,
-          "TRIGGER": false,
-          "TRUNCATE": false,
-          "UPDATE": false
-        },
-        "service_role": {
-          "SELECT": false
-        }
-      },
-      "colunas": {
-        "capturado_em": {
-          "default": "now()",
-          "generated": null,
-          "identity": null,
-          "not_null": true,
-          "tipo": "timestamp with time zone"
-        },
-        "carga_id": {
-          "default": null,
-          "generated": null,
-          "identity": null,
-          "not_null": false,
-          "tipo": "uuid"
-        },
-        "data": {
-          "default": null,
-          "generated": null,
-          "identity": null,
-          "not_null": true,
-          "tipo": "date"
-        },
-        "entrada_12m": {
-          "default": null,
-          "generated": null,
-          "identity": null,
-          "not_null": true,
-          "tipo": "numeric(18,2)"
-        },
-        "folga": {
-          "default": null,
-          "generated": null,
-          "identity": null,
-          "not_null": false,
-          "tipo": "numeric"
-        },
-        "id": {
-          "default": null,
-          "generated": null,
-          "identity": "ALWAYS",
-          "not_null": true,
-          "tipo": "bigint"
-        },
-        "janela_ate": {
-          "default": null,
-          "generated": null,
-          "identity": null,
-          "not_null": true,
-          "tipo": "date"
-        },
-        "janela_de": {
-          "default": null,
-          "generated": null,
-          "identity": null,
-          "not_null": true,
-          "tipo": "date"
-        },
-        "pagamento_12m": {
-          "default": null,
-          "generated": null,
-          "identity": null,
-          "not_null": true,
-          "tipo": "numeric(18,2)"
-        },
-        "pmp": {
-          "default": null,
-          "generated": null,
-          "identity": null,
-          "not_null": false,
-          "tipo": "numeric"
-        },
-        "pmr": {
-          "default": null,
-          "generated": null,
-          "identity": null,
-          "not_null": false,
-          "tipo": "numeric"
-        },
-        "saldo_pagar": {
-          "default": null,
-          "generated": null,
-          "identity": null,
-          "not_null": true,
-          "tipo": "numeric(18,2)"
-        },
-        "saldo_receber": {
-          "default": null,
-          "generated": null,
-          "identity": null,
-          "not_null": true,
-          "tipo": "numeric(18,2)"
-        }
-      },
-      "constraints": {
-        "geral_prazo_foto_pkey": "PRIMARY KEY (id)"
-      },
-      "dono": "postgres",
-      "indices": {
-        "geral_prazo_foto_carga_uq": "CREATE UNIQUE INDEX geral_prazo_foto_carga_uq ON financeiro.geral_prazo_foto USING btree (carga_id) WHERE (carga_id IS NOT NULL)",
-        "geral_prazo_foto_data_idx": "CREATE INDEX geral_prazo_foto_data_idx ON financeiro.geral_prazo_foto USING btree (data)",
-        "geral_prazo_foto_pkey": "CREATE UNIQUE INDEX geral_prazo_foto_pkey ON financeiro.geral_prazo_foto USING btree (id)"
       },
       "policies": {},
       "rls_forcado": false,
@@ -16951,7 +16683,7 @@
       "triggers": {}
     }
   },
-  "ultima_migration": "0302",
+  "ultima_migration": "0303",
   "views": {
     "analytics.mv_ranking_produtos_mensal": {
       "acl": {

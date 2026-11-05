@@ -515,8 +515,6 @@ export type Database = {
       get_fluxo_ranking: { Args: { p_limite?: number }; Returns: Json }
       get_fluxo_runway_semanal: { Args: never; Returns: Json }
       get_geral_antecipacoes: { Args: { p_ano: number }; Returns: Json }
-      get_geral_custos_financeiros: { Args: { p_ano: number }; Returns: Json }
-      get_geral_prazos: { Args: never; Returns: Json }
       get_geral_prejuizos: { Args: { p_ano: number }; Returns: Json }
       get_geral_recebiveis: { Args: never; Returns: Json }
       get_gerencial_lancamentos: { Args: { p_limit?: number }; Returns: Json }
@@ -1036,7 +1034,6 @@ export type Database = {
       regenerar_fluxo_caixa: { Args: never; Returns: Json }
       registrar_email: { Args: { p_dados: Json }; Returns: Json }
       registrar_emissao: { Args: { p_dados: Json }; Returns: Json }
-      registrar_foto_prazos: { Args: { p_carga_id: string }; Returns: Json }
       registrar_nota: { Args: { p_dados: Json }; Returns: Json }
       reordenar_gerencial_contas: {
         Args: { p_contas: string[] }
