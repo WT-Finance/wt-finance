@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import ChartShowcase from './chart-showcase'
 import PlataformaShowcase from './plataforma-showcase'
 import TabelaSimplesShowcase from './tabela-simples-showcase'
+import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
 import { requireArea } from '@/lib/auth/sessao'
 
 export const dynamic = 'force-dynamic'
@@ -606,6 +607,44 @@ export default async function DesignSystemPage() {
           <code className="bg-zinc-100 px-1 rounded">mb-6</code> antes do conteúdo. Tela nova nasce assim
           (sonda: <code className="bg-zinc-100 px-1 rounded">src/styles/cabecalho-pagina.test.ts</code>).
         </p>
+
+        <h3 className="mt-6 mb-1 text-sm font-semibold text-[var(--text-primary)]">Carimbo de atualização</h3>
+        <p className="text-xs text-[var(--text-muted)] mb-3">
+          <strong>Toda informação de atualização de base de dados fica no TOPO da página</strong>, à direita do
+          cabeçalho, <strong>uma linha por fonte</strong>, com o ícone de relógio, no formato{' '}
+          <code className="bg-zinc-100 px-1 rounded">{'"<Fonte> · Última atualização em <data longa>"'}</code>,
+          empilhadas e alinhadas à direita. <strong>Nunca</strong> dentro de seção, card ou linha de metadados
+          (decisão do Yan, 05/11/2026). Implementação canônica:{' '}
+          <code className="bg-zinc-100 px-1 rounded">UltimaAtualizacao</code>{' '}
+          (<code className="bg-zinc-100 px-1 rounded">src/components/metas/ultima-atualizacao.tsx</code>) com{' '}
+          <code className="bg-zinc-100 px-1 rounded">prefixo=&quot;&lt;Fonte&gt; · Última atualização em&quot;</code>.{' '}
+          <code className="bg-zinc-100 px-1 rounded">vigiarAtraso={'{false}'}</code> para fonte de cadência humana
+          (planilha, registro manual); a vigília de atraso (vermelho) é só para a sincronização automática do Monde.
+          Exemplos vivos: cabeçalho da DRE (<code className="bg-zinc-100 px-1 rounded">src/components/financeiro/dre/</code>),
+          Weddings (<code className="bg-zinc-100 px-1 rounded">src/components/performance/weddings-content.tsx</code>) e
+          Financeiro · Geral (Contas a receber · Caixa · Antecipações).
+        </p>
+        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2 rounded-xl bg-zinc-50 p-4">
+          <div>
+            <p className="text-xl font-semibold text-text-primary">Título da Página</p>
+            <p className="mt-0.5 text-sm text-text-subtle">Subtítulo — uma linha de contexto</p>
+          </div>
+          {/* Datas FICTÍCIAS e fixas (nada de relógio do cliente); vigiarAtraso={false} = sem timer. */}
+          <div className="flex flex-col items-end gap-y-0.5 text-2xs">
+            <UltimaAtualizacao
+              iso="2026-11-03T20:17:00Z"
+              prefixo="Competência · Última atualização em"
+              iconSize={12}
+              vigiarAtraso={false}
+            />
+            <UltimaAtualizacao
+              iso="2026-11-03T19:56:00Z"
+              prefixo="Caixa · Última atualização em"
+              iconSize={12}
+              vigiarAtraso={false}
+            />
+          </div>
+        </div>
       </Section>
     </div>
   )

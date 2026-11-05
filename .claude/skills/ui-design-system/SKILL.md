@@ -211,6 +211,17 @@ varre `src/app`/`src/components` e reprova qualquer par h1+p fora do padrão (cl
 </div>
 ```
 
+**Carimbo de atualização de base (decisão do Yan, 05/11/2026):** toda informação de atualização de
+dados fica no **TOPO da página**, à direita do cabeçalho — **nunca** dentro de seção, card ou linha de
+metadados. **Uma linha por fonte**, com relógio, no formato `"<Fonte> · Última atualização em <data longa>"`,
+empilhadas e alinhadas à direita (`flex flex-col items-end gap-y-0.5 text-2xs`). Implementação canônica:
+`UltimaAtualizacao` (`@/components/metas/ultima-atualizacao`) com `prefixo="<Fonte> · Última atualização em"`
+e `iconSize={12}`. **`vigiarAtraso={false}` para fonte de cadência humana** (planilha, registro manual); a
+vigília de atraso (vermelho) é só para a sincronização automática do Monde. Exemplos vivos: cabeçalho da DRE
+(`src/app/financeiro/dre/page.tsx`), Weddings (`src/components/performance/weddings-content.tsx`),
+Marketing (`marketing/gastos/cabecalho-gastos.tsx`) e Financeiro · Geral (`financeiro/geral/cabecalho-geral.tsx`:
+Contas a receber · Caixa · Antecipações). Demo em `/admin/design-system` §12. Telas legadas fora do padrão: B-50.
+
 Título de **seção** (`TopSection`) continua na cor de marca (`--brand-deep`, §6); título de
 **card** continua `--text-primary`. `--text-secondary` é texto de corpo/H3, nunca subtítulo.
 
