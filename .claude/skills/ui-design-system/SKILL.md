@@ -89,6 +89,15 @@ continua certo para **fundo, borda e ícone**, onde o critério de contraste é 
 `*-deep` existe para exatamente isso e já vale para `--positive-deep` / `--negative-deep`:
 **quando o estado vira texto, a variante `-deep` é a tinta.**
 
+**Exceção registrada (v6.5.0, decisão do Yan em 05/11/2026): Δ FAVORÁVEL em card de comparação anual usa
+`text-positive`** (#5F7A3D), não `text-positive-deep` — o `-deep` (8,79:1) quase não se distingue do texto e o
+destaque do "favorável" sumia. `--positive` dá **4,84:1 sobre branco** (passa AA), mas **4,30:1 sobre
+`--surface-soft`** (reprova): vale SÓ em card branco (`bg-white`/`--surface`), que é onde esses cards vivem.
+O DESFAVORÁVEL continua `text-negative-deep`. A palavra continua escrita ao lado (a cor nunca vai sozinha).
+Onde: `TextoVariacao` em `src/components/financeiro/geral/comum.tsx` (tiles e faixa do topo da Geral),
+`antecipacoes-card-custo.tsx` (Custo Efetivo / Custo efetivo percentual) e `marketing/gastos/indicadores-gastos.tsx`
+(total por ano). Card novo desse tipo segue o mesmo par.
+
 **Não substitua por `--gestao-fg`.** O DS separa a família de gestão de propósito: gestão é "ação
 administrativa", não estado de alerta, e não acompanha mudanças do warning (ADR-0103 ext., v4.18.0).
 Dois âmbares parecidos com semânticas diferentes é como a divergência entra.

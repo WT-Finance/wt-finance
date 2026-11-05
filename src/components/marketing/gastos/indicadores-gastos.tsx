@@ -27,9 +27,9 @@ import {
 // `@/lib/marketing/total-por-ano` — aqui só se desenha.
 //
 // Variação: o sinal é o da DRE (despesa < 0), então despesa que CRESCE é Δ negativo = DESFAVORÁVEL.
-// A cor nunca vai sozinha: a palavra ("favorável"/"desfavorável") vai escrita ao lado, e a tinta é a
-// `-deep` (`text-negative-deep`/`text-positive-deep`), que passa AA em corpo pequeno (skill
-// `ui-design-system` §1.3).
+// A cor nunca vai sozinha: a palavra ("favorável"/"desfavorável") vai escrita ao lado. Tinta: favorável
+// `text-positive` (padrão do Yan, v6.5.0: verde visível; 4,84:1 em card branco), desfavorável
+// `text-negative-deep` (skill `ui-design-system` §1.3).
 //
 // Tile local, no molde do `Tile` do inventário, e não `KpiCard`: o `KpiCard` exige `KpiMetrica`
 // do domínio de Performance e desenha seta ↑/↓ — que aqui reforçaria a leitura errada de uma
@@ -49,7 +49,7 @@ const CLASSE_ROTULO = 'text-2xs font-semibold uppercase leading-[1.3] tracking-[
 const CASCA = 'flex h-full flex-col rounded-xl bg-white px-5 py-4 shadow-sm'
 
 const PALAVRA: Record<SentidoVariacao, { texto: string; classe: string }> = {
-  favoravel: { texto: 'favorável', classe: 'text-positive-deep' },
+  favoravel: { texto: 'favorável', classe: 'text-positive' },
   desfavoravel: { texto: 'desfavorável', classe: 'text-negative-deep' },
   neutro: { texto: 'estável', classe: 'text-[var(--text-muted)]' },
 }

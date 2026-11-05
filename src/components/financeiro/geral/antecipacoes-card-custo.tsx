@@ -20,14 +20,15 @@ import type { Sentido } from '@/lib/financeiro-geral/variacao'
 // ano anterior.
 //
 // Ano sem nenhuma antecipação é AUSÊNCIA: "—" (nunca "R$ 0,00" / "0,00%") e sem Δ.
-// Variação: a palavra ("favorável"/"desfavorável") vai escrita ao lado e a tinta é a `-deep` (passa AA em
-// corpo pequeno — skill `ui-design-system` §1.3). Custo MENOR é melhor (a polaridade já vem no `sentido`).
+// Variação: a palavra ("favorável"/"desfavorável") vai escrita ao lado. Tinta: favorável `text-positive`
+// (padrão do Yan, v6.5.0: verde visível; 4,84:1 em card branco), desfavorável `-deep` (skill `ui-design-system`
+// §1.3). Custo MENOR é melhor (a polaridade já vem no `sentido`).
 // `TextoVariacao` de `comum.tsx` não serve: só formata Δ% (não p.p.) e alinha à esquerda.
 
 const CLASSE_ROTULO = 'text-2xs font-semibold uppercase leading-[1.3] tracking-[0.5px] text-[var(--text-muted)]'
 
 const PALAVRA: Record<Sentido, { texto: string; classe: string }> = {
-  favoravel: { texto: 'favorável', classe: 'text-positive-deep' },
+  favoravel: { texto: 'favorável', classe: 'text-positive' },
   desfavoravel: { texto: 'desfavorável', classe: 'text-negative-deep' },
   neutro: { texto: 'estável', classe: 'text-[var(--text-muted)]' },
 }
