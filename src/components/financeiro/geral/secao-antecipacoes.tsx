@@ -4,11 +4,11 @@ import { useMemo, useState } from 'react'
 import { ClipboardList } from 'lucide-react'
 import ErroCarregamento from '@/components/shared/erro-carregamento'
 import GraficoMensalPorAno, { type SerieDoAno } from '@/components/shared/grafico-mensal-por-ano'
-import { PILL, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
+import { PILL } from '@/components/shared/botoes'
 import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import { fmtDate } from '@/lib/fmt'
 import { rotuloAnos } from '@/lib/marketing/periodo'
-import { custoPorAno, diasSemAntecipacao, rotuloDias } from '@/lib/financeiro-geral/antecipacoes'
+import { custoPorAno, diasSemAntecipacao, rotuloDias, type IntervaloAntecipacao } from '@/lib/financeiro-geral/antecipacoes'
 import { anosQueFalharam, dadosCarregados, serieMensalMultiAno } from '@/lib/financeiro-geral/composicao'
 import { recorteTexto } from '@/lib/financeiro-geral/periodo'
 import type { Antecipacoes } from '@/lib/financeiro-geral/schemas'
@@ -21,7 +21,7 @@ import PainelAntecipacoes from './painel-antecipacoes'
 // Antecipações — FLUXO, FIXO no ano corrente e nos dois anteriores (ex.: 2024, 2025, 2026*; v6.5.0). Sem pills
 // e sem parâmetro de URL: o servidor lê os 3 anos e a seção desenha todos.
 //
-// Linha de cima: "Registro de Antecipações" (quem pode gerir) à esquerda · "?" da seção à direita. Sem selo "fluxo", sem texto
+// Linha de cima: só "Registro de Antecipações" (quem pode gerir), sem "?" da seção. Sem selo "fluxo", sem texto
 // de recorte e sem data: a data de atualização ("Antecipações") mora no topo da página.
 //
 // Linha 1: "Dias sem antecipação" (do ano CORRENTE) | "Custo Efetivo" | "Custo efetivo percentual" (uma linha por
@@ -36,11 +36,9 @@ import PainelAntecipacoes from './painel-antecipacoes'
 // O registro (botão "Registrar antecipação", painel, desfazer pelo diário) NÃO mudou (inv. 7): o botão só
 // existe para quem tem 'financeiro/geral/gestao' (`podeGerir`).
 
-const AJUDA =
-  'Volume antecipado pelas contas (Asaas, Blimboo), mês a mês, no regime de caixa, no ano corrente e nos dois ' +
-  'anteriores. Custo efetivo = desconto (antecipado − líquido), em R$; custo efetivo percentual = desconto ÷ ' +
-  'valor antecipado do recorte (média ponderada pelo volume). Dias sem antecipação contam da última antecipação ' +
-  'registrada até hoje. * = ano corrente parcial (vai até o mês corrente); o ano anterior é comparado no mesmo período.'
+// Botão âmbar (tokens de aviso, como a `Badge warning`): borda `--warning`, fundo `--warning-bg`, texto
+// `--warning-deep` (4,70:1 sobre o fundo — o `--warning` puro reprova AA em corpo pequeno). O foco vem do `PILL`.
+const PILL_ALERTA = 'border-warning bg-warning-bg text-warning-deep hover:brightness-95'
 
 const AJUDA_CUSTO_EFETIVO =
   'Desconto que se pagou para antecipar: valor antecipado menos valor líquido recebido, somado no ano. Não é CET: ' +
@@ -62,11 +60,13 @@ interface Props {
   corrente: LeituraAno<Antecipacoes>
   /** Os anos da seção (os mesmos de `leituras`), crescente. */
   anos: number[]
+  /** O recorde de sempre de dias sem antecipação (todos os anos desde o primeiro); `null` esconde a linha. */
+  intervaloRecorde: IntervaloAntecipacao | null
   hoje: string
   podeGerir: boolean
 }
 
-export default function SecaoAntecipacoes({ leituras, corrente, anos, hoje, podeGerir }: Props) {
+export default function SecaoAntecipacoes({ leituras, corrente, anos, intervaloRecorde, hoje, podeGerir }: Props) {
   const [painelAberto, setPainelAberto] = useState(false)
 
   const carregadas = useMemo(() => dadosCarregados(leituras), [leituras])
@@ -92,23 +92,15 @@ export default function SecaoAntecipacoes({ leituras, corrente, anos, hoje, pode
     <button
       type="button"
       onClick={() => setPainelAberto(true)}
-      className={`${PILL} ${PILL_PRIMARIA}`}
-      style={PILL_PRIMARIA_STYLE}
+      className={`${PILL} ${PILL_ALERTA}`}
     >
       <ClipboardList size={13} aria-hidden /> Registro de Antecipações
     </button>
   ) : null
 
-  // A linha de cima da seção: o botão "Registro de Antecipações" à esquerda (abre o registro num modal) e o "?"
-  // à direita. A data de atualização ("Antecipações") mora no topo da página.
-  const meta = (
-    <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-      {acao}
-      <div className="ml-auto">
-        <GatilhoAjuda rotulo="Antecipações" texto={AJUDA} ancoraDireita />
-      </div>
-    </div>
-  )
+  // A linha de cima da seção: só o botão "Registro de Antecipações" (abre o registro num modal), para quem pode
+  // gerir; sem permissão não há linha. A data de atualização ("Antecipações") mora no topo da página.
+  const meta = acao ? <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">{acao}</div> : null
 
   const painel = podeGerir && painelAberto
     ? <PainelAntecipacoes hoje={hoje} onFechar={() => setPainelAberto(false)} />
@@ -119,6 +111,8 @@ export default function SecaoAntecipacoes({ leituras, corrente, anos, hoje, pode
   const apoioDias: string[] = []
   if (dias.ultimaData) apoioDias.push(`última em ${fmtDate(dias.ultimaData)}`)
   if (dias.maiorIntervalo) apoioDias.push(`maior intervalo do ano: ${rotuloDias(dias.maiorIntervalo.dias)}`)
+  // O recorde de sempre: `null` (algum ano falhou, ou nunca houve intervalo) ⇒ a linha não aparece.
+  if (intervaloRecorde) apoioDias.push(`maior intervalo de sempre: ${rotuloDias(intervaloRecorde.dias)}`)
   const tileDias = (
     <Tile
       rotulo="Dias sem antecipação"

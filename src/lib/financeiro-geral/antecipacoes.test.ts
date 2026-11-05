@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   comparativoPorConta, contasDosAnos, custoDoRecorte, custoPorAno, deltaPontos, diasEntre, diasSemAntecipacao,
-  diasSemAntecipar, fmtCustoPct, fmtPontos, rotuloDias,
+  diasSemAntecipar, fmtCustoPct, fmtPontos, maiorIntervaloHistorico, rotuloDias,
 } from './antecipacoes'
 import { fixtureGeral } from './fixture'
 import { emCentavos } from './numeros'
@@ -232,6 +232,44 @@ describe('diasSemAntecipacao — o card global (não depende das pills)', () => 
       ok(2026, { ultima_data: '2026-09-21', dias_desde_ultima: 35 }),
     ], '2026-10-26')
     expect(r).toMatchObject({ dias: 35, ultimaData: '2026-09-21' })
+  })
+})
+
+describe('maiorIntervaloHistorico — o recorde de sempre', () => {
+  const iv = (dias: number, de: string, ate: string) => ({ maior_intervalo_ano: { dias, de, ate } })
+
+  it('recorde num ano passado', () => {
+    const r = maiorIntervaloHistorico([
+      ok(2024, iv(200, '2024-02-01', '2024-08-19')),
+      ok(2025, iv(90, '2025-03-01', '2025-05-30')),
+      ok(2026, iv(117, '2026-05-27', '2026-09-21')),
+    ])
+    expect(r).toEqual({ dias: 200, de: '2024-02-01', ate: '2024-08-19' })
+  })
+
+  it('recorde = o intervalo em curso do ano corrente', () => {
+    const r = maiorIntervaloHistorico([
+      ok(2025, iv(90, '2025-03-01', '2025-05-30')),
+      ok(2026, iv(250, '2026-02-01', '2026-10-09')),
+    ])
+    expect(r).toEqual({ dias: 250, de: '2026-02-01', ate: '2026-10-09' })
+  })
+
+  it('um ano que falhou ⇒ null (não dá para afirmar recorde)', () => {
+    expect(maiorIntervaloHistorico([ok(2024, iv(200, '2024-02-01', '2024-08-19')), falha(2025), ok(2026)])).toBeNull()
+  })
+
+  it('empate: vale o que começou antes', () => {
+    const r = maiorIntervaloHistorico([
+      ok(2026, iv(100, '2026-01-10', '2026-04-20')),
+      ok(2025, iv(100, '2025-03-01', '2025-06-09')),
+    ])
+    expect(r?.de).toBe('2025-03-01')
+  })
+
+  it('sem nenhum intervalo (ou sem leituras) ⇒ null', () => {
+    expect(maiorIntervaloHistorico([ok(2026, { maior_intervalo_ano: null })])).toBeNull()
+    expect(maiorIntervaloHistorico([])).toBeNull()
   })
 })
 

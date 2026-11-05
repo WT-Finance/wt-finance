@@ -39,6 +39,9 @@ export interface DadosGeral {
     prejuizos: LeituraAno<Prejuizos>
     antecipacoes: LeituraAno<Antecipacoes>
   }
+  /** O recorde de SEMPRE de dias sem antecipação (`maiorIntervaloHistorico` sobre todos os anos desde o primeiro).
+   *  `null` = algum ano falhou ou nunca houve intervalo: a linha não aparece. */
+  intervaloRecorde: { dias: number; de: string; ate: string } | null
   /** Tem 'financeiro/geral/gestao'? Só então o botão "Registrar antecipação" existe. */
   podeGerir: boolean
 }

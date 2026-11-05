@@ -27,7 +27,7 @@ describe('carimboDoFluxo', () => {
 
 describe('carimbosDaPagina — uma linha por fonte, na ordem do topo', () => {
   const base: DadosGeral = {
-    anosPrejuizos: [2026], anosAntecipacoes: [2026], anosDisponiveis: [2026], hoje: '2026-10-15', podeGerir: false,
+    anosPrejuizos: [2026], anosAntecipacoes: [2026], anosDisponiveis: [2026], hoje: '2026-10-15', podeGerir: false, intervaloRecorde: null,
     recebiveis: { ok: false }, antecipacoes: [], prejuizos: [], prejuizosMensal: [],
     corrente: { prejuizos: { ano: 2026, leitura: { ok: false } }, antecipacoes: { ano: 2026, leitura: { ok: false } } },
   }

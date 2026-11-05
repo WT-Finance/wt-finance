@@ -87,6 +87,7 @@ export default function GeralContent({ dados }: { dados: DadosGeral }) {
               leituras={dados.antecipacoes}
               corrente={dados.corrente.antecipacoes}
               anos={anosAntecipacoes}
+              intervaloRecorde={dados.intervaloRecorde}
               hoje={dados.hoje}
               podeGerir={dados.podeGerir}
             />

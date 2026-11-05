@@ -19,7 +19,7 @@
 // dela, as semanas seguintes aparecem como lacuna (é o que `pontosSemanais` faz com `hoje`).
 // Os anos fora de `anos` não entram.
 
-import { custoDoRecorte } from './antecipacoes'
+import { custoDoRecorte, maiorIntervaloHistorico } from './antecipacoes'
 import { diasEntre, emCentavos } from './numeros'
 import { anosDasPillsGeral, anosFixosDoFluxo, recorteDaLeitura, type RelacaoDoAno } from './periodo'
 import {
@@ -321,6 +321,10 @@ export function fixtureGeral(
       prejuizos: leituraDo(anoCorrente, prejuizoDe),
       antecipacoes: leituraDo(anoCorrente, ano => antecipacoesDoAno(ano, hoje, estado === 'vazio')),
     },
+    // O recorde olha TODOS os anos desde o primeiro (como o servidor).
+    intervaloRecorde: maiorIntervaloHistorico(
+      porAno(anosDasPillsGeral(anoCorrente), ano => antecipacoesDoAno(ano, hoje, estado === 'vazio')),
+    ),
     podeGerir,
   }
 }

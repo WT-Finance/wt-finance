@@ -5,6 +5,7 @@ import { hojeSP } from '@/lib/fmt'
 import { type RpcLike } from '@/lib/rpc'
 import { parseRpc } from '@/lib/schemas-rpc'
 import { anosDasPillsGeral, anosDosPrejuizos, anosFixosDoFluxo, anosParaLer, type ParamsGeral } from '@/lib/financeiro-geral/periodo'
+import { maiorIntervaloHistorico } from '@/lib/financeiro-geral/antecipacoes'
 import { podeGerirAntecipacoes } from '@/lib/financeiro-geral/gestao'
 import { antecipacoesSchema, prejuizosSchema, recebiveisSchema } from '@/lib/financeiro-geral/schemas'
 import type { Carregado, DadosGeral, LeituraAno } from '@/lib/financeiro-geral/tipos'
@@ -72,6 +73,10 @@ export default async function GeralPage({ searchParams }: { searchParams: Promis
   // Prejuízos lê a UNIÃO (pills ∪ fixos): cada ano UMA chamada. O ano corrente está sempre nos fixos, então a
   // leitura da faixa do topo sai daqui também.
   const prejuizosALer = anosParaLer(anosPrejuizos, anosFixos)
+  // Antecipações lê os 3 fixos ∪ TODOS os anos desde o primeiro (o recorde de sempre de dias sem antecipação é o
+  // máximo do maior intervalo de cada ano); cada ano uma chamada só.
+  const anosHistoricos = anosDasPillsGeral(anoCorrente)
+  const antecipacoesALer = anosParaLer(anosFixos, anosHistoricos)
 
   const db: Db = await getServerClient()
 
@@ -79,7 +84,7 @@ export default async function GeralPage({ searchParams }: { searchParams: Promis
   // `this`); o builder é thenable e só dispara quando `resolver` o aguarda — todos partem juntos.
   const [recebiveisRes, antecipacoesLidas, prejuizosLidos] = await Promise.all([
     resolver(db.rpc('get_geral_recebiveis')),
-    Promise.all(anosFixos.map(ano => lerAno(ano, db.rpc('get_geral_antecipacoes', { p_ano: ano }), antecipacoesSchema, 'get_geral_antecipacoes'))),
+    Promise.all(antecipacoesALer.map(ano => lerAno(ano, db.rpc('get_geral_antecipacoes', { p_ano: ano }), antecipacoesSchema, 'get_geral_antecipacoes'))),
     Promise.all(prejuizosALer.map(ano => lerAno(ano, db.rpc('get_geral_prejuizos', { p_ano: ano }), prejuizosSchema, 'get_geral_prejuizos'))),
   ])
 
@@ -92,13 +97,14 @@ export default async function GeralPage({ searchParams }: { searchParams: Promis
     anosDisponiveis: anosDasPillsGeral(anoCorrente),
     hoje,
     recebiveis: carregado(parseRpc(recebiveisSchema, recebiveisRes, 'get_geral_recebiveis')),
-    antecipacoes: antecipacoesLidas,
+    antecipacoes: antecipacoesLidas.filter(l => anosFixos.includes(l.ano)),
     prejuizos: prejuizosLidos.filter(l => anosPrejuizos.includes(l.ano)),
     prejuizosMensal: prejuizosLidos.filter(l => anosFixos.includes(l.ano)),
     corrente: {
       prejuizos: doCorrente(prejuizosLidos),
       antecipacoes: doCorrente(antecipacoesLidas),
     },
+    intervaloRecorde: maiorIntervaloHistorico(antecipacoesLidas.filter(l => anosHistoricos.includes(l.ano))),
     // Só quem tem 'financeiro/geral/gestao' vê o botão (as actions e as RPCs checam de novo).
     podeGerir: podeGerirAntecipacoes(sessao.permissoes),
   }

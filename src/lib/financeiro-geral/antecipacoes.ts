@@ -200,6 +200,27 @@ export function diasSemAntecipacao(
   }
 }
 
+/** O maior intervalo de um ano (`{ dias, de, ate }`), como a RPC o devolve. */
+export type IntervaloAntecipacao = NonNullable<Antecipacoes['maior_intervalo_ano']>
+
+/**
+ * O recorde de SEMPRE de dias sem antecipação: o máximo de `maior_intervalo_ano` sobre TODOS os anos lidos
+ * (todo intervalo termina em algum ano; o do ano corrente já inclui o intervalo em curso). Empate: o que
+ * começou antes. `null` se ALGUM ano falhou (sem todos os anos não dá para afirmar recorde) ou se nenhum ano
+ * tem intervalo. O chamador passa a janela inteira (PRIMEIRO_ANO..corrente).
+ */
+export function maiorIntervaloHistorico(
+  leituras: readonly LeituraAno<Antecipacoes>[],
+): IntervaloAntecipacao | null {
+  let melhor: IntervaloAntecipacao | null = null
+  for (const x of leituras) {
+    if (!x.leitura.ok) return null
+    const i = x.leitura.dados.maior_intervalo_ano
+    if (i && (melhor === null || i.dias > melhor.dias || (i.dias === melhor.dias && i.de < melhor.de))) melhor = i
+  }
+  return melhor
+}
+
 // ── Por conta ──────────────────────────────────────────────────────────────────────────────────
 
 export interface CelulaComparativo {
