@@ -274,10 +274,10 @@ export function pontosSemanais(
 
 // ── Rótulos e estados ──────────────────────────────────────────────────────────────────────────
 
-/** "na carga de 15/10" — a posição é um ESTOQUE numa data, e a data é a da carga. */
+/** "em 15/10" — a posição é um ESTOQUE numa data, e a data é a da carga. */
 export function rotuloPosicao(dataPosicao: string): string {
   const [, m, d] = dataPosicao.split('-')
-  return `na carga de ${d}/${m}`
+  return `em ${d}/${m}`
 }
 
 /** "histórico desde 25/09/2026" — a evolução começa na v6.4, nunca fabrica zero antes dela. */

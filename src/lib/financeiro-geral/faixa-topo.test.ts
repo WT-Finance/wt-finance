@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { fmtBRL2 } from '@/lib/fmt'
+import { custoDoRecorte, fmtCustoPct } from './antecipacoes'
 import { faixaDoTopo } from './faixa-topo'
 import { fixtureGeral } from './fixture'
 import { recebiveisSchema } from './schemas'
@@ -15,12 +16,12 @@ describe('faixaDoTopo — os 3 indicadores', () => {
     expect(f.map(i => i.estado)).toEqual(['ok', 'ok', 'ok'])
   })
 
-  it('Inadimplência: valor da marcação, na carga, "% dos vencidos", Δ contra a referência da semana', () => {
+  it('Inadimplência: valor da marcação, "em DD/MM", só a contagem de títulos (sem "% dos vencidos"), Δ contra a referência da semana', () => {
     const i = faixaDoTopo(normal())[0]
     expect(i.valor).toBe(fmtBRL2(199767.74))
-    expect(i.escopo).toBe('na carga de 15/10')
-    expect(i.apoio[0]).toBe('21 títulos marcados')
-    expect(i.apoio[1]).toMatch(/dos vencidos$/)
+    expect(i.escopo).toBe('em 15/10')
+    expect(i.apoio).toEqual(['21 títulos marcados'])
+    expect(JSON.stringify(i)).not.toMatch(/dos vencidos/)
     expect(i.referencia).toBe('vs 08/10')
     expect(i.variacao?.pct).toBeCloseTo(((199767.74 - 181420.3) / 181420.3) * 100, 6)
     expect(i.variacao?.sentido).toBe('desfavoravel') // inadimplência subiu: menor é melhor
@@ -48,7 +49,7 @@ describe('faixaDoTopo — os 3 indicadores', () => {
     const p = faixaDoTopo(normal())[1]
     expect(p.valor).toBe(fmtBRL2(-224574.79))
     expect(p.escopo).toBe('2026*')
-    expect(p.referencia).toBe('vs 2025 (jan–out)')
+    expect(p.referencia).toBe('vs 2025*')
     expect(p.variacao?.sentido).toBe('desfavoravel') // prejuízo cresceu
     expect(p.apoio).toEqual(['123 lançamentos'])
   })
@@ -67,26 +68,61 @@ describe('faixaDoTopo — os 3 indicadores', () => {
     expect(faixaDoTopo({ ...d, corrente })[1].estado).toBe('erro')
   })
 
-  it('Antecipações: dias sem antecipação, data da última e o maior intervalo do ano corrente', () => {
-    const a = faixaDoTopo(normal())[2]
-    expect(a.valor).toBe('35 dias')
-    expect(a.escopo).toBe('sem antecipar')
-    expect(a.apoio).toEqual(['Última em 21/09/2026', 'Maior intervalo de 2026: 117 dias'])
+  it('Antecipações: duas metades — custo efetivo do ano corrente (R$ e %) | dias sem antecipar com a data da última', () => {
+    const d = normal()
+    const a = faixaDoTopo(d)[2]
+    const leitura = d.corrente.antecipacoes.leitura
+    if (!leitura.ok) throw new Error('fixture')
+    const custo = custoDoRecorte(leitura.dados.total)
+    expect(a.estado).toBe('ok')
     expect(a.variacao).toBeNull()
+    const [esq, dir] = a.metades!
+    expect(esq).toMatchObject({ rotulo: 'Custo efetivo 2026*', estado: 'ok', valor: fmtBRL2(custo.efetivo) })
+    expect(esq.apoio).toEqual([fmtCustoPct(custo.pct)])
+    expect(dir).toMatchObject({ rotulo: 'Sem antecipar', estado: 'ok', valor: '35 dias' })
+    expect(dir.apoio).toEqual(['Última em 21/09/2026'])
+    // O "maior intervalo" saiu do tile.
+    expect(JSON.stringify(a)).not.toMatch(/Maior intervalo/)
   })
 
-  it('Antecipações não depende das pills: só ano passado selecionado ainda mostra os dias e o maior intervalo do ano corrente', () => {
+  it('Antecipações não depende das pills: só ano passado selecionado ainda mostra o custo e os dias do ano corrente', () => {
     const a = faixaDoTopo(normal([2024]))[2]
     expect(a.estado).toBe('ok')
-    expect(a.valor).toBe('35 dias')
-    expect(a.apoio).toEqual(['Última em 21/09/2026', 'Maior intervalo de 2026: 117 dias'])
+    expect(a.metades![0].rotulo).toBe('Custo efetivo 2026*')
+    expect(a.metades![0].estado).toBe('ok')
+    expect(a.metades![1].valor).toBe('35 dias')
   })
 
   it('Antecipações no próprio dia: "hoje"', () => {
     const d = fixtureGeral('normal', '2026-09-21', [2026])
-    const a = faixaDoTopo(d)[2]
-    expect(a.valor).toBe('hoje')
-    expect(a.escopo).toBe('última antecipação')
+    const dir = faixaDoTopo(d)[2].metades![1]
+    expect(dir.valor).toBe('hoje')
+    expect(dir.rotulo).toBe('Última antecipação')
+  })
+
+  it('Antecipações: sem antecipação no ano corrente → a metade do custo diz isso (nunca R$ 0,00), a dos dias segue', () => {
+    const d = normal()
+    const leitura = d.corrente.antecipacoes.leitura
+    if (!leitura.ok) throw new Error('fixture')
+    const total = { ...leitura.dados.total, volume: 0, liquido: 0, desconto: 0, n: 0 }
+    const corrente = { ...d.corrente, antecipacoes: { ano: 2026, leitura: { ok: true as const, dados: { ...leitura.dados, total } } } }
+    const a = faixaDoTopo({ ...d, corrente })[2]
+    expect(a.estado).toBe('ok')
+    const [esq, dir] = a.metades!
+    expect(esq).toMatchObject({ estado: 'vazio', valor: null, mensagem: 'Sem antecipação em 2026.' })
+    expect(esq.apoio).toEqual([])
+    expect(dir).toMatchObject({ estado: 'ok', valor: '35 dias' })
+  })
+
+  it('Antecipações: sem leitura do ano corrente → a metade do custo fica vazia com a mensagem, sem derrubar a dos dias', () => {
+    const d = normal()
+    // O ano corrente sai da leitura: o custo (que é do ano corrente) não pode usar o de outro ano.
+    const leitura = d.antecipacoes.find(x => x.ano === 2025)
+    if (!leitura) throw new Error('fixture')
+    const a = faixaDoTopo({ ...d, corrente: { ...d.corrente, antecipacoes: leitura } })[2]
+    const [esq, dir] = a.metades!
+    expect(esq).toMatchObject({ estado: 'vazio', mensagem: 'Sem leitura do ano corrente.' })
+    expect(dir.estado).toBe('ok')
   })
 
   it('cada indicador degrada SOZINHO: uma leitura falha não derruba as outras', () => {
@@ -102,6 +138,7 @@ describe('faixaDoTopo — os 3 indicadores', () => {
     expect(v.map(i => i.estado)).toEqual(['vazio', 'ok', 'vazio'])
     expect(v[0].valor).toBeNull()
     expect(v[2].valor).toBeNull()
+    expect(v[2].mensagem).toBe('Nenhuma antecipação registrada.')
   })
 
   it('leitura de antecipações do ano corrente falhou: erro (as pills não interferem)', () => {

@@ -373,8 +373,8 @@ describe('pontosSemanais — segunda a domingo, lacuna é null, nunca zero', () 
 })
 
 describe('rótulos', () => {
-  it('posição "na carga de DD/MM" e histórico desde', () => {
-    expect(rotuloPosicao('2026-10-15')).toBe('na carga de 15/10')
+  it('posição "em DD/MM" e histórico desde', () => {
+    expect(rotuloPosicao('2026-10-15')).toBe('em 15/10')
     expect(rotuloHistoricoDesde('2026-09-25')).toBe('histórico desde 25/09/2026')
     expect(rotuloHistoricoDesde(null)).toBeNull()
   })

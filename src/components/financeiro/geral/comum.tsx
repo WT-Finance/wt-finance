@@ -4,6 +4,7 @@ import Tooltip from '@/components/ui/tooltip'
 import ErroCarregamento from '@/components/shared/erro-carregamento'
 import { CARD_TABELA_TH } from '@/components/shared/card-tabela'
 import { fmtDeltaPct } from '@/lib/marketing/formatar'
+import type { MetadeTopo } from '@/lib/financeiro-geral/faixa-topo'
 import type { Sentido, Variacao } from '@/lib/financeiro-geral/variacao'
 
 // Peças comuns da página "Financeiro · Geral" (v6.4.0): o tile de indicador, o texto de variação, a
@@ -48,7 +49,7 @@ interface TileProps {
   rotulo: string
   /** Texto principal já formatado; `null` em `vazio`/`erro`. */
   valor: string | null
-  /** O recorte do número ("na carga de 15/10", "2026*"). */
+  /** O recorte do número ("em 15/10", "2026*"). */
   escopo?: string | null
   /** Linhas de contexto. */
   apoio?: readonly string[]
@@ -114,6 +115,50 @@ export function Tile({ rotulo, valor, escopo, apoio = [], variacao, referencia, 
           )}
         </>
       )}
+    </div>
+  )
+}
+
+/** Uma metade do tile dividido: rótulo, valor grande e linhas pequenas; degrada sozinha (erro/vazio próprios). */
+function MetadeDoTile({ metade }: { metade: MetadeTopo }) {
+  return (
+    <div className="min-w-0">
+      <p className={CLASSE_ROTULO}>{metade.rotulo}</p>
+      {metade.estado === 'erro' && (
+        <ErroCarregamento className="mt-2" mensagem={metade.mensagem ?? 'Não foi possível carregar — recarregue a página.'} />
+      )}
+      {metade.estado === 'vazio' && (
+        <p className="mt-2 text-[13px] text-[var(--text-muted)]">{metade.mensagem ?? 'Sem dado ainda.'}</p>
+      )}
+      {metade.estado === 'ok' && (
+        <>
+          <p
+            className="mt-2 min-w-0 break-words text-lg font-extrabold leading-none tabular-nums text-text-primary"
+            title={metade.valor ?? undefined}
+          >
+            {metade.valor ?? '—'}
+          </p>
+          {metade.apoio.length > 0 && (
+            <ul className="mt-1.5 space-y-0.5 text-2xs text-[var(--text-muted)]">
+              {metade.apoio.map(linha => <li key={linha}>{linha}</li>)}
+            </ul>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+/** Tile dividido em duas metades com um divisor vertical entre elas (mesma casca do `Tile`; em tela estreita
+ *  as metades empilham, com divisor horizontal). Título no topo; cada metade tem o seu estado. */
+export function TileDividido({ rotulo, metades }: { rotulo: string; metades: readonly [MetadeTopo, MetadeTopo] }) {
+  return (
+    <div className="flex h-full min-w-0 flex-col rounded-xl bg-white px-5 py-4 shadow-sm">
+      <p className={CLASSE_ROTULO}>{rotulo}</p>
+      <div className="mt-3 grid min-w-0 flex-1 grid-cols-1 divide-y divide-zinc-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+        <div className="min-w-0 pb-3 sm:pb-0 sm:pr-4"><MetadeDoTile metade={metades[0]} /></div>
+        <div className="min-w-0 pt-3 sm:pl-4 sm:pt-0"><MetadeDoTile metade={metades[1]} /></div>
+      </div>
     </div>
   )
 }
