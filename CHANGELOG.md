@@ -53,7 +53,10 @@ DEPOIS do deploy). Sem ADR novo; Emenda 1 do ADR-0183.
   Antecipações"; "Volume antecipado por conta" + "Comparativo" unificados em "Comparativo por Conta" (conta × ano:
   volume, custo efetivo, custo %). `?antecipacoes=` deixa de existir; `?anos=` antigo vale só para Prejuízos.
   O botão "Registrar antecipação" vira **"Registro de Antecipações"**, à esquerda, e o registro abre num **modal**
-  (era drawer); formulário e confirmação continuam como modais por cima. **Migration 0302 APLICADA** (aditiva): `devedores` passa a ser a lista completa.
+  (era drawer); formulário e confirmação continuam como modais por cima. Depois: o registro vira tabela com
+  colunas ordenáveis (Data desc por padrão; `ThOrdenavel` extraído para `shared/`, o Gerencial passa a importá-lo
+  sem mudança), "Novo registro" abre uma linha editável inline sob o cabeçalho (mesma action e validação da criação;
+  a edição segue no modal); "Comparativo por Conta" com cabeçalhos "Antecipado", "Custo Efetivo" e "%". **Migration 0302 APLICADA** (aditiva): `devedores` passa a ser a lista completa.
 - **CLI do Supabase fixado em `supabase@2.122.1`** no wrapper do gate (`scripts/db-gate/migrate.mjs`): a 3.0.0
   (major, resolvida pelo `npx` sem versão) recusa o `config.toml` e exige consentimento em produção por agente.
   Decisão do Yan; subir para a v3 é patch próprio.

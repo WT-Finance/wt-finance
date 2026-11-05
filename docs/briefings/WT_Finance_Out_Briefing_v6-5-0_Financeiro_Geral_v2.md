@@ -217,6 +217,16 @@ a página com **dado real** (M3 em diante) não foi vista por ninguém. Ver §6.
   por ano, coerentes com os cards e o gráfico; trocar por "só o ano corrente" é simples). Saiu "Independe dos anos
   selecionados" do card de dias (perdeu o sentido). Um teste novo nasceu com expectativa errada (300 × 900 da
   fixture) — corrigida a expectativa, a função estava certa.
+- **Registro de Antecipações** (05/11): botão "Registro de Antecipações" à esquerda, abrindo `ModalCentral` (era
+  drawer); subtítulo "Registro do histórico de antecipações realizadas"; tabela com colunas ordenáveis (Data desc;
+  `ThOrdenavel` extraído para `src/components/shared/th-ordenavel.tsx` — corpo idêntico, conferido por diff; o
+  Gerencial o importa); "Novo registro" = linha editável inline (mesma `salvarAntecipacao` e `validarFormulario`).
+  `revisor`: APROVADO COM RESSALVAS — 3 MÉDIOs corrigidos (Esc durante o salvamento cancelava com a gravação em
+  voo; concluir edição/exclusão descartava a linha nova digitada; `--brand` em tela de plataforma → tokens neutros e
+  `Button`); BAIXOs: trava por `useRef`, campos desabilitados no salvamento, foco volta ao botão. **Residual
+  conhecido (BAIXO):** durante o salvamento o foco sai dos campos desabilitados; um Esc nesse instante fecha o modal —
+  o registro é gravado mesmo assim, e a lista só se atualiza ao recarregar. Mesmo desvio de tokens na "Nova linha" do
+  Gerencial → B-51.
 - **Migration 0302** (`a24edcec`, APLICADA em 05/11, aditiva): `get_geral_recebiveis.devedores` passa de
   `{top[≤10], demais}` a **lista completa** (o drawer precisa de todos). Seguro para o front no ar (a v6.4.0 não lê a
   chave). Ensaio revertido: 22 verificações OK; `revisor-db`: aprovada com ressalvas (0 CRÍTICO/ALTO; a destrutiva tinha

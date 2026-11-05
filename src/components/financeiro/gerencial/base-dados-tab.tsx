@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { Plus, Upload, Trash2, AlertTriangle, CalendarRange, FilterX, X, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
+import { Plus, Upload, Trash2, AlertTriangle, CalendarRange, FilterX, X } from 'lucide-react'
 import { createLancamento, deleteLancamentosBulk } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
 import { LancamentoRow, type Lancamento } from './lancamento-row'
 import HistoricoAlteracoes from './historico-alteracoes'
@@ -11,6 +11,7 @@ import { useRealtimeGerencial } from './use-realtime-gerencial'
 import ImportDrawer from './import-drawer'
 import ConfirmModal from '@/components/shared/confirm-modal'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
+import { ThOrdenavel } from '@/components/shared/th-ordenavel'
 import { Card } from '@/components/ui/card'
 import { type Conta } from './tipos'
 import { ROTULO_OUTRAS, canonizarConta } from '@/lib/gerencial/normalizar-conta'
@@ -116,36 +117,7 @@ function FiltroVencimento({ ini, fim, onChange }: {
 // — `idsVisiveis`/seleção em massa continuam derivados de `filtrados`, não da ordem.
 // Tipos/comparador/direção-padrão vivem em `@/lib/gerencial/ordenacao` (módulo puro testável).
 
-/** Cabeçalho ORDENÁVEL — idioma do DS (`ranking-caixa.tsx`/`lista-operacoes.tsx`): ativo =
- *  ArrowUp/ArrowDown; ordenável inativo = ArrowUpDown esmaecido. O gatilho é um
- *  `<button type="button">` DENTRO da `<th>` (focável, entra no tab-order) — a `<th>` em
- *  si NUNCA leva `onClick` (skill `ui-design-system`, receita do "?" de ajuda). */
-function ThOrdenavel({ rotulo, col, colAtiva, dir, onOrdenar, className = '' }: {
-  rotulo:     string
-  col:        ColOrd
-  colAtiva:   ColOrd | null
-  dir:        DirOrd
-  onOrdenar:  (col: ColOrd) => void
-  className?: string
-}) {
-  const ativo = colAtiva === col
-  const ariaSort: 'ascending' | 'descending' | 'none' = ativo ? (dir === 'asc' ? 'ascending' : 'descending') : 'none'
-  return (
-    <th aria-sort={ariaSort} className={`py-2 px-2 text-xs font-medium text-zinc-400 ${className}`}>
-      <button
-        type="button"
-        onClick={() => onOrdenar(col)}
-        aria-label={`Ordenar por ${rotulo}`}
-        className={`foco-neutro inline-flex items-center gap-0.5 hover:text-zinc-600 transition-colors ${ativo ? 'text-zinc-600' : ''}`}
-      >
-        {rotulo}
-        {ativo
-          ? (dir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)
-          : <ArrowUpDown size={12} className="text-zinc-300" />}
-      </button>
-    </th>
-  )
-}
+// O cabeçalho ordenável (`ThOrdenavel`) vive em `@/components/shared/th-ordenavel` (v6.5.0).
 
 interface Props {
   lancamentos: Lancamento[]

@@ -28,9 +28,9 @@ import { TD, TD_NUM, TD_TOTAL, TH_DIR, TH_ESQ } from './comum'
 // (`ScrollAutoHide eixo="x"`, gutter `pb-3.5`), com a 1ª coluna ("Conta") presa à esquerda — nunca a página.
 
 const AJUDA =
-  'Por conta (Asaas, Blimboo) e por ano, no regime de caixa. Volume antecipado = valor bruto antecipado; custo ' +
-  'efetivo = desconto pago (antecipado − líquido), em R$; custo efetivo % = desconto ÷ volume antecipado do ' +
-  'recorte (média ponderada pelo volume, também no total). "—" = a conta não antecipou no ano. * = ano ' +
+  'Por conta (Asaas, Blimboo) e por ano, no regime de caixa. Antecipado = valor bruto antecipado; Custo ' +
+  'Efetivo = desconto pago (antecipado − líquido), em R$; % = desconto ÷ valor antecipado do ' +
+  'recorte (média ponderada pelo valor antecipado, também no total). "—" = a conta não antecipou no ano. * = ano ' +
   'corrente parcial (até o mês corrente); o período comparado do ano anterior é o mesmo.'
 
 const LARG_PRIMEIRA = 140
@@ -74,7 +74,7 @@ export default function AntecipacoesComparativoConta({ leituras }: { leituras: L
       ) : (
         <ScrollAutoHide eixo="x" className="pb-3.5">
           <table
-            aria-label="Volume antecipado, custo efetivo e custo efetivo percentual por conta, por ano"
+            aria-label="Valor antecipado, custo efetivo e percentual de custo por conta, por ano"
             className="w-full table-fixed border-separate border-spacing-0"
             style={{ minWidth: LARG_PRIMEIRA + comp.anos.length * LARG_ANO }}
           >
@@ -97,9 +97,9 @@ export default function AntecipacoesComparativoConta({ leituras }: { leituras: L
               </tr>
               <tr>
                 {comp.anos.flatMap((a, i) => [
-                  <th key={`${a.ano}-volume`} scope="col" className={`${TH_DIR} ${sep(i)}`}>Volume antecipado</th>,
-                  <th key={`${a.ano}-custo`} scope="col" className={TH_DIR}>Custo efetivo</th>,
-                  <th key={`${a.ano}-pct`} scope="col" className={TH_DIR}>Custo efetivo %</th>,
+                  <th key={`${a.ano}-volume`} scope="col" className={`${TH_DIR} ${sep(i)}`}>Antecipado</th>,
+                  <th key={`${a.ano}-custo`} scope="col" className={TH_DIR}>Custo Efetivo</th>,
+                  <th key={`${a.ano}-pct`} scope="col" className={TH_DIR}>%</th>,
                 ])}
               </tr>
             </thead>
