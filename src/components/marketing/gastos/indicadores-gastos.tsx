@@ -54,7 +54,7 @@ const PALAVRA: Record<SentidoVariacao, { texto: string; classe: string }> = {
   neutro: { texto: 'estável', classe: 'text-[var(--text-muted)]' },
 }
 
-/** "−50,0% desfavorável · vs 2025 (jan–out)" — o Δ colorido COM a palavra, e a referência ao lado. */
+/** "−50,0% desfavorável · vs 2025*" — o Δ colorido COM a palavra, e a referência ao lado. */
 function Variacao({ v }: { v: VariacaoVsAnterior }) {
   const palavra = v.sentido ? PALAVRA[v.sentido] : null
   return (
