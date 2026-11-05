@@ -131,6 +131,9 @@ describe('fixtureGeral — anos e tempo', () => {
     expect(d.anosAntecipacoes).toEqual([2024, 2025, 2026])
     expect(d.antecipacoes.map(x => x.ano)).toEqual([2024, 2025, 2026])
     expect(d.prejuizos.map(x => x.ano)).toEqual([2025, 2026])
+    // o gráfico mensal é fixo: os 3 anos, independente da seleção
+    expect(d.prejuizosMensal.map(x => x.ano)).toEqual([2024, 2025, 2026])
+    expect(fixtureGeral('normal', HOJE, [2024]).prejuizosMensal.map(x => x.ano)).toEqual([2024, 2025, 2026])
     expect(d.anosDisponiveis).toEqual([2024, 2025, 2026])
     expect(d.hoje).toBe(HOJE)
   })
@@ -199,6 +202,8 @@ describe('fixtureGeral — estado vazio e estado erro', () => {
     expect(d.antecipacoes).toHaveLength(3)
     expect(d.antecipacoes.every(x => !x.leitura.ok)).toBe(true)
     expect(d.prejuizos.every(x => !x.leitura.ok)).toBe(true)
+    expect(d.prejuizosMensal).toHaveLength(3)
+    expect(d.prejuizosMensal.every(x => !x.leitura.ok)).toBe(true)
   })
 
   it('podeGerir: ligado por padrão no mockup, desligável', () => {

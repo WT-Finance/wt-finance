@@ -28,7 +28,7 @@ describe('carimboDoFluxo', () => {
 describe('carimbosDaPagina — uma linha por fonte, na ordem do topo', () => {
   const base: DadosGeral = {
     anosPrejuizos: [2026], anosAntecipacoes: [2026], anosDisponiveis: [2026], hoje: '2026-10-15', podeGerir: false,
-    recebiveis: { ok: false }, antecipacoes: [], prejuizos: [],
+    recebiveis: { ok: false }, antecipacoes: [], prejuizos: [], prejuizosMensal: [],
     corrente: { prejuizos: { ano: 2026, leitura: { ok: false } }, antecipacoes: { ano: 2026, leitura: { ok: false } } },
   }
   it('sem nenhuma fonte carregada → nenhuma linha (o título fica)', () => {
@@ -58,14 +58,21 @@ describe('carimbosDaPagina — uma linha por fonte, na ordem do topo', () => {
     const d = fixtureGeral('normal', '2026-10-26', [2026])
     const fontes = (x: DadosGeral) => carimbosDaPagina(x).map(c => c.fonte)
     expect(fontes({ ...d, recebiveis: { ok: false } })).toEqual([FONTE_CAIXA, FONTE_ANTECIPACOES])
-    expect(fontes({ ...d, prejuizos: [], corrente: { ...d.corrente, prejuizos: { ano: 2026, leitura: { ok: false } } } }))
+    expect(fontes({ ...d, prejuizos: [], prejuizosMensal: [], corrente: { ...d.corrente, prejuizos: { ano: 2026, leitura: { ok: false } } } }))
       .toEqual([FONTE_CONTAS_A_RECEBER, FONTE_ANTECIPACOES])
     expect(fontes({ ...d, antecipacoes: [], corrente: { ...d.corrente, antecipacoes: { ano: 2026, leitura: { ok: false } } } }))
       .toEqual([FONTE_CONTAS_A_RECEBER, FONTE_CAIXA])
   })
   it('a leitura do ano corrente entra mesmo fora das listas das seções', () => {
     const d = fixtureGeral('normal', '2026-10-26', [2026])
-    const r: DadosGeral = { ...d, prejuizos: [], antecipacoes: [] }
+    const r: DadosGeral = { ...d, prejuizos: [], prejuizosMensal: [], antecipacoes: [] }
     expect(carimbosDaPagina(r).map(c => c.fonte)).toEqual([FONTE_CONTAS_A_RECEBER, FONTE_CAIXA, FONTE_ANTECIPACOES])
+  })
+  it('Caixa considera as leituras do gráfico mensal, mesmo sem as das pills nem a do corrente', () => {
+    const d = fixtureGeral('normal', '2026-10-26', [2026])
+    const r: DadosGeral = {
+      ...d, prejuizos: [], corrente: { ...d.corrente, prejuizos: { ano: 2026, leitura: { ok: false } } },
+    }
+    expect(carimbosDaPagina(r).map(c => c.fonte)).toContain(FONTE_CAIXA)
   })
 })

@@ -21,7 +21,7 @@
 
 import { custoDoRecorte } from './antecipacoes'
 import { diasEntre, emCentavos } from './numeros'
-import { anosDasPillsGeral, anosDeAntecipacoes, recorteDaLeitura, type RelacaoDoAno } from './periodo'
+import { anosDasPillsGeral, anosFixosDoFluxo, recorteDaLeitura, type RelacaoDoAno } from './periodo'
 import {
   antecipacoesSchema, prejuizosSchema, recebiveisSchema,
   type Antecipacoes, type Prejuizos, type Recebiveis,
@@ -283,8 +283,8 @@ function antecipacoesDoAno(ano: number, hoje: string, vazio: boolean): Antecipac
 // ── A fixture ──────────────────────────────────────────────────────────────────────────────────
 
 /**
- * `DadosGeral` de demonstração. `anos` = os anos selecionados em Perdas e prejuízos (os demais não entram);
- * Antecipações é FIXA no ano corrente e nos dois anteriores, independente de `anos`; `hoje` = 'AAAA-MM-DD'
+ * `DadosGeral` de demonstração. `anos` = os anos selecionados nas pills de Perdas e prejuízos (só a tabela por
+ * pessoa os usa); Antecipações e o "Prejuízo Mensal" são FIXOS no ano corrente e nos dois anteriores, independente de `anos`; `hoje` = 'AAAA-MM-DD'
  * (o `hoje` de SP que o servidor mandaria). `podeGerir` liga o botão "Registrar antecipação" no mockup.
  */
 export function fixtureGeral(
@@ -301,8 +301,9 @@ export function fixtureGeral(
   const porAno = <T>(anosLidos: readonly number[], montar: (ano: number) => T): LeituraAno<T>[] =>
     anosLidos.map(ano => leituraDo(ano, montar))
   const anoCorrente = Number(hoje.slice(0, 4))
-  // Antecipações é FIXA (o corrente e os dois anteriores), como no servidor.
-  const anosAntecipacoes = anosDeAntecipacoes(anoCorrente)
+  // Antecipações e o "Prejuízo Mensal" são FIXOS (o corrente e os dois anteriores), como no servidor.
+  const anosAntecipacoes = anosFixosDoFluxo(anoCorrente)
+  const prejuizoDe = (ano: number) => prejuizosDoAno(ano, hoje, estado === 'vazio')
   const recebiveis: Carregado<Recebiveis> = estado === 'erro'
     ? { ok: false }
     : { ok: true, dados: estado === 'vazio' ? recebiveisVazio() : recebiveisNormal() }
@@ -314,9 +315,10 @@ export function fixtureGeral(
     hoje,
     recebiveis,
     antecipacoes: porAno(anosAntecipacoes, ano => antecipacoesDoAno(ano, hoje, estado === 'vazio')),
-    prejuizos: porAno(selecionados, ano => prejuizosDoAno(ano, hoje, estado === 'vazio')),
+    prejuizos: porAno(selecionados, prejuizoDe),
+    prejuizosMensal: porAno(anosFixosDoFluxo(anoCorrente), prejuizoDe),
     corrente: {
-      prejuizos: leituraDo(anoCorrente, ano => prejuizosDoAno(ano, hoje, estado === 'vazio')),
+      prejuizos: leituraDo(anoCorrente, prejuizoDe),
       antecipacoes: leituraDo(anoCorrente, ano => antecipacoesDoAno(ano, hoje, estado === 'vazio')),
     },
     podeGerir,

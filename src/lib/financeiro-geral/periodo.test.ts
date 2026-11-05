@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  PRIMEIRO_ANO, anosDasPillsGeral, anosDeAntecipacoes, anosDosPrejuizos, mesesRealizados, recorteDaLeitura,
+  PRIMEIRO_ANO, anosDasPillsGeral, anosFixosDoFluxo, anosParaLer, anosDosPrejuizos, mesesRealizados, recorteDaLeitura,
   recorteTexto, rotuloDoAno, rotuloReferencia,
 } from './periodo'
 
@@ -45,10 +45,26 @@ describe('anosDosPrejuizos — ?prejuizos= (com ?anos= como valor inicial); Ante
   })
 })
 
-describe('anosDeAntecipacoes — recorte FIXO: o ano corrente e os dois anteriores', () => {
+describe('anosFixosDoFluxo — recorte FIXO: o ano corrente e os dois anteriores', () => {
   it('crescente, sem depender de URL', () => {
-    expect(anosDeAntecipacoes(2026)).toEqual([2024, 2025, 2026])
-    expect(anosDeAntecipacoes(2027)).toEqual([2025, 2026, 2027])
+    expect(anosFixosDoFluxo(2026)).toEqual([2024, 2025, 2026])
+    expect(anosFixosDoFluxo(2027)).toEqual([2025, 2026, 2027])
+  })
+})
+
+describe('anosParaLer — união de selecionados e fixos, cada ano UMA vez', () => {
+  it('seleção dentro dos fixos: nenhuma chamada a mais', () => {
+    expect(anosParaLer([2025], anosFixosDoFluxo(2026))).toEqual([2024, 2025, 2026])
+    expect(anosParaLer([2024, 2025, 2026], anosFixosDoFluxo(2026))).toEqual([2024, 2025, 2026])
+  })
+  it('seleção fora dos fixos (pill de ano antigo): só o que falta é somado; crescente', () => {
+    expect(anosParaLer([2024, 2026], anosFixosDoFluxo(2027))).toEqual([2024, 2025, 2026, 2027])
+    expect(anosParaLer([2024], anosFixosDoFluxo(2027))).toEqual([2024, 2025, 2026, 2027])
+  })
+  it('sem repetição, mesmo com entrada repetida ou desordenada', () => {
+    const lista = anosParaLer([2026, 2025, 2025], [2026, 2025, 2024])
+    expect(lista).toEqual([2024, 2025, 2026])
+    expect(new Set(lista).size).toBe(lista.length)
   })
 })
 

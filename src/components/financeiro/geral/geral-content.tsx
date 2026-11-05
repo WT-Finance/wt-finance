@@ -25,7 +25,8 @@ import SecaoRecebiveis from './secao-recebiveis'
 //    uma ida às RPCs, então a seleção é navegação (`startTransition` + `scroll: false` — filtro no LUGAR, sem
 //    salto ao topo, com o conteúdo esmaecido enquanto o servidor responde). Sem estado local: tudo deriva de
 //    `dados`. O antigo `?anos=` segue aceito como valor inicial; ao primeiro clique é trocado por `?prejuizos=`.
-//    "Antecipações" NÃO tem pills: é fixa no ano corrente e nos dois anteriores.
+//    As pills valem só para "Prejuízo por Pessoa"; o "Prejuízo Mensal" e "Antecipações" são fixos no ano
+//    corrente e nos dois anteriores.
 //  • Recebíveis (estoque) mostra a posição da última carga e não tem pills; a faixa do topo e "Dias sem
 //    antecipação" usam sempre o ano corrente.
 //  • A data de atualização de cada base mora no CABEÇALHO (uma linha por fonte), não nas seções.
@@ -73,6 +74,7 @@ export default function GeralContent({ dados }: { dados: DadosGeral }) {
           <TopSection titulo="Perdas e prejuízos">
             <SecaoPrejuizos
               leituras={dados.prejuizos}
+              leiturasMensal={dados.prejuizosMensal}
               anos={anosPrejuizos}
               anosDisponiveis={anosDisponiveis}
               onAlternarAno={alternarAnoPrejuizos}

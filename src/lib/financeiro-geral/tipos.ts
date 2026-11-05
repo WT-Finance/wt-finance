@@ -25,13 +25,16 @@ export interface DadosGeral {
   hoje: string
   /** Estoque: ignora as pills de ano. */
   recebiveis: Carregado<Recebiveis>
-  /** Fluxo: uma leitura por ano da respectiva seção (`antecipacoes` ↔ `anosAntecipacoes`,
-   *  `prejuizos` ↔ `anosPrejuizos`), na MESMA ordem. */
+  /** Fluxo: uma leitura por ano (`antecipacoes` ↔ `anosAntecipacoes`, `prejuizos` ↔ `anosPrejuizos`), na MESMA
+   *  ordem. `prejuizos` serve só ao "Prejuízo por Pessoa" (e ao futuro "Prejuízo por Setor"): os anos das pills. */
   antecipacoes: LeituraAno<Antecipacoes>[]
   prejuizos: LeituraAno<Prejuizos>[]
+  /** Os anos FIXOS do gráfico "Prejuízo Mensal" (o corrente e os dois anteriores, crescente), independentes das
+   *  pills. Vêm da MESMA leitura de `prejuizos` quando o ano está nos dois conjuntos (cada ano é lido uma vez). */
+  prejuizosMensal: LeituraAno<Prejuizos>[]
   /** As leituras do ANO CORRENTE, carregadas SEMPRE (v6.5.0), mesmo com a pill de Prejuízos desmarcada: a faixa
    *  do topo (prejuízo do ano corrente, dias sem antecipação) e o card "Dias sem antecipação" não dependem das
-   *  pills. É a MESMA leitura da lista quando o ano está nela (uma chamada só; em Antecipações sempre está). */
+   *  pills. É a MESMA leitura das listas (uma chamada só; o corrente está sempre nos anos fixos). */
   corrente: {
     prejuizos: LeituraAno<Prejuizos>
     antecipacoes: LeituraAno<Antecipacoes>

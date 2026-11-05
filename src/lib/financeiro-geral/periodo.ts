@@ -28,7 +28,8 @@ export function anosDasPillsGeral(anoCorrente: number): number[] {
 
 /** Os parâmetros de ano da página: só "Perdas e prejuízos" tem pills (`?prejuizos=2025,2026`); o antigo
  *  `?anos=`/`?ano=` (links salvos, de quando havia uma linha de pills só) vale como valor inicial dela.
- *  "Antecipações" não tem pills nem parâmetro: o recorte é fixo (`anosDeAntecipacoes`). */
+ *  As pills valem só para "Prejuízo por Pessoa" (e para "Prejuízo por Setor", quando tiver conteúdo); o
+ *  "Prejuízo Mensal" e "Antecipações" não as leem: o recorte é fixo (`anosFixosDoFluxo`). */
 export interface ParamsGeral extends ParamsAnos {
   prejuizos?: ParamsAnos['anos']
 }
@@ -48,9 +49,16 @@ export function anosDosPrejuizos(params: ParamsGeral, anoCorrente: number): numb
   return resolverAnos(pedidos, anosDasPillsGeral(anoCorrente), anoCorrente)
 }
 
-/** O recorte FIXO de "Antecipações": o ano corrente e os dois anteriores, crescente (ex.: 2024, 2025, 2026*). */
-export function anosDeAntecipacoes(anoCorrente: number): number[] {
+/** O recorte FIXO dos gráficos de fluxo: o ano corrente e os dois anteriores, crescente (ex.: 2024, 2025, 2026*).
+ *  Vale para "Antecipações" (inteira) e para o "Prejuízo Mensal" de "Perdas e prejuízos" — as pills não o afetam. */
+export function anosFixosDoFluxo(anoCorrente: number): number[] {
   return [anoCorrente - 2, anoCorrente - 1, anoCorrente]
+}
+
+/** Os anos a LER de uma RPC de fluxo: a união dos selecionados e dos fixos, crescente, cada ano UMA vez
+ *  (um ano nos dois conjuntos é uma chamada só). */
+export function anosParaLer(selecionados: readonly number[], fixos: readonly number[]): number[] {
+  return [...new Set([...selecionados, ...fixos])].sort((a, b) => a - b)
 }
 
 /** O que a RPC de fluxo diz do ano: fechado, corrente (até `mes_corrente`) ou futuro. */

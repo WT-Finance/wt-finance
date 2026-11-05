@@ -3,7 +3,6 @@
 import { useMemo } from 'react'
 import { TriangleAlert } from 'lucide-react'
 import EmConstrucaoSecao from '@/components/shared/em-construcao-secao'
-import ErroCarregamento from '@/components/shared/erro-carregamento'
 import GraficoMensalPorAno, { type SerieDoAno } from '@/components/shared/grafico-mensal-por-ano'
 import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import { fmtBRL2 } from '@/lib/fmt'
@@ -13,7 +12,6 @@ import { recorteTexto } from '@/lib/financeiro-geral/periodo'
 import { bandejaDosAnos } from '@/lib/financeiro-geral/prejuizos'
 import type { Prejuizos } from '@/lib/financeiro-geral/schemas'
 import type { LeituraAno } from '@/lib/financeiro-geral/tipos'
-import { CascaEstado } from './comum'
 import FiltroAnos from './filtro-anos'
 import PrejuizosTabelaPessoa from './prejuizos-tabela-pessoa'
 
@@ -32,18 +30,23 @@ import PrejuizosTabelaPessoa from './prejuizos-tabela-pessoa'
 // para o topo da página.
 const AJUDA_PESSOA =
   'Prejuízo bruto = lançamentos realizados na categoria Prejuízos (negativo, como na DRE), no regime de caixa. ' +
-  'A tabela soma os anos selecionados (ano que não carregou fica fora da soma e é avisado) e o total é o de ' +
-  'todas as pessoas, não só das linhas à vista. "Pessoa" é o campo pessoa do lançamento no Monde; lançamento ' +
-  'sem pessoa aparece como "(sem pessoa)". Um ano em andamento leva * e vai até o mês corrente.'
+  'A tabela soma os anos selecionados nos botões de ano acima (ano que não carregou fica fora da soma e é ' +
+  'avisado) e o total é o de todas as pessoas, não só das linhas à vista. "Pessoa" é o campo pessoa do ' +
+  'lançamento no Monde; lançamento sem pessoa aparece como "(sem pessoa)". Um ano em andamento leva * e vai ' +
+  'até o mês corrente.'
 
 const AJUDA_MENSAL =
   'Prejuízo bruto = lançamentos realizados na categoria Prejuízos, no sinal da DRE (negativo) e no regime de ' +
-  'caixa: cada total é a soma das células da DRE. Mês a mês, janeiro a dezembro, um traço por ano selecionado; ' +
-  'o prejuízo sobe a partir do zero, como a despesa na DRE. Um ano em andamento leva * e vai até o mês corrente.'
+  'caixa: cada total é a soma das células da DRE. Mês a mês, janeiro a dezembro, um traço por ano. Mostra sempre ' +
+  'o ano corrente e os dois anteriores, independente dos botões de ano; o prejuízo sobe a partir do zero, como ' +
+  'a despesa na DRE. Um ano em andamento leva * e vai até o mês corrente.'
 
 interface Props {
+  /** As leituras dos anos das pills — só a tabela por pessoa (e, depois, o "Prejuízo por Setor") as usa. */
   leituras: LeituraAno<Prejuizos>[]
-  /** Anos selecionados (todos), crescente. */
+  /** As leituras FIXAS do gráfico "Prejuízo Mensal" (o corrente e os dois anteriores), independentes das pills. */
+  leiturasMensal: LeituraAno<Prejuizos>[]
+  /** Anos selecionados nas pills (todos), crescente. */
   anos: number[]
   /** Anos com pill, crescente. */
   anosDisponiveis: number[]
@@ -54,11 +57,17 @@ interface Props {
   hoje: string
 }
 
-export default function SecaoPrejuizos({ leituras, anos, anosDisponiveis, onAlternarAno }: Props) {
-  const carregadas = useMemo(() => dadosCarregados(leituras), [leituras])
-  const falhas = useMemo(() => anosQueFalharam(leituras), [leituras])
-  const mensal = useMemo(() => serieMensalMultiAno(leituras, d => d.prejuizo.meses), [leituras])
-  const bandeja = useMemo(() => bandejaDosAnos(leituras), [leituras])
+export default function SecaoPrejuizos({ leituras, leiturasMensal, anos, anosDisponiveis, onAlternarAno }: Props) {
+  // O gráfico mensal é de um recorte FIXO (`leiturasMensal`); as pills só mexem em `leituras`.
+  const anosMensal = useMemo(() => leiturasMensal.map(l => l.ano).sort((a, b) => a - b), [leiturasMensal])
+  const carregadas = useMemo(() => dadosCarregados(leiturasMensal), [leiturasMensal])
+  const falhas = useMemo(() => anosQueFalharam(leiturasMensal), [leiturasMensal])
+  const mensal = useMemo(() => serieMensalMultiAno(leiturasMensal, d => d.prejuizo.meses), [leiturasMensal])
+  // A bandeja olha todo ano lido (pills ∪ fixos), cada ano uma vez — o aviso não depende de qual card o usa.
+  const bandeja = useMemo(
+    () => bandejaDosAnos([...new Map([...leituras, ...leiturasMensal].map(l => [l.ano, l])).values()]),
+    [leituras, leiturasMensal],
+  )
 
   // Entrada genérica do gráfico: por ano carregado, 12 valores (`null` = mês que o ano ainda não alcançou),
   // o total do ano e o recorte. `carregadas` e `mensal.anos` saem das mesmas leituras, ambos crescentes.
@@ -73,23 +82,13 @@ export default function SecaoPrejuizos({ leituras, anos, anosDisponiveis, onAlte
     [carregadas, mensal],
   )
 
-  // A linha de cima da seção: só as pills de ano (independentes das de Antecipações).
+  // A linha de cima da seção: as pills de ano — valem só para "Prejuízo por Pessoa" (e para "Prejuízo por Setor",
+  // quando ele ganhar conteúdo: usará a mesma seleção, `leituras`). O gráfico mensal não as lê.
   const meta = (
     <div className="mb-4">
-      <FiltroAnos rotulo="Anos de Perdas e prejuízos" selecionados={anos} anos={anosDisponiveis} onAlternar={onAlternarAno} />
+      <FiltroAnos rotulo="Anos de Prejuízo por Pessoa" selecionados={anos} anos={anosDisponiveis} onAlternar={onAlternarAno} />
     </div>
   )
-
-  if (carregadas.length === 0) {
-    return (
-      <div>
-        {meta}
-        <CascaEstado>
-          <ErroCarregamento mensagem={`Não foi possível carregar os prejuízos de ${rotuloAnos(falhas.length ? falhas : anos)} — recarregue a página.`} />
-        </CascaEstado>
-      </div>
-    )
-  }
 
   // Com ano que falhou, "sem prejuízos em <todos os anos>" seria falso: só vale para os carregados.
   const mensagemSemDados = mensal.temMovimento
@@ -109,13 +108,13 @@ export default function SecaoPrejuizos({ leituras, anos, anosDisponiveis, onAlte
         <GraficoMensalPorAno
           titulo="Prejuízo Mensal"
           ajuda={<GatilhoAjuda rotulo="Prejuízo Mensal" texto={AJUDA_MENSAL} />}
-          anos={anos}
+          anos={anosMensal}
           series={series}
           anosFalha={falhas}
           invertido
           descricaoMensal="Prejuízo bruto por mês, janeiro a dezembro, por ano"
           descricaoTotal="Prejuízo bruto total por ano"
-          mensagemFalhaTotal={`Não foi possível carregar o prejuízo de ${rotuloAnos(falhas.length ? falhas : anos)}.`}
+          mensagemFalhaTotal={`Não foi possível carregar o prejuízo de ${rotuloAnos(falhas.length ? falhas : anosMensal)}.`}
           mensagemSemDados={mensagemSemDados}
           nomeSerie="Prejuízo"
         />

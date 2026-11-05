@@ -17,8 +17,8 @@ import type { Prejuizos } from '@/lib/financeiro-geral/schemas'
 import type { LeituraAno } from '@/lib/financeiro-geral/tipos'
 import { TD, TD_NUM, TD_TOTAL, TH_DIR, TH_ESQ } from './comum'
 
-// Card "Prejuízo por Pessoa" (v6.5.0): UMA tabela que SOMA os anos selecionados que carregaram (decisão do
-// Yan, GATE 1). Sem subtítulo — o "?" do cabeçalho diz o recorte (bruto, regime de caixa, de onde vem a
+// Card "Prejuízo por Pessoa" (v6.5.0): UMA tabela que SOMA os anos selecionados nas pills da seção que carregaram
+// (decisão do Yan, GATE 1) — só ele e o futuro "Prejuízo por Setor" leem as pills; o gráfico mensal é fixo. Sem subtítulo — o "?" do cabeçalho diz o recorte (bruto, regime de caixa, de onde vem a
 // pessoa, ano parcial com *). O card mostra as 5 primeiras pessoas + a linha de Total de TODAS e o "Ver mais",
 // que abre o drawer com a lista completa — o mesmo desenho de "Maiores Inadimplentes" (`recebiveis-devedores`).
 // Ano que falhou fica fora da soma e é avisado sob a tabela — nunca somado calado só com o que chegou. As contas
@@ -114,13 +114,17 @@ export default function PrejuizosTabelaPessoa({
     <Card className="flex h-full min-w-0 flex-col">
       <CabecalhoCard titulo={TITULO} ajuda={ajuda} />
 
-      {card.linhas.length === 0 ? (
+      {card.anos.length === 0 ? (
+        // Nenhum ano carregou: o aviso abaixo (anos fora da soma) seria só metade da história — e "sem
+        // prejuízos" seria falso. Cada card falha sozinho: o gráfico mensal tem as próprias leituras.
+        <ErroCarregamento mensagem={`Não foi possível carregar os prejuízos de ${rotuloAnos(card.anosFalha)} — recarregue a página.`} />
+      ) : card.linhas.length === 0 ? (
         <EmptyState icon={Users} message={`Sem prejuízos registrados em ${rotuloAnos(card.anos)}.`} />
       ) : (
         <TabelaDasPessoas tabela={card} />
       )}
 
-      {card.anosFalha.length > 0 && (
+      {card.anos.length > 0 && card.anosFalha.length > 0 && (
         <ErroCarregamento
           className="mt-3"
           mensagem={`Não foi possível carregar ${rotuloAnos(card.anosFalha)}; fora da soma.`}

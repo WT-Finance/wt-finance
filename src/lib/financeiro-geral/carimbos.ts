@@ -38,13 +38,15 @@ export function carimboDoFluxo(leituras: readonly { atualizado_em: string | null
 
 /**
  * As linhas "Última atualização" do topo, nesta ordem: Contas a receber (gravação da última carga), Caixa
- * (prejuízos: o `atualizado_em` mais recente das leituras — as dos anos selecionados e a do ano corrente) e
+ * (prejuízos: o `atualizado_em` mais recente de todas as leituras carregadas — as dos anos selecionados, as do
+ * gráfico mensal e a do ano corrente) e
  * Antecipações (idem). Fonte sem data — não carregou, ou ainda não tem registro — NÃO aparece.
  */
 export function carimbosDaPagina(d: DadosGeral): CarimboFonte[] {
   const contas = d.recebiveis.ok ? d.recebiveis.dados.carga?.gravado_em ?? null : null
   const caixa = carimboDoFluxo([
     ...dadosCarregados(d.prejuizos).map(x => x.dados),
+    ...dadosCarregados(d.prejuizosMensal).map(x => x.dados),
     ...dadosCarregados([d.corrente.prejuizos]).map(x => x.dados),
   ])
   const antecipacoes = carimboDoFluxo([
