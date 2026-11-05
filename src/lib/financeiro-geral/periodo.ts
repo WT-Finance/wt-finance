@@ -9,7 +9,7 @@
 //  • O RECORTE de cada ano (para o `*` de ano parcial) vem da PRÓPRIA RPC (`relacao` + `mes_corrente`),
 //    a fonte que já decidiu o que é realizado — não de `hoje` recalculado no cliente.
 
-import { anosDaUrl, resolverAnos, type ParamsAnos } from '@/lib/marketing/anos'
+import { anosDaUrl, anosPadrao, resolverAnos, type ParamsAnos } from '@/lib/marketing/anos'
 import {
   MESES_ABREV, recorteParcial, rotuloAnoNoTotal, rotuloRecorte, type Recorte,
 } from '@/lib/marketing/periodo'
@@ -34,18 +34,30 @@ export interface ParamsGeral extends ParamsAnos {
   prejuizos?: ParamsAnos['anos']
 }
 
+const mesmos = (x: readonly number[], y: readonly number[]) => x.length === y.length && x.every((a, i) => a === y[i])
+
+/** A seleção EXPLÍCITA que um par `anos`/`ano` da URL traz, ou `null` se nenhum ano dele vale. O parse é o de
+ *  `anosDaUrl` (não reimplementado), que devolve o default da casa quando nada vale; então: `anos` tem ano
+ *  válido ⇔ duas sondas com `?ano=` diferentes dão o MESMO resultado; e, com `anos` inválido, um `ano` válido
+ *  dá um ano só — diferente do default (que é a janela de 3 anos). */
+function selecaoExplicita(anos: ParamsAnos['anos'], ano: ParamsAnos['ano'], anoCorrente: number): number[] | null {
+  const anosValidos = mesmos(
+    anosDaUrl({ anos, ano: String(anoCorrente) }, anoCorrente),
+    anosDaUrl({ anos, ano: String(anoCorrente - 1) }, anoCorrente),
+  )
+  const r = anosDaUrl({ anos, ano }, anoCorrente)
+  return anosValidos || !mesmos(r, anosPadrao(anoCorrente)) ? r : null
+}
+
 /**
  * A seleção de anos de "Perdas e prejuízos": `?prejuizos=` (mesmo formato e mesmas regras de `?anos=`); sem
- * nenhum ano válido nele, o antigo `?anos=`/`?ano=` vale como valor inicial; sem esse, o default da casa.
- * O parse é o de `anosDaUrl` (não reimplementado): ele devolve o default quando nada vale, então "o parâmetro
- * próprio tem ano válido?" se decide por DUAS sondas com `?ano=` diferentes — iguais só se o próprio decidiu.
+ * nenhum ano válido nele, o antigo `?anos=`/`?ano=` vale como valor inicial; sem nenhum dos dois, **só o ano
+ * corrente** (decisão do Yan, 05/11/2026 — a pill nasce com o ano corrente marcado).
  */
 export function anosDosPrejuizos(params: ParamsGeral, anoCorrente: number): number[] {
-  const proprio = params.prejuizos
-  const sondaA = anosDaUrl({ anos: proprio, ano: String(anoCorrente) }, anoCorrente)
-  const sondaB = anosDaUrl({ anos: proprio, ano: String(anoCorrente - 1) }, anoCorrente)
-  const temProprio = sondaA.length === sondaB.length && sondaA.every((a, i) => a === sondaB[i])
-  const pedidos = temProprio ? sondaA : anosDaUrl({ anos: params.anos, ano: params.ano }, anoCorrente)
+  const pedidos = selecaoExplicita(params.prejuizos, undefined, anoCorrente)
+    ?? selecaoExplicita(params.anos, params.ano, anoCorrente)
+    ?? [anoCorrente]
   return resolverAnos(pedidos, anosDasPillsGeral(anoCorrente), anoCorrente)
 }
 

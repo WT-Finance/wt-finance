@@ -28,20 +28,26 @@ describe('anosDosPrejuizos — ?prejuizos= (com ?anos= como valor inicial); Ante
     expect(anosDosPrejuizos({ anos: '2025,2026' }, 2026)).toEqual([2025, 2026])
     expect(anosDosPrejuizos({ ano: '2025' }, 2026)).toEqual([2025])
   })
+  it('seleção explícita igual à janela de 3 anos continua valendo (não é confundida com o padrão)', () => {
+    expect(anosDosPrejuizos({ prejuizos: '2024,2025,2026' }, 2026)).toEqual([2024, 2025, 2026])
+    expect(anosDosPrejuizos({ anos: '2024,2025,2026' }, 2026)).toEqual([2024, 2025, 2026])
+  })
   it('o parâmetro próprio vence o antigo', () => {
     expect(anosDosPrejuizos({ anos: '2024', prejuizos: '2026' }, 2026)).toEqual([2026])
   })
-  it('parâmetro próprio sem ano válido (lixo, vazio) cai no antigo e, sem ele, no default; o próprio igual ao corrente vale', () => {
+  it('parâmetro próprio sem ano válido (lixo, vazio) cai no antigo e, sem ele, no padrão: SÓ o ano corrente', () => {
     expect(anosDosPrejuizos({ prejuizos: 'abc', anos: '2025' }, 2026)).toEqual([2025])
     expect(anosDosPrejuizos({ prejuizos: '', ano: '2025' }, 2026)).toEqual([2025])
-    expect(anosDosPrejuizos({ prejuizos: 'abc' }, 2026)).toEqual([2024, 2025, 2026])
+    expect(anosDosPrejuizos({ prejuizos: 'abc' }, 2026)).toEqual([2026])
+    expect(anosDosPrejuizos({ prejuizos: 'abc', anos: 'xyz', ano: 'nada' }, 2026)).toEqual([2026])
     expect(anosDosPrejuizos({ prejuizos: '2026', anos: '2024' }, 2026)).toEqual([2026])
-    expect(anosDosPrejuizos({}, 2026)).toEqual([2024, 2025, 2026])
+    expect(anosDosPrejuizos({}, 2026)).toEqual([2026])
+    expect(anosDosPrejuizos({}, 2027)).toEqual([2027])
   })
   it('um `?antecipacoes=` antigo (link salvo) não influencia nada', () => {
     const comLixo = (x: Record<string, string>) => x as unknown as Parameters<typeof anosDosPrejuizos>[0]
     expect(anosDosPrejuizos(comLixo({ prejuizos: '2025', antecipacoes: '2024' }), 2026)).toEqual([2025])
-    expect(anosDosPrejuizos(comLixo({ antecipacoes: '2024' }), 2026)).toEqual([2024, 2025, 2026])
+    expect(anosDosPrejuizos(comLixo({ antecipacoes: '2024' }), 2026)).toEqual([2026])
   })
 })
 
