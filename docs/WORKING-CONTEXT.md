@@ -9,7 +9,7 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-11-06 (v6.5.1 em voo: GATE 1 aguardando o Yan).
+Última atualização: 2026-11-06 (v6.5.1 em voo: GATE 1 decidido, próxima M2).
 
 ---
 
@@ -24,26 +24,28 @@ Worktree `.claude/worktrees/v6-5-1-dre-caixa-centro-custo`. Briefing `docs/brief
   `Downloads/Lancamentos_por_categoria_2026.xlsx` (`dfae02fd…`); `antecipacoes-2026-11-06.xlsx`; protótipo
   `DRE_caixa_por_centro_de_custo_2026_v06-11.xlsx`. A negativa de 20/10 se perdeu → sintética (D4). Pessoa física nos
   arquivos: confirmar se `tests/fixtures/ingestao/` é git-ignorado antes de copiar.
-- **M1 (GATE 1) feita — PARADA para o Yan.** Mockup na rota real `/financeiro/dre` (seção Regime de Caixa):
-  `?centro=trips|weddings|corp|csc|sem_centro|lado` (ausente = Empresa) e `?estado=vazio|erro`. Fonte = FIXTURE
+- **M1 (GATE 1) feita; decisões do Yan em 06/11 (não re-propor).** Mockup na rota real `/financeiro/dre`, seção
+  Regime de Caixa: a tabela da Empresa fica EXATAMENTE como era (call-site idêntico ao `main`) e a DRE por centro é
+  um **card separado** abaixo dela (depois de "Maiores variações"), com o seletor só dentro dele (estado do card,
+  sem URL; abre em Lado a lado). `?estado=vazio|erro` simula a base de centro. Fonte = FIXTURE
   (`src/lib/dre-centro/fixture.ts`): números fictícios derivados da carga real da Empresa pelas fórmulas vivas
-  (`dre_estrutura`, chamada só fora da visão Empresa) — Σ centros fecha com a Empresa na tela. Sai na M4.
+  (`dre_estrutura`, última chamada do `allSettled`) — Σ centros fecha com a Empresa. Conferida contra o
+  `get_dre_mensal(2026)` vivo (PAG_H corrigido, `ed5fd3c3`). Sai na M4.
   - Arquitetura: componente IRMÃO `tabela-dre-centro.tsx`; a `TabelaDre` só ganhou `export` nos primitivos +
     `tituloExportar` opcional. Guarda medida: `tabela-dre.test.ts` (snapshot gravado ANTES, commit `ef10d0da`).
   - Módulo puro `src/lib/dre-centro/`: `atribuicao.ts` (regra §3.4 + Quem cobre quem; pesos do oráculo jan/fev/abr
     conferidos), `visoes.ts` (colunas das 3 visões), `montar.ts`, `exportar.ts`. Contrato proposto em `tipos.ts`:
     o banco entrega árvore por centro (já deslocada, sem a taxa) + recebíveis identificados; o front atribui.
-  - **Decisões que o mockup propõe (confirmar no GATE 1):** (1) seletor ACIMA do card, fora da toolbar;
-    (2) AV do CSC sobre a Receita Bruta da EMPRESA (`AV*`), alternativa = travessão; (3) Quem cobre quem DENTRO,
-    card sob a DRE só no Lado a lado; (4) memória em faixa própria, itálico, sem AV; (5) coluna "Total" do Lado a
-    lado = Σ centros (só o Resultado de caixa iguala a Empresa — "?" explica); (6) centro abre na visão Mensal
-    (a Empresa abre em Consolidado); (7) carimbos novos "Centro de custo" e "Antecipações · Último registro"; o
-    "Caixa" existente ficou (o briefing diz "Lançamentos"); (8) Exportar em Lado a lado = aba consolidada + uma
-    mensal por centro (adiantado da M4).
-  - Conferência visual NÃO feita pelo agente (login real; o verificador-visual não conectou). Render provado por
-    teste (`tabela-dre-centro.test.ts`). Suíte: 2.627 testes verdes; 5 arquivos de oráculo de ingestão falham por
-    `ENOENT` das fixtures não versionadas na worktree (ambiente, não M1).
-- **Próximo passo após o OK do Yan: M2** (base nova, parser, `promover`, patch destrutivo dos `CHECK` — D2).
+  - **Decidido pelo Yan (GATE 1):** (1) DRE por centro em **card separado** na seção de caixa, seletor só nele;
+    (2) AV do CSC sobre a Receita Bruta da **empresa** (`AV*`); (3) **Quem cobre quem entra**, só no Lado a lado;
+    (4) centro abre na visão **Mensal**; (5) coluna **"Total"** do Lado a lado com "?" explicando; (6) carimbo
+    **"Caixa" mantido** (+ "Centro de custo" e "Antecipações"); (7) **memória** em faixa própria, itálico, sem AV;
+    (8) **Exportar** já nesta versão (Lado a lado = aba consolidada + uma mensal por centro).
+    Escolha do agente, a confirmar no preview: o card abre em **Lado a lado**.
+  - Conferência visual NÃO feita pelo agente (login real). Render provado por teste (`tabela-dre-centro.test.ts`).
+    Suíte: 2.627 testes verdes; 5 arquivos de oráculo de ingestão falham por `ENOENT` das fixtures não versionadas
+    na worktree (ambiente, não M1).
+- **Próximo passo: M2** (base nova, parser, `promover`, patch destrutivo dos `CHECK` — D2).
 
 ---
 

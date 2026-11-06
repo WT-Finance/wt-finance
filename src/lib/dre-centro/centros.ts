@@ -20,24 +20,19 @@ export const ROTULO_CENTRO: Record<CentroId, string> = {
  *  lista é decisão de produto — volta ao Chat. */
 export const CENTROS_ELEGIVEIS_DEFICIT: readonly CentroId[] = ['trips', 'weddings', 'corp', 'csc']
 
-/** O que o seletor da página escolhe: a DRE de hoje (`empresa`, o padrão), um centro, ou os
- *  centros lado a lado. */
-export type SeletorCentro = 'empresa' | CentroId | 'lado'
+/** O que o seletor do card escolhe: um centro ou os centros lado a lado. A visão Empresa é a
+ *  tabela de cima, separada (decisão do Yan no GATE 1) — não é opção aqui. */
+export type SeletorCentro = CentroId | 'lado'
 
-export const OPCOES_SELETOR: readonly SeletorCentro[] = ['empresa', ...CENTROS, 'lado']
+export const OPCOES_SELETOR: readonly SeletorCentro[] = [...CENTROS, 'lado']
 
 export const ROTULO_SELETOR: Record<SeletorCentro, string> = {
-  empresa: 'Empresa',
   ...ROTULO_CENTRO,
   lado: 'Lado a lado',
 }
 
-/** `?centro=` → opção do seletor. Ausente, vazio ou desconhecido = `empresa`: a URL de hoje
- *  continua abrindo exatamente a DRE de hoje. */
-export function seletorDaUrl(v: string | string[] | undefined): SeletorCentro {
-  const s = Array.isArray(v) ? v[0] : v
-  return (OPCOES_SELETOR as readonly string[]).includes(s ?? '') ? (s as SeletorCentro) : 'empresa'
-}
+/** Abertura do card: os centros lado a lado (a comparação e o Quem cobre quem). */
+export const SELETOR_INICIAL: SeletorCentro = 'lado'
 
 /** Registro vazio por centro — ponto único de inicialização (nenhum centro esquecido). */
 export function porCentro<T>(f: (c: CentroId) => T): Record<CentroId, T> {

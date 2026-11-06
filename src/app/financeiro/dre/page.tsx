@@ -31,10 +31,8 @@ import TabelaDre from '@/components/financeiro/dre/tabela-dre'
 import ResumoExecutivo from '@/components/financeiro/dre/resumo-executivo'
 import { LINHAS_COMPETENCIA } from '@/lib/dre/linhas-resumo'
 import { PILL, PILL_NEUTRO } from '@/components/shared/botoes'
-import SeletorCentro from '@/components/financeiro/dre/seletor-centro'
 import TabelaDreCentro, { type TabelaDreCentroProps } from '@/components/financeiro/dre/tabela-dre-centro'
 import { baseAv, linhaBaseAv } from '@/lib/dre/av'
-import { seletorDaUrl } from '@/lib/dre-centro/centros'
 import { carimbosFixture, estadoDaUrl, fixtureDreCentro } from '@/lib/dre-centro/fixture'
 import { montarAnoCentro } from '@/lib/dre-centro/montar'
 import { mesFimRealizado } from '@/lib/dre-centro/visoes'
@@ -74,8 +72,6 @@ import { mesFimRealizado } from '@/lib/dre-centro/visoes'
 interface SearchParams {
   ano?: string
   anoComp?: string
-  /** v6.5.1 — seletor de centro de custo da DRE de caixa (ausente = Empresa, a DRE de hoje). */
-  centro?: string
   /** v6.5.1 — MOCKUP do GATE 1: `vazio` | `erro` simulam a base de centro sem carga / falhando. */
   estado?: string
 }
@@ -112,8 +108,7 @@ export default async function DrePage({
     anoCorrente,
   )
 
-  // Seletor de centro de custo (v6.5.1): ausente = Empresa, a DRE de hoje.
-  const seletor = seletorDaUrl(sp.centro)
+  // DRE por centro de custo (v6.5.1, mockup): `?estado=vazio|erro` simula a base de centro.
   const estadoCentro = estadoDaUrl(sp.estado)
 
   const db = await getServerClient()
@@ -155,9 +150,9 @@ export default async function DrePage({
       // "sem movimentações". Acrescentar no fim não desloca ninguém.
       ...anosDisponiveis.map(a => rpcDre(db, 'get_dre_competencia_mensal', { p_ano: a })),
       // v6.5.1 (MOCKUP do GATE 1): a estrutura viva (fórmulas da árvore) alimenta a fixture
-      // por centro. Só nas visões por centro — a Empresa não faz chamada nova. Entra no FIM
-      // (índices posicionais, ver acima). Na M4 a RPC da DRE por centro toma este lugar.
-      ...(seletor === 'empresa' ? [] : [rpcDre(db, 'dre_estrutura')]),
+      // do card por centro. Entra no FIM (índices posicionais, ver acima). Na M4 a RPC da DRE
+      // por centro toma este lugar.
+      rpcDre(db, 'dre_estrutura'),
     ]).then(rs => rs.map(r => (r.status === 'fulfilled' ? r.value : empty))),
     buscarUltimaCargaMovimentacao(),
   ])
@@ -187,10 +182,9 @@ export default async function DrePage({
   // ── DRE DE CAIXA POR CENTRO DE CUSTO (v6.5.1) — ⚠️ MOCKUP DO GATE 1 ────────────
   // A fonte é a FIXTURE (`@/lib/dre-centro/fixture`, números fictícios derivados da carga
   // real da Empresa pelas fórmulas vivas); os componentes e o resto da cadeia são os de
-  // produção. Na M4 a RPC da M3 entra aqui. Só é montada fora da visão Empresa.
+  // produção. Na M4 a RPC da M3 entra aqui.
   const OFFSET_ESTRUTURA = OFFSET_COMP + anosDisponiveis.length
   const leituraCentro: TabelaDreCentroProps['leitura'] = (() => {
-    if (seletor === 'empresa') return { ok: false, motivo: 'erro' }
     if (estadoCentro !== 'normal') return { ok: false, motivo: estadoCentro }
     const empresa = dreAnos.get(anoCorrente)
     const estrutura = parseRpc(dreEstruturaSchema, resultados[OFFSET_ESTRUTURA], 'dre_estrutura')
@@ -562,34 +556,20 @@ export default async function DrePage({
 
       <TopSection titulo="Regime de Caixa">
         <div className="space-y-6">
-          {/* v6.5.1 — o seletor de centro fica ACIMA do card: a visão Empresa é a mesma
-              `TabelaDre` de sempre, com as mesmas props (a única adição na tela é esta linha). */}
-          <div className="space-y-3">
-            <SeletorCentro atual={seletor} />
-            {seletor === 'empresa' ? (
-              <TabelaDre
-                dados={dre}
-                ano={ano}
-                anosDisponiveis={anosDisponiveis}
-                anosSeguintes={anosSeguintes}
-                consolidadoAnos={consolidadoAnos}
-                mesJanela={mesJanela}
-                slotAcoes={
-                  <Link href="/financeiro/dre/estrutura" className={`${PILL} ${PILL_NEUTRO}`}>
-                    <SquarePen size={13} />
-                    Editar estrutura
-                  </Link>
-                }
-              />
-            ) : (
-              <TabelaDreCentro
-                seletor={seletor}
-                leitura={leituraCentro}
-                anosDisponiveis={anosDisponiveis}
-                mesJanela={mesJanela}
-              />
-            )}
-          </div>
+          <TabelaDre
+            dados={dre}
+            ano={ano}
+            anosDisponiveis={anosDisponiveis}
+            anosSeguintes={anosSeguintes}
+            consolidadoAnos={consolidadoAnos}
+            mesJanela={mesJanela}
+            slotAcoes={
+              <Link href="/financeiro/dre/estrutura" className={`${PILL} ${PILL_NEUTRO}`}>
+                <SquarePen size={13} />
+                Editar estrutura
+              </Link>
+            }
+          />
 
           {/* Maiores variações — veio do Fluxo de Caixa na v5.7.0. Compara categorias no
               YTD contra a MESMA janela do ano anterior: é leitura de DEMONSTRATIVO, e aqui
@@ -597,6 +577,11 @@ export default async function DrePage({
               Recorte PRÓPRIO (YTD do ano corrente), independente do `?ano=` da tabela —
               e desde a `0253` os números reconciliam com a coluna "YTD" dela. */}
           <RankingCaixa data={rankingCaixa} />
+
+          {/* v6.5.1 — DRE por centro de custo num CARD SEPARADO (decisão do Yan no GATE 1): a
+              tabela da Empresa acima fica exatamente como era; o seletor de centro vive só aqui.
+              Depois do "Maiores variações", que lê a tabela da Empresa e fica colado a ela. */}
+          <TabelaDreCentro leitura={leituraCentro} anosDisponiveis={anosDisponiveis} mesJanela={mesJanela} />
         </div>
       </TopSection>
     </div>

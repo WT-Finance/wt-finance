@@ -20,7 +20,7 @@ const { default: TabelaDreCentro } = await import('./tabela-dre-centro')
 const { default: SeletorCentro } = await import('./seletor-centro')
 
 const ano = montarAnoCentro(fixtureDreCentro(EMPRESA, BLOCOS), 1_000_000)
-const BASE: Omit<TabelaDreCentroProps, 'seletor'> = {
+const BASE: TabelaDreCentroProps = {
   leitura: { ok: true, anos: [ano] },
   anosDisponiveis: [2024, 2025, 2026],
   mesJanela: 11,
@@ -29,9 +29,9 @@ const render = (p: TabelaDreCentroProps) => renderToStaticMarkup(createElement(T
 
 describe('TabelaDreCentro', () => {
   it('um centro, Mensal: árvore, bloco de antecipação, memória e notas', () => {
-    const html = render({ ...BASE, seletor: 'weddings' })
+    const html = render({ ...BASE, seletorInicial: 'weddings' })
     for (const t of [
-      'Demonstrativo de Resultado por Fluxo de Caixa · Weddings',
+      'Demonstrativo de Resultado por Centro de Custo',
       '(=) Resultado operacional de caixa',
       '(+) Antecipação de recebíveis - C',
       '(−) Antecipação de recebíveis - D',
@@ -48,31 +48,34 @@ describe('TabelaDreCentro', () => {
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*title="2025 não tem centro de custo/)
     expect(html).not.toContain('(=) Resultado do exercício')
     expect(html).not.toContain('Quem cobre quem')
+    expect(html).toMatch(/aria-pressed="true"[^>]*>Weddings</)
   })
 
   it('CSC: AV sobre a receita da empresa (AV*)', () => {
-    expect(render({ ...BASE, seletor: 'csc' })).toContain('AV*')
+    expect(render({ ...BASE, seletorInicial: 'csc' })).toContain('AV*')
   })
 
-  it('Lado a lado: colunas por centro, Total e o card Quem cobre quem', () => {
-    const html = render({ ...BASE, seletor: 'lado' })
-    for (const t of ['Centros lado a lado', '>Trips<', '>Weddings<', '>Corp<', '>CSC<', '>Sem centro<', '>Total<', 'Quem cobre quem', 'Total das fontes']) {
+  it('abre em Lado a lado: colunas por centro, Total e o card Quem cobre quem', () => {
+    const html = render(BASE)
+    expect(html).toMatch(/aria-pressed="true"[^>]*>Lado a lado</)
+    for (const t of ['>Trips<', '>Weddings<', '>Corp<', '>CSC<', '>Sem centro<', '>Total<', 'Quem cobre quem', 'Total das fontes']) {
       expect(html).toContain(t)
     }
   })
 
   it('estados vazio e erro: mensagem no lugar da tabela', () => {
-    expect(render({ ...BASE, seletor: 'trips', leitura: { ok: false, motivo: 'vazio' } }))
+    expect(render({ ...BASE, seletorInicial: 'trips', leitura: { ok: false, motivo: 'vazio' } }))
       .toContain('A base de centro de custo ainda não foi carregada')
-    expect(render({ ...BASE, seletor: 'trips', leitura: { ok: false, motivo: 'erro' } }))
+    expect(render({ ...BASE, seletorInicial: 'trips', leitura: { ok: false, motivo: 'erro' } }))
       .toContain('Não foi possível carregar a DRE por centro de custo')
   })
 })
 
 describe('SeletorCentro', () => {
-  it('Empresa + cinco centros + Lado a lado, com o atual pressionado', () => {
-    const html = renderToStaticMarkup(createElement(SeletorCentro, { atual: 'empresa' }))
-    for (const t of ['Empresa', 'Trips', 'Weddings', 'Corp', 'CSC', 'Sem centro', 'Lado a lado']) expect(html).toContain(`>${t}<`)
-    expect(html).toMatch(/aria-pressed="true"[^>]*>Empresa</)
+  it('cinco centros + Lado a lado (sem Empresa: ela é a tabela de cima), com o atual pressionado', () => {
+    const html = renderToStaticMarkup(createElement(SeletorCentro, { atual: 'csc', onEscolher: () => {} }))
+    for (const t of ['Trips', 'Weddings', 'Corp', 'CSC', 'Sem centro', 'Lado a lado']) expect(html).toContain(`>${t}<`)
+    expect(html).not.toContain('>Empresa<')
+    expect(html).toMatch(/aria-pressed="true"[^>]*>CSC</)
   })
 })

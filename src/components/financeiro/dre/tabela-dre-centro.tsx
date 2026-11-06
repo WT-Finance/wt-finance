@@ -10,11 +10,12 @@ import {
   W_AV, W_TOTAL, classeFixa, estiloFixa, estiloLinha, type Fixa,
 } from './tabela-dre'
 import QuemCobreQuem from './quem-cobre-quem'
+import SeletorCentro from './seletor-centro'
 import { chaveDeLinha } from '@/lib/dre/identidade'
 import { SUF_PARCIAL } from '@/lib/dre/mes-parcial'
 import { MESES } from '@/lib/dre/colunas-tabela'
 import { fmtBRL, fmtMi, hojeSP } from '@/lib/fmt'
-import { ROTULO_CENTRO, ROTULO_SELETOR, type CentroId } from '@/lib/dre-centro/centros'
+import { ROTULO_CENTRO, ROTULO_SELETOR, SELETOR_INICIAL, type CentroId, type SeletorCentro as Opcao } from '@/lib/dre-centro/centros'
 import {
   chaveMemoria, visaoConsolidado, visaoLadoALado, visaoMensal, type ColunaVisao, type VisaoTabela,
 } from '@/lib/dre-centro/visoes'
@@ -23,10 +24,12 @@ import { abaDaVisao, nomeArquivoCentro } from '@/lib/dre-centro/exportar'
 
 // ── DRE de caixa por centro de custo (v6.5.1) — componente IRMÃO da `TabelaDre` ─────────────
 //
-// A visão Empresa continua sendo a `TabelaDre`, intocada (só ganhou `export` nos primitivos que
-// este arquivo reusa; o snapshot em `tabela-dre.test.ts` mede isso). Aqui ficam as visões que
-// a Empresa não tem: um centro (Mensal e Consolidado) e os centros Lado a lado. Mesma árvore,
-// mesmas células, mesmas pills; colunas pelo modelo de `@/lib/dre-centro/visoes`.
+// CARD SEPARADO na seção Regime de Caixa (decisão do Yan no GATE 1): a visão Empresa continua
+// sendo a `TabelaDre` logo acima, intocada (só ganhou `export` nos primitivos que este arquivo
+// reusa; o snapshot em `tabela-dre.test.ts` mede isso). Aqui ficam as visões que a Empresa não
+// tem: um centro (Mensal e Consolidado) e os centros Lado a lado, escolhidos pelo seletor do
+// próprio card. Mesma árvore, mesmas células, mesmas pills; colunas pelo modelo de
+// `@/lib/dre-centro/visoes`.
 //
 // Diferenças declaradas em relação à Empresa (§2 do briefing):
 //   · só Realizado — "Realizado + Previsto" fica desabilitado com o "?" explicando;
@@ -252,16 +255,18 @@ function TabelaVisao({
 // ── Card ─────────────────────────────────────────────────────────────────────
 
 export interface TabelaDreCentroProps {
-  seletor: CentroId | 'lado'
+  /** Abertura do card (default: Lado a lado). */
+  seletorInicial?: Opcao
   leitura: { ok: true; anos: AnoDadosCentro[] } | { ok: false; motivo: 'vazio' | 'erro' }
   anosDisponiveis: number[]
   mesJanela: number
 }
 
-const TITULO = 'Demonstrativo de Resultado por Fluxo de Caixa'
+const TITULO = 'Demonstrativo de Resultado por Centro de Custo'
 
-export default function TabelaDreCentro({ seletor, leitura, anosDisponiveis, mesJanela }: TabelaDreCentroProps) {
+export default function TabelaDreCentro({ seletorInicial = SELETOR_INICIAL, leitura, anosDisponiveis, mesJanela }: TabelaDreCentroProps) {
   const anos = leitura.ok ? leitura.anos : []
+  const [seletor, setSeletor] = useState<Opcao>(seletorInicial)
   const [visao, setVisao] = useState<VisaoCentro>('mensal')
   const [anoEscolhido, setAnoEscolhido] = useState<number | null>(null)
   const [abertos, setAbertos] = useState<Set<string>>(() => new Set())
@@ -278,7 +283,7 @@ export default function TabelaDreCentro({ seletor, leitura, anosDisponiveis, mes
   }, [])
 
   const lado = seletor === 'lado'
-  const titulo = `${TITULO} · ${lado ? 'Centros lado a lado' : ROTULO_CENTRO[seletor]}`
+  const titulo = TITULO
   const cobertos = new Set(anos.map(a => a.ano))
   // Ano EFETIVO: o escolhido, se ainda coberto; senão o mais recente coberto (derivação de render).
   const ano = anos.find(a => a.ano === anoEscolhido) ?? anos.at(-1) ?? null
@@ -293,7 +298,7 @@ export default function TabelaDreCentro({ seletor, leitura, anosDisponiveis, mes
           <p className="text-sm text-text-muted">
             {vazio
               ? 'A base de centro de custo ainda não foi carregada. Envie o relatório "Lançamentos por Centro de Custo" no Upload, no mesmo dia da base de lançamentos.'
-              : 'Não foi possível carregar a DRE por centro de custo — tente recarregar. A visão Empresa segue disponível no seletor acima.'}
+              : 'Não foi possível carregar a DRE por centro de custo — tente recarregar. A DRE da empresa, acima, segue disponível.'}
           </p>
         </div>
       </div>
@@ -378,11 +383,11 @@ export default function TabelaDreCentro({ seletor, leitura, anosDisponiveis, mes
         <CabecalhoCard titulo={titulo} />
 
         <div className="mb-4 flex flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-1.5">
+          <SeletorCentro atual={seletor} onEscolher={setSeletor} />
+          <div className="flex flex-wrap items-center gap-2">
             {pillVisao('mensal', 'Mensal', 'Visão mês a mês do ano selecionado')}
             {pillVisao('consolidado', 'Consolidado', 'Visão ano a ano — só os anos com centro de custo')}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
+            <span className="mx-1 h-4 w-px bg-wt-border-strong" aria-hidden />
             {anosDisponiveis.map(a => {
               const coberto = cobertos.has(a)
               const ativo = coberto && (visaoEfetiva === 'consolidado' ? true : a === ano.ano)
