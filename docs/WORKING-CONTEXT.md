@@ -9,7 +9,24 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-11-05 (pós-merge da v6.5.0; destrutiva 0303 aplicada).
+Última atualização: 2026-11-06 (v6.5.1 em voo: GATE 0 encerrado).
+
+---
+
+## Em voo — v6.5.1 "DRE de caixa por centro de custo" (branch `feat/v6-5-1-dre-caixa-centro-custo`)
+
+Worktree `.claude/worktrees/v6-5-1-dre-caixa-centro-custo`. Briefing `docs/briefings/briefing-v6-5-1-dre-caixa-centro-custo.md`.
+
+- **M0 (GATE 0) feita e decidida** — `docs/auditoria/v6-5-1-m0-dre-centro-custo.md` (Q1–Q7 + decisões D1–D7 do Yan em 06/11;
+  não re-propor). Migration livre **0304**, ADR livre **0184** (reconferir antes de aplicar).
+- **Fixtures** (não versionadas; nomes do briefing → arquivo real): centro de custo 06/11 =
+  `Downloads/Lancamentos_por_centro_custo_2026.xlsx` (sha256 `b27d97dc…`); categoria 06/11 =
+  `Downloads/Lancamentos_por_categoria_2026.xlsx` (`dfae02fd…`); `antecipacoes-2026-11-06.xlsx`; protótipo
+  `DRE_caixa_por_centro_de_custo_2026_v06-11.xlsx`. A negativa de 20/10 se perdeu → sintética (D4). Pessoa física nos
+  arquivos: confirmar se `tests/fixtures/ingestao/` é git-ignorado antes de copiar.
+- **Próximo passo: M1 (GATE 1)** — mockup DS na rota real com fixture (seletor de centro, Mensal/Consolidado/Lado a lado,
+  bloco de antecipação, memória, notas, vazio/erro, largura estreita); visão Empresa idêntica. PARA para o Yan.
+  Risco principal: `TabelaDre` só conhece colunas de mês/ano (Q5).
 
 ---
 

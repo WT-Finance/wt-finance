@@ -174,3 +174,15 @@ Preenchimento vivo, movimentação ≥ 2026-01-01 (carga de 06/11 às 08:58 SP, 
 | **D5** | Oráculo ajustado pela Movimentação de Caixa (CSC +60.000; total de caixa −518.439,47) | Aceitar; reconferir no protótipo na M3 |
 | **D6** | Lista fechada da base nova (Q7) | Como proposto; `Descrição` também fora |
 | **D7** | Classificação PATCH × MINOR | Registrada: PATCH por decisão do Yan, apesar de base nova e patch destrutivo |
+
+### Decidido pelo Yan em 06/11/2026 (GATE 0 encerrado — não re-propor)
+
+| # | Decisão |
+|---|---|
+| D1 | A árvore por centro vai até o **REX**; o total se chama **"(=) Resultado operacional de caixa"** nas visões por centro. |
+| D2 | **Aceito o patch destrutivo** dos `CHECK` de base (`supabase/patches/`, aplicado pelo Yan em TTY); a carga da base nova falha fechada até lá. |
+| D3 | **De-para fixo e nomeado**: Asaas → `ASAAS` (8), Blimboo → `Blimboo` (7). `CC ASAAS` e a conta composta ficam fora; conta sem de-para = antecipação não identificada, mostrada na nota. |
+| D4 | **Fixture negativa sintética** derivada do export de 06/11 (grupo com `+` e sem detalhe), declarada como sintética no teste e no out-briefing. |
+| D5 | **Oráculo ajustado** pela Movimentação de Caixa excluída (CSC −4.011.516,46 / −3.716.696,13; total de caixa −518.439,47); reconferir no protótipo na M3. |
+| D6 | **Lista fechada**: Número, Movimentação, Vencimento, Centro de Custo, % Centro Custo, Valor Movimentação, Valor Centro Custo, Emissão. Fora: Pessoa, Descrição, Valor Lançamento. |
+| D7 | **Mantida v6.5.1 (PATCH)**; a divergência do critério (base nova + destrutiva = MINOR nas v6.3.0/v6.4.0) vai registrada no out-briefing. |
