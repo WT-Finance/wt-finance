@@ -169,6 +169,23 @@ describe('checksum', () => {
     rows.splice(3, 1)
     expect(falha(rows).codigo).toBe('CHECKSUM_FALHOU')
   })
+
+  // O formato real do outline traz milhar e sinal: "-R$ 4.114.460,58" (CSC, 06/11) e contagens de 4–5
+  // dígitos. Sem este caso, só o oráculo (que pula sem a fixture git-ignorada) cobriria a leitura de
+  // valor negativo e com separador de milhar (achado MÉDIO do revisor na M2).
+  it('outline negativo e com milhar (formato real) fecha, e 1 centavo a menos reprova', () => {
+    const grande: Grupo = { nome: 'WG - Gama', det: [
+      { numero: 2001, pct: 100, vcc: 1_234_567.89, vmov: -1_234_567.89 },
+      { numero: 2002, pct: 100, vcc: 2_879_892.69, vmov: -2_879_892.69 },
+      { numero: 2003, pct: 100, vcc: 0.01, vmov: -0.01 },
+    ] }
+    const r = ok(arquivo([grande]))
+    const chk = r.checksums.find((c) => c.chave[0] === 'WG - Gama')
+    expect(chk?.centavosDeclarados).toBe(-411446059)
+    expect(chk?.centavosArredondados).toBe(-411446059)
+    expect(arquivo([grande])[1][1]).toBe('Centro de Custo :  WG - Gama (3, -R$ 4.114.460,59)')
+    expect(falha(arquivo([{ ...grande, declCentavos: -411446058 }])).codigo).toBe('CHECKSUM_FALHOU')
+  })
 })
 
 describe('estrutura do outline', () => {

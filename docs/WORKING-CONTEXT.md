@@ -9,7 +9,7 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-11-06 (v6.5.1 em voo: GATE 1 decidido, próxima M2).
+Última atualização: 2026-11-06 (v6.5.1 em voo: M2 feita, 0304 aplicada; patch D2 com o Yan).
 
 ---
 
@@ -45,7 +45,26 @@ Worktree `.claude/worktrees/v6-5-1-dre-caixa-centro-custo`. Briefing `docs/brief
   - Conferência visual NÃO feita pelo agente (login real). Render provado por teste (`tabela-dre-centro.test.ts`).
     Suíte: 2.627 testes verdes; 5 arquivos de oráculo de ingestão falham por `ENOENT` das fixtures não versionadas
     na worktree (ambiente, não M1).
-- **Próximo passo: M2** (base nova, parser, `promover`, patch destrutivo dos `CHECK` — D2).
+- **M2 feita (`93ad3cdb`) — 0304 APLICADA em 06/11** (backup-gate verde; banco na **0304**, livre **0305**).
+  Contrato da base: `docs/specs/v6-5-1-m2-base-centro-custo.md`. Base `lancamentos-centro-custo` (7ª, por último),
+  parser com checksum pelo outline por centro (Σ Valor Centro Custo com o sinal da movimentação), "+" rejeita, lista
+  fechada D6; dimensão `financeiro.centro_custo` (centro novo no Monde reprova a carga); rateio
+  `financeiro.centro_custo_rateio` regenerado na promoção (Σ = 1 exato). Ensaio revertido com o export real: rateio ×
+  base por categoria do mesmo dia ≡ "Rateio sem ajuste" do protótipo AO CENTAVO nos 4 centros; 31 datas fora da faixa
+  (29 Emissão + 2 Vencimento, nenhuma Movimentação) — campo nulo, linha mantida. Fixtures copiadas para
+  `tests/fixtures/ingestao/` (git-ignorado) e registradas no manifest. ingestor: 28 assinaturas.
+  - 🔴 **Yan — patch destrutivo D2 (TTY), antes da 1ª carga:** `cp supabase/patches/centro_custo_checks_ingestao.sql
+    supabase/migrations/0305_centro_custo_checks_ingestao.sql` (conferir que 0305 está livre), apontar o `SQL_PATCH` de
+    `src/lib/ingestao/bases-paridade.test.ts` para ela, e `npm run db:migrate -- --destrutiva`; depois `npm run
+    db:baseline`. Até lá a carga da base falha FECHADA (nada é gravado). Upload: Admin › Ingestão › Upload, card
+    "Lançamentos por Centro de Custo", MESMO dia da carga de movimentação.
+  - Revisão: `revisor-db` aprovou a 0304 e o patch (B-1/B-3 corrigidos antes de aplicar); `revisor` aprovou o app com
+    ressalvas — MÉDIOs corrigidos (outline negativo/milhar no teste sintético; sonda ESTÁTICA da lista fechada
+    `lista-fechada-centro-custo.test.ts`, vista reprovar com mutante). **Para o out-briefing:** a 0304 concede as 4 RPCs
+    ao `ingestor` (o briefing inv. 6 diz "só a promover" — o pipeline precisa das quatro, precedente 0295); o header da
+    0304 diz "29 assinaturas", o medido é 28; skills `ingestao-planilhas`/`banco-e-rpc` ainda falam em 6 bases
+    (atualizar no fechamento).
+- **Próximo passo: M3** (RPCs da DRE por centro e das antecipações; identificação no banco; grant do verificador).
 
 ---
 

@@ -204,10 +204,12 @@ describe('aplicarCarga — lancamentos-centro-custo', () => {
     expect(nomesChamados()).toEqual(['limpar_staging_centro_custo', 'inserir_lote_staging_centro_custo'])
   })
 
-  it('replay: reenviar com o MESMO carga_id manda o mesmo p_carga_id e devolve o resultado guardado pela RPC', async () => {
-    const a = await aplicarCarga('lancamentos-centro-custo', [lanc(), lanc({ linha_origem: 4 })], OPCOES)
-    const b = await aplicarCarga('lancamentos-centro-custo', [lanc(), lanc({ linha_origem: 4 })], OPCOES)
-    expect(b).toEqual(a)
+  // O que este caso prova é só o lado do APP: a retentativa reenvia o MESMO p_carga_id. O "devolve o
+  // resultado guardado" é da RPC (replay por ingestao.promocao) e está provado contra o banco no ensaio
+  // revertido da 0304 — aqui o mock responderia igual de qualquer jeito (achado do revisor na M2).
+  it('replay: reenviar com o MESMO carga_id manda o mesmo p_carga_id à promoção', async () => {
+    await aplicarCarga('lancamentos-centro-custo', [lanc(), lanc({ linha_origem: 4 })], OPCOES)
+    await aplicarCarga('lancamentos-centro-custo', [lanc(), lanc({ linha_origem: 4 })], OPCOES)
     const ids = rpcMock.mock.calls
       .filter((c) => c[0] === 'promover_carga_centro_custo')
       .map((c) => (c[1] as { p_carga_id: string }).p_carga_id)

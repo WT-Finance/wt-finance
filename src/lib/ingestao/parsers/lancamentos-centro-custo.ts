@@ -155,8 +155,9 @@ export function parseLancamentosCentroCustoRows(
       if (estado !== '-') {
         return erro('ESTRUTURA_INESPERADA',
           `Linha ${i + 1}: o grupo ${rotulo(lido.nome)} não traz o marcador de aberto ("-") esperado ` +
-          'na primeira coluna. O formato do export mudou.',
-          { linha: i + 1, centro: lido.nome })
+          `na primeira coluna (lido: ${estado === '' ? 'vazio' : `"${estado}"`}). Exporte de novo com todos os ` +
+          'grupos abertos; se o erro continuar, o formato do export mudou — avise o time da plataforma.',
+          { linha: i + 1, centro: lido.nome, marcador: estado })
       }
       if (vistos.has(lido.nome)) {
         return erro('ESTRUTURA_INESPERADA',

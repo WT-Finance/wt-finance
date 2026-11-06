@@ -988,12 +988,18 @@ async function executarParse(base: BaseIngestao, arquivosLidos: readonly Arquivo
       const unico = arquivosLidos[0]
       const resultado = parseLancamentosCentroCustoRows(unico.matriz)
       if (!resultado.ok) return traduzirFalhaParse(resultado)
+      // Linha com conteúdo que não é detalhe, outline, subtotal nem total: não some calada (o checksum
+      // de contagem pega detalhe perdido, mas a mensagem dele não diz a causa) — achado do revisor na M2.
+      const ignoradas = Number(resultado.diagnostico.linhasIgnoradas ?? 0)
       return {
         linhasParaAplicar: resultado.linhas,
         totalLinhas: resultado.linhas.length,
         checksums: resultado.checksums,
         datasRejeitadasN: resultado.datasRejeitadas.length,
         diagnostico: resultado.diagnostico,
+        avisos: ignoradas > 0
+          ? [`${ignoradas} linha(s) do arquivo sem Número foram ignoradas (não são lançamento, outline, subtotal nem total).`]
+          : [],
         porArquivo: [{ nome: unico.nome, linhas: resultado.linhas.length, checksumsConferidos: resultado.checksums.length }],
         arquivoOrigem: unico.nome,
       }
