@@ -3498,6 +3498,9 @@ const ESCRITA_GERAL = [
   { assinatura: 'public.antecipacao_desfazer(bigint)', body: { p_diario_id: -1 } },
   { assinatura: 'public.promover_carga_contas_receber(jsonb, uuid)',
     body: { p_checksums: [], p_carga_id: '00000000-0000-0000-0000-000000000000' } },
+  // v6.5.1 (0304): escreve a raw e REGENERA `financeiro.centro_custo_rateio`. Só o `ingestor` a executa.
+  { assinatura: 'public.promover_carga_centro_custo(jsonb, uuid)',
+    body: { p_checksums: [], p_carga_id: '00000000-0000-0000-0000-000000000000' } },
 ] as const
 
 describe.skipIf(!ON || !DB_URL)('contrato RBAC — Financeiro · Geral: a credencial de verificação NÃO escreve (v6.4.0)', () => {

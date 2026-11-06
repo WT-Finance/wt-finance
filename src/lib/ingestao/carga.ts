@@ -32,6 +32,7 @@ import {
   parseContasReceberRows, avisosDoDiagnostico,
   type ArquivoContasReceber, type ContaReceberCru,
 } from './parsers/contas-receber'
+import { parseLancamentosCentroCustoRows, type LancamentoCentroCustoCru } from './parsers/lancamentos-centro-custo'
 import {
   aplicarCarga, CargaRejeitada, PromocaoIncerta, lancamentoOperacaoAplicavel, operacoesDaBaseSchema,
   type ResultadoAplicacao,
@@ -121,6 +122,7 @@ const EXTENSAO_POR_BASE: Record<BaseIngestao, FormatoArquivo> = {
   'lancamentos-aberto': 'xlsx',
   'lancamentos-operacao': 'csv',
   'contas-receber': 'xlsx',
+  'lancamentos-centro-custo': 'xlsx',
 }
 
 const REGEX_SHA256_HEX = /^[0-9a-f]{64}$/i
@@ -541,6 +543,14 @@ export async function statusAtualDaBase(base: BaseIngestao): Promise<{ linhas: n
         // contagem da ÚLTIMA CARGA APLICADA — a base é substituída inteira, sem filtro, então
         // `linhas` da carga = linhas na base. Falha de leitura (inclusive antes da 0295: a RPC
         // `ingestao_carga_ultima` ainda recusa a base) degrada para `null` + aviso, como as outras.
+        const r = await lerUltimaCargaAplicada(base)
+        if (!r.ok) throw new Error(r.erro)
+        return { linhas: r.linha?.linhas ?? 0, somaCentavos: null }
+      }
+      case 'lancamentos-centro-custo': {
+        // Mesmo molde de Contas a receber: sem `status_*` próprio, o "antes" é a contagem da ÚLTIMA
+        // CARGA APLICADA (a raw é substituída inteira, sem filtro). Antes da 0304 a RPC
+        // `ingestao_carga_ultima` recusa a base ⇒ degrada para `null` + aviso.
         const r = await lerUltimaCargaAplicada(base)
         if (!r.ok) throw new Error(r.erro)
         return { linhas: r.linha?.linhas ?? 0, somaCentavos: null }
@@ -973,6 +983,22 @@ async function executarParse(base: BaseIngestao, arquivosLidos: readonly Arquivo
       }
     }
 
+    case 'lancamentos-centro-custo': {
+      // 1 arquivo por carga; 1 checksum por OUTLINE de centro (inclui o grupo "sem centro").
+      const unico = arquivosLidos[0]
+      const resultado = parseLancamentosCentroCustoRows(unico.matriz)
+      if (!resultado.ok) return traduzirFalhaParse(resultado)
+      return {
+        linhasParaAplicar: resultado.linhas,
+        totalLinhas: resultado.linhas.length,
+        checksums: resultado.checksums,
+        datasRejeitadasN: resultado.datasRejeitadas.length,
+        diagnostico: resultado.diagnostico,
+        porArquivo: [{ nome: unico.nome, linhas: resultado.linhas.length, checksumsConferidos: resultado.checksums.length }],
+        arquivoOrigem: unico.nome,
+      }
+    }
+
     default: {
       const exaustivo: never = base
       return new ErroCarga('ERRO_INTERNO', 500, `Base não reconhecida: ${String(exaustivo)}`)
@@ -1304,14 +1330,18 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
     if (parseado instanceof ErroCarga) throw parseado
 
     // Passo 8: diff contra o estado ATUAL da base.
-    // Σ do PRÓPRIO ARQUIVO (o que o modal mostra em "Σ do arquivo"): Demonstrativo e Contas a receber,
-    // as duas bases conferidas por soma. Em Contas a receber o "antes" não existe (sem `status_*`),
-    // então `diff.soma` sai `null` — só `parse.soma` é preenchido.
+    // Σ do PRÓPRIO ARQUIVO (o que o modal mostra em "Σ do arquivo"): Demonstrativo, Contas a receber e
+    // Centro de Custo, as bases conferidas por soma. Nas duas últimas o "antes" não existe (sem
+    // `status_*`), então `diff.soma` sai `null` — só `parse.soma` é preenchido.
     const somaCentavosNovo = base === 'demonstrativo-competencia'
       ? somaCentavos((parseado.linhasParaAplicar as readonly DemonstrativoCompetenciaCru[]).map((l) => l.valor))
       : base === 'contas-receber'
         ? somaCentavos((parseado.linhasParaAplicar as readonly ContaReceberCru[]).map((l) => l.valor_final))
-        : null
+        : base === 'lancamentos-centro-custo'
+          // Σ `valor_centro_custo` (já com o sinal de Valor Movimentação) de TODO o arquivo = Σ dos
+          // checksums por centro. Sem "antes" por soma (sem `status_*`), então `diff.soma` sai `null`.
+          ? somaCentavos((parseado.linhasParaAplicar as readonly LancamentoCentroCustoCru[]).map((l) => l.valor_centro_custo))
+          : null
     const { diff: diffTotal, aviso: avisoDiff } = await calcularDiff(base, parseado.linhasNaBase ?? parseado.totalLinhas, somaCentavosNovo)
     // Os avisos do PARSE (hoje: a cobertura do cruzamento de Vencimento) entram junto com o do
     // diff, e valem para a CONFERÊNCIA também — é antes de confirmar que o operador precisa

@@ -75,6 +75,15 @@ export const RPCS_INGESTOR = {
     validar:  rpc('validar_carga_contas_receber'),
     promover: rpc('promover_carga_contas_receber'),
   },
+  // v6.5.1 (migration 0304, que também concede o EXECUTE a `ingestor`). Quatro nomes novos: a
+  // allowlist derivada passa de 24 para 28 assinaturas (medido por derivar-allowlist.mjs em 06/11:
+  // a sobrecarga zero-arg de promover_carga_vendas saiu na 0286, por isso não são 25 → 29).
+  'lancamentos-centro-custo': {
+    limpar:   rpc('limpar_staging_centro_custo'),
+    lote:     rpc('inserir_lote_staging_centro_custo'),
+    validar:  rpc('validar_carga_centro_custo'),
+    promover: rpc('promover_carga_centro_custo'),
+  },
 } as const
 
 export type BaseComPipeline = keyof typeof RPCS_INGESTOR

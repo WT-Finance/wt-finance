@@ -8,6 +8,7 @@ import type { RespostaCarga } from '@/app/admin/ingestao/upload/ingestao-cliente
 import {
   getVendasStatusAction, getLancamentosStatusAction, getLancamentosMovimentacaoStatusAction,
   getTitulosEmAbertoStatusAction, getDemonstrativoCompetenciaStatusAction, getContasReceberStatusAction,
+  getCentroCustoStatusAction,
 } from '@/app/admin/ingestao/upload/actions'
 import { prepararReprocessoAction, type PreparoReprocesso } from '@/app/admin/ingestao/actions'
 import { processarCargaReprocesso } from '@/app/admin/ingestao/reprocesso-cliente'
@@ -38,6 +39,7 @@ async function statusAtualDaBase(base: BaseIngestao): Promise<number> {
     case 'lancamentos-aberto': { const r = await getTitulosEmAbertoStatusAction(); return 'error' in r ? 0 : r.total }
     case 'demonstrativo-competencia': { const r = await getDemonstrativoCompetenciaStatusAction(); return 'error' in r ? 0 : r.total }
     case 'contas-receber': { const r = await getContasReceberStatusAction(); return 'error' in r ? 0 : r.total }
+    case 'lancamentos-centro-custo': { const r = await getCentroCustoStatusAction(); return 'error' in r ? 0 : r.total }
   }
 }
 

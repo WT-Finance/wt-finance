@@ -37,6 +37,13 @@ describe('ARESTAS_GRAFO_INGESTAO', () => {
     expect(avaliarDependenciaDeCarga('contas-receber', new Map(), '2026-10-15')).toEqual({ ok: true })
   })
 
+  it('lancamentos-centro-custo é isolada — nenhuma aresta a toca e não há pré-requisito (v6.5.1)', () => {
+    const tocam = ARESTAS_GRAFO_INGESTAO.filter((a) => a.de === 'lancamentos-centro-custo' || a.para === 'lancamentos-centro-custo')
+    expect(tocam).toEqual([])
+    expect(preRequisitosBloqueantes('lancamentos-centro-custo')).toEqual([])
+    expect(avaliarDependenciaDeCarga('lancamentos-centro-custo', new Map(), '2026-11-06')).toEqual({ ok: true })
+  })
+
   it('nenhuma base tem aresta de volta para si mesma (nenhum ciclo)', () => {
     // DFS a partir de cada base pelas arestas declaradas — se alguma alcançar a si mesma de
     // volta, há um ciclo (o grafo do §5 é, por definição do contrato, um DAG).

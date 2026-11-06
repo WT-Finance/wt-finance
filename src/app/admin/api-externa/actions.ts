@@ -78,8 +78,8 @@ export async function criarChaveApi(input: {
   const plataforma = input.plataforma.trim()
   if (!plataforma) return { ok: false, erro: 'Informe a referência.' }
   // Validação server-side (nunca confia no client): só bases reais de
-  // BASES_INGESTAO que uma chave pode cobrir (`BASES_COM_ESCOPO_DE_CHAVE`: sem `contas-receber`,
-  // que não tem RPA), deduplicadas — a RPC 0274 tem CHECK espelhado, mas recusar aqui evita a
+  // BASES_INGESTAO que uma chave pode cobrir (`BASES_COM_ESCOPO_DE_CHAVE`: sem `contas-receber`
+  // e `lancamentos-centro-custo`, que não têm RPA), deduplicadas — a RPC 0274 tem CHECK espelhado, mas recusar aqui evita a
   // viagem ao banco por um valor forjado/duplicado.
   const escopoBases = [...new Set((input.escopoBases ?? []).filter(
     (b): b is BaseIngestao => ehBaseIngestao(b) && BASES_COM_ESCOPO_DE_CHAVE.includes(b),

@@ -18,7 +18,7 @@ import { PESSOAS_COLUNAS } from '@/lib/carga/parse-pessoas'
 
 export type BaseUpload =
   | 'vendas' | 'lancamentos' | 'lancamentos_movimentacao' | 'titulos_em_aberto' | 'pessoas'
-  | 'demonstrativo_competencia' | 'contas_receber'
+  | 'demonstrativo_competencia' | 'contas_receber' | 'centro_custo'
 
 export interface InstrucoesUpload {
   /** De onde vem o arquivo — o nome do relatório como o repositório o conhece. */
@@ -219,6 +219,33 @@ export const INSTRUCOES_UPLOAD: Record<BaseUpload, InstrucoesUpload> = {
         'Conferido', 'Operação Própria',
       ],
       nota: 'O relatório traz outras colunas (Documento, Observações, Conta (Previsão), Valor etc.) — são ignoradas e nunca gravadas. Pessoa, Descrição e Operação Própria podem conter nomes de pessoas: o acesso à página que as usa é restrito.',
+    },
+  },
+
+  centro_custo: {
+    limiteMB: LIMITE_MB_ARQUIVO,
+    origem:
+      'Relatório "Lançamentos por Centro de Custo" do Monde, em Excel (.xlsx), filtrado por período de movimentação, com TODOS os grupos de centro de custo abertos.',
+    atencao: [
+      AVISO_NAO_TRATAR,
+      'Exporte com TODOS os grupos de centro de custo ABERTOS (expandidos). Um grupo recolhido ("+") faz o envio ser recusado, mesmo que as conferências fechassem — o rateio seria calculado sem aquele centro.',
+      'Mantenha as linhas de agrupamento ("Centro de Custo : …") com a contagem e a soma: são elas que conferem o arquivo, uma por centro. A linha de total do fim não serve de conferência, mas também não precisa ser apagada.',
+      'Suba no MESMO DIA da base de Lançamentos por Categoria (movimentação): o rateio por centro se aplica a essa base, e cargas de dias diferentes deixam os dois lados desencontrados.',
+      'Lançamento sem centro aparece num grupo sem nome. Isso se corrige no Monde (atribuindo o centro de custo ao lançamento) e se exporta de novo — a plataforma não corrige nem esconde.',
+      'Um centro de custo novo no Monde, ainda não cadastrado na plataforma, faz o envio ser recusado nomeando o centro.',
+    ],
+    passos: [
+      'No Monde, abra o relatório "Lançamentos por Centro de Custo", filtre pelo período de movimentação que a base deve cobrir e abra todos os grupos.',
+      'Exporte em Excel. O cabeçalho precisa estar na primeira linha (o recuo do agrupamento nas primeiras colunas é normal).',
+      'Arraste o arquivo para o card, confira o aviso e confirme.',
+    ],
+    colunas: {
+      rotulo: 'Colunas obrigatórias',
+      itens: [
+        'Número', 'Emissão', 'Vencimento', 'Movimentação', 'Centro de Custo', '% Centro Custo',
+        'Valor Centro Custo', 'Valor Movimentação',
+      ],
+      nota: 'O relatório traz outras colunas (Pessoa, Descrição, Valor Lançamento) — são ignoradas e nunca gravadas; Pessoa e Descrição podem conter nomes de pessoas. Bom saber: o Valor Centro Custo vem sem sinal no relatório (a plataforma aplica o sinal do Valor Movimentação), e um lançamento rateado aparece uma vez em cada centro.',
     },
   },
 }
