@@ -1,0 +1,36 @@
+import { chaveDeLinha } from '@/lib/dre/identidade'
+import { chaveMemoria, type VisaoTabela } from './visoes'
+
+// ── Exportar a DRE por centro (v6.5.1) — módulo PURO ─────────────────────────
+// A planilha leva a VISÃO DA TELA, com todas as linhas (categorias abertas) e a memória no
+// fim. Em Lado a lado: uma aba por centro (a Mensal dele) mais a consolidada. AOA puro — o
+// componente só passa para a lib de planilha, como a exportação da Empresa.
+
+export interface AbaExport {
+  nome: string
+  linhas: Array<Array<string | number | null>>
+  larguras: number[]
+}
+
+const arred = (v: number | null | undefined) => (v == null ? null : Math.round(v * 100) / 100)
+
+export function abaDaVisao(nome: string, v: VisaoTabela): AbaExport {
+  const cab = ['Conta', ...v.colunas.map(c => c.rotulo)]
+  const linhas: AbaExport['linhas'] = [cab]
+  for (const l of v.linhas) {
+    const k = chaveDeLinha(l)
+    linhas.push([l.rotulo, ...v.colunas.map(c => (k ? arred(v.valores[c.id]?.[k]) : null))])
+  }
+  linhas.push([])
+  linhas.push(['Memória (fora das somas)'])
+  for (const m of v.memoria) {
+    const k = chaveMemoria(m)
+    linhas.push([m.rotulo, ...v.colunas.map(c => (c.tipo === 'valor' ? arred(v.valores[c.id]?.[k]) : null))])
+  }
+  return { nome: nome.slice(0, 31), linhas, larguras: [46, ...v.colunas.map(c => (c.tipo === 'valor' ? 16 : 9))] }
+}
+
+export function nomeArquivoCentro(rotulo: string, ano: number, geradoEm: string): string {
+  const slug = rotulo.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-')
+  return `dre-caixa-${slug}-${ano}-${geradoEm}.xlsx`
+}

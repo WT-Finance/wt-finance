@@ -9,7 +9,7 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-11-06 (v6.5.1 em voo: GATE 0 encerrado).
+Última atualização: 2026-11-06 (v6.5.1 em voo: GATE 1 aguardando o Yan).
 
 ---
 
@@ -24,9 +24,26 @@ Worktree `.claude/worktrees/v6-5-1-dre-caixa-centro-custo`. Briefing `docs/brief
   `Downloads/Lancamentos_por_categoria_2026.xlsx` (`dfae02fd…`); `antecipacoes-2026-11-06.xlsx`; protótipo
   `DRE_caixa_por_centro_de_custo_2026_v06-11.xlsx`. A negativa de 20/10 se perdeu → sintética (D4). Pessoa física nos
   arquivos: confirmar se `tests/fixtures/ingestao/` é git-ignorado antes de copiar.
-- **Próximo passo: M1 (GATE 1)** — mockup DS na rota real com fixture (seletor de centro, Mensal/Consolidado/Lado a lado,
-  bloco de antecipação, memória, notas, vazio/erro, largura estreita); visão Empresa idêntica. PARA para o Yan.
-  Risco principal: `TabelaDre` só conhece colunas de mês/ano (Q5).
+- **M1 (GATE 1) feita — PARADA para o Yan.** Mockup na rota real `/financeiro/dre` (seção Regime de Caixa):
+  `?centro=trips|weddings|corp|csc|sem_centro|lado` (ausente = Empresa) e `?estado=vazio|erro`. Fonte = FIXTURE
+  (`src/lib/dre-centro/fixture.ts`): números fictícios derivados da carga real da Empresa pelas fórmulas vivas
+  (`dre_estrutura`, chamada só fora da visão Empresa) — Σ centros fecha com a Empresa na tela. Sai na M4.
+  - Arquitetura: componente IRMÃO `tabela-dre-centro.tsx`; a `TabelaDre` só ganhou `export` nos primitivos +
+    `tituloExportar` opcional. Guarda medida: `tabela-dre.test.ts` (snapshot gravado ANTES, commit `ef10d0da`).
+  - Módulo puro `src/lib/dre-centro/`: `atribuicao.ts` (regra §3.4 + Quem cobre quem; pesos do oráculo jan/fev/abr
+    conferidos), `visoes.ts` (colunas das 3 visões), `montar.ts`, `exportar.ts`. Contrato proposto em `tipos.ts`:
+    o banco entrega árvore por centro (já deslocada, sem a taxa) + recebíveis identificados; o front atribui.
+  - **Decisões que o mockup propõe (confirmar no GATE 1):** (1) seletor ACIMA do card, fora da toolbar;
+    (2) AV do CSC sobre a Receita Bruta da EMPRESA (`AV*`), alternativa = travessão; (3) Quem cobre quem DENTRO,
+    card sob a DRE só no Lado a lado; (4) memória em faixa própria, itálico, sem AV; (5) coluna "Total" do Lado a
+    lado = Σ centros (só o Resultado de caixa iguala a Empresa — "?" explica); (6) centro abre na visão Mensal
+    (a Empresa abre em Consolidado); (7) carimbos novos "Centro de custo" e "Antecipações · Último registro"; o
+    "Caixa" existente ficou (o briefing diz "Lançamentos"); (8) Exportar em Lado a lado = aba consolidada + uma
+    mensal por centro (adiantado da M4).
+  - Conferência visual NÃO feita pelo agente (login real; o verificador-visual não conectou). Render provado por
+    teste (`tabela-dre-centro.test.ts`). Suíte: 2.627 testes verdes; 5 arquivos de oráculo de ingestão falham por
+    `ENOENT` das fixtures não versionadas na worktree (ambiente, não M1).
+- **Próximo passo após o OK do Yan: M2** (base nova, parser, `promover`, patch destrutivo dos `CHECK` — D2).
 
 ---
 
