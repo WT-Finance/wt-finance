@@ -7,7 +7,7 @@ import { montarAnoCentro } from './montar'
 import { LINHA_RES, ROTULO_RESULTADO_OPERACIONAL, visaoConsolidado, visaoLadoALado, visaoMensal } from './visoes'
 
 describe('pesos fictícios', () => {
-  it.each(['RV', 'RH', 'ADM', undefined])('somam 1 em todo mês (%s)', (folha) => {
+  it.each(['ENT_H', 'PAG_H', 'RH', 'ADM', undefined])('somam 1 em todo mês (%s)', (folha) => {
     for (let mes = 1; mes <= 12; mes++) {
       const w = pesosFicticios(folha, mes)
       expect(CENTROS.reduce((s, c) => s + w[c], 0)).toBeCloseTo(1, 12)
@@ -36,8 +36,10 @@ describe('fixtureDreCentro — a soma dos centros fecha com a Empresa', () => {
     }
   })
 
-  it('o CSC não tem receita própria (a AV dele usa a da empresa)', () => {
+  it('o CSC não tem receita própria (a AV dele usa a da empresa) — entrada e pagamento seguem a operação', () => {
     expect(tot(byKey(d.arvores.csc, 'RB_H').meses)).toBe(0)
+    expect(tot(byKey(d.arvores.csc, 'PAG_H').meses)).toBe(0)
+    for (const c of ['trips', 'weddings', 'corp'] as const) expect(tot(byKey(d.arvores[c], 'RB_H').meses)).toBeGreaterThan(0)
   })
 
   it('Resultado de caixa: Σ centros ≡ REX da Empresa em todo mês realizado (inv. 1)', () => {

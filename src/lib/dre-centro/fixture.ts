@@ -47,7 +47,11 @@ export interface BlocoFormula {
 
 type Pesos = Record<CentroId, number>
 
-const OPERACAO = new Set(['ENT_H', 'RV', 'REPASSE', 'IMP_H', 'CUSTO', 'COM'])
+// Folhas da árvore viva (medidas em 06/11 contra `dre_bloco`): ENT_H · PAG_H · RV · IMP_H · CUSTO ·
+// ADM · COM · MKT · ESTR · RH · RHB · FIN · RNOP · DNOP · INV · DIST_LUCROS. `REPASSE` NÃO é folha
+// (= ENT_H + PAG_H): o pagamento ao fornecedor tem de seguir a mesma operação da entrada, senão o
+// CSC nasce com Receita Bruta negativa (pego na conferência da fixture contra o payload vivo).
+const OPERACAO = new Set(['ENT_H', 'PAG_H', 'RV', 'IMP_H', 'CUSTO', 'COM'])
 const PESSOAS = new Set(['RH', 'RHB'])
 
 const PERFIL_OPERACAO: Pesos = { trips: 0.31, weddings: 0.44, corp: 0.24, csc: 0, sem_centro: 0.01 }
