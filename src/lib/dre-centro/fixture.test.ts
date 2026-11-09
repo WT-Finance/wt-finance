@@ -4,7 +4,7 @@ import { CENTROS } from './centros'
 import { CATEGORIA_TAXA_ANTECIPACAO, fixtureDreCentro, pesosFicticios } from './fixture'
 import { BLOCOS, EMPRESA, FIM, REX, TAXA, tot } from './empresa-sintetica'
 import { montarAnoCentro } from './montar'
-import { LINHA_RES, ROTULO_RESULTADO_OPERACIONAL, visaoConsolidado, visaoLadoALado, visaoMensal } from './visoes'
+import { LINHA_RES, ROTULO_RESULTADO_OPERACIONAL, visaoConsolidado, visaoLadoALado, visaoLadoALadoConsolidado, visaoMensal } from './visoes'
 
 describe('pesos fictícios', () => {
   it.each(['ENT_H', 'PAG_H', 'RH', 'ADM', undefined])('somam 1 em todo mês (%s)', (folha) => {
@@ -111,36 +111,58 @@ describe('visões', () => {
     expect(v.valores.d2025['b:REX']).toBe(0) // mesmo centro nos dois anos ⇒ Δ% zero
   })
 
-  it('Lado a lado: Total = Σ centros e Resultado de caixa = REX da Empresa no ano', () => {
-    const v = visaoLadoALado({ ano: 2026, porCentro: ano.porCentro, fim: FIM, parcial: true, rbEmpresaMeses: null })
+  // Pedidos do Yan no PR #311 ("Todos", id `lado`): Mensal = meses empilhados (sem acumulado); Consolidado = um bloco por ano.
+  it('Todos › Mensal: um bloco por mês (5 centros) + Total; Σ centros do mês = REX do mês; Total = REX do ano', () => {
+    const v = visaoLadoALado({ ano: 2026, porCentro: ano.porCentro, fim: FIM, parcial: true })
+    expect(v.grupos.map(g => g.rotulo)).toEqual(['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov · parcial'])
+    expect(v.grupos.every(g => g.span === CENTROS.length)).toBe(true)
+    expect(v.grupos.reduce((s, g) => s + g.span, 0)).toBe(v.colunas.filter(c => !c.fixa).length)
+    // 11 meses × 5 centros + o Total
+    expect(v.colunas.filter(c => c.tipo === 'valor')).toHaveLength(FIM * CENTROS.length + 1)
     const k = `b:${LINHA_RES.chave}`
     expect(v.valores.total[k]).toBeCloseTo(tot(REX.slice(0, FIM)), 4)
-    // 11 meses × 5 centros + 5 centros no acumulado + o Total
-    expect(v.colunas.filter(c => c.tipo === 'valor')).toHaveLength(FIM * CENTROS.length + CENTROS.length + 1)
-    const somaCentros = CENTROS.reduce((s, c) => s + (v.valores[`v:${c}`][k] ?? 0), 0)
-    expect(v.valores.total[k]).toBeCloseTo(somaCentros, 6)
-  })
-
-  // Pedido do Yan no PR #311: os meses empilhados, um bloco por mês com os 5 centros.
-  it('Lado a lado: um bloco por mês (5 centros), o mês fecha com o acumulado e Σ centros do mês = REX do mês', () => {
-    const v = visaoLadoALado({ ano: 2026, porCentro: ano.porCentro, fim: FIM, parcial: true, rbEmpresaMeses: null })
-    expect(v.grupos.map(g => g.rotulo)).toEqual([
-      'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov · parcial', 'Acumulado 2026',
-    ])
-    expect(v.grupos.slice(0, FIM).every(g => g.span === CENTROS.length)).toBe(true)
-    // os spans cobrem exatamente as colunas não presas
-    expect(v.grupos.reduce((s, g) => s + g.span, 0)).toBe(v.colunas.filter(c => !c.fixa).length)
-    const k = `b:${LINHA_RES.chave}`
+    let somaTudo = 0
     for (let i = 0; i < FIM; i++) {
       const doMes = CENTROS.reduce((s, c) => s + (v.valores[`m${i + 1}:${c}`][k] ?? 0), 0)
       expect(doMes).toBeCloseTo(REX[i], 6)
+      somaTudo += doMes
     }
+    expect(v.valores.total[k]).toBeCloseTo(somaTudo, 6)
     for (const c of CENTROS) {
-      const somaMeses = Array.from({ length: FIM }, (_, i) => v.valores[`m${i + 1}:${c}`][k] ?? 0).reduce((s, x) => s + x, 0)
-      expect(somaMeses).toBeCloseTo(v.valores[`v:${c}`][k] ?? 0, 6)
       // memória de saldo no mês = saldo do fim do mês; a de soma = a do mês
       expect(v.valores[`m${FIM}:${c}`]['m:MEM_SALDO_OP']).toBe(ano.porCentro[c].memoria[1].meses[FIM - 1])
       expect(v.valores[`m3:${c}`]['m:MEM_CEDIDOS']).toBe(ano.porCentro[c].memoria[0].meses[2])
     }
+  })
+
+  it('Todos › Consolidado com um ano: um bloco YTD com os 5 centros e a AV de cada um; Total = Σ centros = REX', () => {
+    const v = visaoLadoALadoConsolidado({
+      mesJanela: FIM,
+      anos: [{ ano: 2026, parcial: true, fim: FIM, porCentro: ano.porCentro, rbEmpresaMeses: ano.rbEmpresaMeses }],
+    })!
+    expect(v.grupos).toEqual([expect.objectContaining({ rotulo: 'YTD 26*', span: CENTROS.length * 2 })])
+    expect(v.colunas.at(-2)).toMatchObject({ id: 'total', rotulo: 'Total YTD 26*', fixa: 'total' })
+    const k = `b:${LINHA_RES.chave}`
+    const soma = CENTROS.reduce((s, c) => s + (v.valores[`y2026:${c}`][k] ?? 0), 0)
+    expect(v.valores.total[k]).toBeCloseTo(soma, 6)
+    expect(v.valores.total[k]).toBeCloseTo(tot(REX.slice(0, FIM)), 4)
+    // a AV do CSC é sobre a receita da empresa na mesma janela; na planilha cada AV leva o centro
+    const csc = v.colunas.find(c => c.id === 'av2026:csc')!
+    expect(csc).toMatchObject({ rotulo: 'AV*', rotuloExport: 'AV CSC', ajuda: true })
+  })
+
+  it('Todos › Consolidado com dois anos: ano inteiro, YTD, Δ% por centro e Total do YTD de referência', () => {
+    const v = visaoLadoALadoConsolidado({
+      mesJanela: FIM,
+      anos: [
+        { ano: 2025, parcial: false, fim: 12, porCentro: ano.porCentro, rbEmpresaMeses: ano.rbEmpresaMeses },
+        { ano: 2026, parcial: true, fim: FIM, porCentro: ano.porCentro, rbEmpresaMeses: ano.rbEmpresaMeses },
+      ],
+    })!
+    expect(v.grupos.map(g => g.rotulo)).toEqual(['2025', 'YTD 25', 'Δ% YTD 25·26', 'YTD 26*'])
+    expect(v.grupos.reduce((s, g) => s + g.span, 0)).toBe(v.colunas.filter(c => !c.fixa).length)
+    const k = `b:${LINHA_RES.chave}`
+    for (const c of CENTROS) expect(v.valores[`d2025:${c}`][k]).toBe(0) // mesmo dado nos dois anos ⇒ Δ% zero
+    expect(v.colunas.at(-2)?.rotulo).toBe('Total YTD 26*')
   })
 })

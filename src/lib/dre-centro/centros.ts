@@ -24,11 +24,13 @@ export const CENTROS_ELEGIVEIS_DEFICIT: readonly CentroId[] = ['trips', 'wedding
  *  tabela de cima, separada (decisão do Yan no GATE 1) — não é opção aqui. */
 export type SeletorCentro = CentroId | 'lado'
 
-export const OPCOES_SELETOR: readonly SeletorCentro[] = [...CENTROS, 'lado']
+/** Pills do seletor. "Sem centro" NÃO tem pill própria (pedido do Yan no PR #311) — segue como coluna do Lado a
+ *  lado, que é onde fecha a soma com a Empresa. */
+export const OPCOES_SELETOR: readonly SeletorCentro[] = [...CENTROS.filter(c => c !== 'sem_centro'), 'lado']
 
 export const ROTULO_SELETOR: Record<SeletorCentro, string> = {
   ...ROTULO_CENTRO,
-  lado: 'Lado a lado',
+  lado: 'Todos', // era "Lado a lado" (pedido do Yan no PR #311); o id interno segue `lado`
 }
 
 /** Abertura do card: os centros lado a lado (a comparação e o Quem cobre quem). */

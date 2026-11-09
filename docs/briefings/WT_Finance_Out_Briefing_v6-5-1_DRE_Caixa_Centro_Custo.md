@@ -100,10 +100,20 @@ preservada); o card marca "Nov · parcial"/"2026*" e a tabela da Empresa não ma
 
 Decisões de produto do Yan ao ver o card, aplicadas no mesmo PR antes do merge:
 
-1. **Lado a lado com os meses empilhados:** um bloco por mês (jan até o mês corrente, este marcado "· parcial") com os 5
-   centros, só valor; depois o bloco "Acumulado «ano»" (o Lado a lado de antes: cada centro com a AV dele) e o Total + AV
-   presos à direita. Memória: no bloco do mês, a de soma é a do mês e a de saldo é a do fim do mês. Teste novo prova
-   Σ centros do mês ≡ REX do mês e Σ meses ≡ acumulado por centro. No Exportar, a coluna leva o mês ("Jan · Trips").
+1. **"Lado a lado" virou "Todos"**, com as duas visões (o id interno segue `lado`):
+   - **Consolidado** (abre nele): um bloco por ano com os 5 centros e a AV de cada um — ano inteiro dos fechados, YTD de
+     todos, Δ% por centro entre YTDs — e o "Total YTD" do ano de referência + AV presos à direita. Hoje (só 2026 coberto)
+     é um bloco "YTD 26*"; o Δ% aparece sozinho em 2027.
+   - **Mensal**: os meses empilhados — um bloco por mês (jan até o mês corrente, este "· parcial") com os 5 centros, só
+     valor — e o Total + AV presos à direita. O bloco "Acumulado" saiu (o Consolidado cumpre o papel). Memória: no bloco
+     do mês, a de soma é a do mês e a de saldo é a do fim do mês.
+   - Testes provam Σ centros do mês ≡ REX do mês, Total ≡ REX do ano, Total do Consolidado ≡ Σ centros, Δ% e a ordem dos
+     blocos com dois anos. No Exportar, a coluna leva o bloco ("Jan · Trips", "YTD 26* · AV CSC").
+   - A frase "Sem Δ% contra 2025" do Consolidado passa a aparecer na abertura do card (ela já existia no Consolidado por
+     centro).
+   - Os centros seguem abrindo em Mensal (decisão 4 do GATE 1): a visão do Todos e a dos centros são estados separados.
+1b. **Pill "Sem centro" retirada** do seletor; "Sem centro" segue como coluna do Todos (é onde fecha a soma com a
+   Empresa) e o texto do "?" do seletor diz isso.
 2. **Notas sob a tabela retiradas** (cobertura, antecipações identificadas/não identificadas, taxa pendente, tomado e não
    devolvido, explicação da memória e a nota "* ano em curso"). O cálculo (`montar.ts → notas`) ficou, coberto por teste,
    mas **nada mais o mostra na tela**. Ficou só a frase "Sem Δ% contra «ano−1»" do Consolidado, que não estava no print.

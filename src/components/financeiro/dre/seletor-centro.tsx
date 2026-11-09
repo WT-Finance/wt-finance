@@ -9,7 +9,8 @@ import { OPCOES_SELETOR, ROTULO_SELETOR, type SeletorCentro as Opcao } from '@/l
 const AJUDA =
   'A mesma árvore da DRE de caixa, calculada para cada operação: os recebíveis antecipados voltam ao ' +
   'mês do vencimento e ao centro dono, e as antecipações (dinheiro, devolução e taxa) ficam com quem ' +
-  'precisou do caixa. Lado a lado mostra os centros em colunas. Só 2026: antes disso o Monde não tem ' +
+  'precisou do caixa. Todos mostra os centros em colunas, inclusive o que ficou sem centro no Monde. ' +
+  'Só 2026: antes disso o Monde não tem ' +
   'o centro preenchido. A DRE da empresa inteira é a tabela acima.'
 
 export default function SeletorCentro({ atual, onEscolher }: { atual: Opcao; onEscolher: (s: Opcao) => void }) {

@@ -55,17 +55,28 @@ describe('TabelaDreCentro', () => {
     expect(render({ ...BASE, seletorInicial: 'csc' })).toContain('AV*')
   })
 
-  it('abre em Lado a lado: um bloco por mês com os centros, o acumulado, Total e o card Quem cobre quem', () => {
+  // Pedidos do Yan no PR #311: "Lado a lado" virou "Todos", abre em Consolidado; Mensal = meses empilhados, sem acumulado.
+  it('abre em Todos › Consolidado: um bloco por ano com os 5 centros e a AV, Total do YTD e o Quem cobre quem', () => {
     const html = render(BASE)
-    expect(html).toMatch(/aria-pressed="true"[^>]*>Lado a lado</)
-    for (const t of ['>Trips<', '>Weddings<', '>Corp<', '>CSC<', '>Sem centro<', '>Total<', 'Quem cobre quem', 'Total das fontes',
-      '>Jan<', '>Out<', 'Acumulado 2026']) {
+    expect(html).toMatch(/aria-pressed="true"[^>]*>Todos</)
+    expect(html).toMatch(/aria-pressed="true"[^>]*>Consolidado</)
+    expect(html).not.toContain('Lado a lado')
+    for (const t of ['>Trips<', '>Weddings<', '>Corp<', '>CSC<', '>Sem centro<', 'YTD 26*', 'Total YTD 26*', 'Quem cobre quem', 'Total das fontes']) {
       expect(html).toContain(t)
     }
+    // um só ano coberto: cada centro uma vez no cabeçalho, sem blocos de mês (o "Jan" que existe é o do Quem cobre quem)
+    expect(html.match(/>Weddings<\/th>/g)?.length).toBe(1)
+  })
+
+  it('Todos › Mensal: um bloco por mês com os 5 centros, sem o acumulado, e o Total', () => {
+    const html = render({ ...BASE, visaoLadoInicial: 'mensal' })
+    expect(html).toMatch(/aria-pressed="true"[^>]*>Mensal</)
+    for (const t of ['>Jan<', '>Out<', '>Total<', '>Sem centro<']) expect(html).toContain(t)
+    expect(html).not.toContain('Acumulado')
     // o mês corrente (parcial) também vira bloco, com o sufixo em caixa normal
     expect(html).toMatch(/Nov<span[^>]*>\s*·\s*parcial<\/span>/)
-    // no cabeçalho da tabela, cada centro aparece uma vez por mês (11) + uma no acumulado
-    expect(html.match(/>Weddings<\/th>/g)?.length).toBe(12)
+    // no cabeçalho da tabela, cada centro aparece uma vez por mês (11)
+    expect(html.match(/>Weddings<\/th>/g)?.length).toBe(11)
   })
 
   it('linhas de antecipação no âmbar do previsto (a mesma régua da DRE de caixa da Empresa)', () => {
@@ -87,10 +98,10 @@ describe('TabelaDreCentro', () => {
 })
 
 describe('SeletorCentro', () => {
-  it('cinco centros + Lado a lado (sem Empresa: ela é a tabela de cima), com o atual pressionado', () => {
+  it('quatro centros + Todos (sem Empresa: ela é a tabela de cima; sem pill de Sem centro), com o atual pressionado', () => {
     const html = renderToStaticMarkup(createElement(SeletorCentro, { atual: 'csc', onEscolher: () => {} }))
-    for (const t of ['Trips', 'Weddings', 'Corp', 'CSC', 'Sem centro', 'Lado a lado']) expect(html).toContain(`>${t}<`)
-    expect(html).not.toContain('>Empresa<')
+    for (const t of ['Trips', 'Weddings', 'Corp', 'CSC', 'Todos']) expect(html).toContain(`>${t}<`)
+    for (const t of ['Empresa', 'Sem centro', 'Lado a lado']) expect(html).not.toContain(`>${t}<`)
     expect(html).toMatch(/aria-pressed="true"[^>]*>CSC</)
   })
 })
