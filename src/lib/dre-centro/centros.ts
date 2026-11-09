@@ -20,13 +20,29 @@ export const ROTULO_CENTRO: Record<CentroId, string> = {
  *  lista é decisão de produto — volta ao Chat. */
 export const CENTROS_ELEGIVEIS_DEFICIT: readonly CentroId[] = ['trips', 'weddings', 'corp', 'csc']
 
-/** O que o seletor do card escolhe: um centro ou os centros lado a lado. A visão Empresa é a
- *  tabela de cima, separada (decisão do Yan no GATE 1) — não é opção aqui. */
+/** Abertura do card: um centro ou todos (id `lado`, rótulo "Todos"). A visão Empresa é a tabela de cima,
+ *  separada (decisão do Yan no GATE 1) — não é opção aqui. */
 export type SeletorCentro = CentroId | 'lado'
 
-/** Pills do seletor. "Sem centro" NÃO tem pill própria (pedido do Yan no PR #311) — segue como coluna do Lado a
- *  lado, que é onde fecha a soma com a Empresa. */
-export const OPCOES_SELETOR: readonly SeletorCentro[] = [...CENTROS.filter(c => c !== 'sem_centro'), 'lado']
+/** Centros com pill no seletor, marcáveis CUMULATIVAMENTE (pedido do Yan no PR #311). "Sem centro" NÃO tem pill
+ *  própria — é coluna do "Todos", que é onde fecha a soma com a Empresa. As quatro marcadas = "Todos". */
+export const CENTROS_SELECIONAVEIS = ['trips', 'weddings', 'corp', 'csc'] as const
+export type CentroSelecionavel = (typeof CENTROS_SELECIONAVEIS)[number]
+
+/** Seleção inicial a partir da abertura pedida: 'lado' (ou "Sem centro", que não tem pill) = todas marcadas. */
+export function selecaoInicial(s: SeletorCentro | readonly CentroSelecionavel[]): ReadonlySet<CentroSelecionavel> {
+  if (Array.isArray(s)) return new Set(s.length > 0 ? s : CENTROS_SELECIONAVEIS)
+  const unico = CENTROS_SELECIONAVEIS.find(c => c === s)
+  return new Set(unico ? [unico] : CENTROS_SELECIONAVEIS)
+}
+
+/** Marca/desmarca um centro; a seleção nunca fica vazia (o último marcado não sai). */
+export function alternarCentro(sel: ReadonlySet<CentroSelecionavel>, c: CentroSelecionavel): ReadonlySet<CentroSelecionavel> {
+  const s = new Set(sel)
+  if (!s.has(c)) s.add(c)
+  else if (s.size > 1) s.delete(c)
+  return s
+}
 
 export const ROTULO_SELETOR: Record<SeletorCentro, string> = {
   ...ROTULO_CENTRO,

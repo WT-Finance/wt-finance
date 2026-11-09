@@ -114,6 +114,17 @@ Decisões de produto do Yan ao ver o card, aplicadas no mesmo PR antes do merge:
    - Os centros seguem abrindo em Mensal (decisão 4 do GATE 1): a visão do Todos e a dos centros são estados separados.
 1b. **Pill "Sem centro" retirada** do seletor; "Sem centro" segue como coluna do Todos (é onde fecha a soma com a
    Empresa) e o texto do "?" do seletor diz isso.
+1c. **Seleção cumulativa** de Trips/Weddings/Corp/CSC. Cada clique marca ou desmarca uma; a última marcada não sai. Com
+   as quatro marcadas, ou com um clique em "Todos", acende "Todos" e as quatro ficam em `color-mix(--brand 30%,
+   --brand-soft)`. É um cinza um degrau mais escuro que o da seleção normal (`--brand-soft`), com a mesma borda e tinta
+   (≈ 4,9:1 no tema neutro).
+   - Um centro só: a visão dele (abre em Mensal).
+   - Dois ou três: as visões do Todos, só com as colunas deles. O Total é a soma deles, e o "?" avisa que não fecha
+     com a Empresa.
+   - Todos: os cinco, com "Sem centro" e o "Quem cobre quem". O Quem cobre quem fica só no Todos, porque usos e
+     fontes são da empresa inteira.
+   - Escolha do agente, a confirmar: clicar num centro com o Todos aceso DESMARCA aquele centro (sobram três), em vez
+     de selecionar só ele. É a leitura literal de "cumulativa".
 2. **Notas sob a tabela retiradas** (cobertura, antecipações identificadas/não identificadas, taxa pendente, tomado e não
    devolvido, explicação da memória e a nota "* ano em curso"). O cálculo (`montar.ts → notas`) ficou, coberto por teste,
    mas **nada mais o mostra na tela**. Ficou só a frase "Sem Δ% contra «ano−1»" do Consolidado, que não estava no print.
@@ -124,6 +135,12 @@ Decisões de produto do Yan ao ver o card, aplicadas no mesmo PR antes do merge:
    de `tabela-dre.tsx`; a tabela da Empresa não mudou, snapshot verde), a linha inteira, Conta inclusive. O Resultado de
    caixa fica na banda escura.
 4. **Pills "Realizado" e "Realizado + Previsto" retiradas** (por centro é sempre realizado), com o "?" delas.
+5. **"(=) RESULTADO OPERACIONAL DE CAIXA" e "(=) RESULTADO DE CAIXA" em caixa alta**, como os demais totalizadores (o
+   texto das linhas de resultado da árvore já vem em maiúsculas do mapa vivo).
+
+Gate desta rodada: dois testes que vão ao banco de produção falharam UMA vez e passaram na repetição. Foram a deriva
+sintética do `schema-baseline` e o contrato de `get_marketing_gastos_resumo`, este com `57014 statement timeout`
+(RPC de Marketing, não tocada nesta versão). É instabilidade do banco ao vivo, não regressão; fica registrada.
 
 ## 5. Advisor
 

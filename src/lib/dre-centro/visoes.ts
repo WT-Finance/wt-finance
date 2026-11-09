@@ -23,12 +23,13 @@ import type { Atribuicao } from './atribuicao'
 // As colunas são um modelo PRÓPRIO (não `ColunaCons`): a visão Lado a lado tem centros nas
 // colunas, coisa que a tabela da Empresa não conhece. O componente só desenha o que vem aqui.
 
-export const ROTULO_RESULTADO_OPERACIONAL = '(=) Resultado operacional de caixa'
+// Linhas de resultado em CAIXA ALTA, como os demais totalizadores da DRE (pedido do Yan no PR #311).
+export const ROTULO_RESULTADO_OPERACIONAL = '(=) RESULTADO OPERACIONAL DE CAIXA'
 
 export const LINHA_C    = { chave: 'ANT_C',     rotulo: '(+) Antecipação de recebíveis - C' }
 export const LINHA_D    = { chave: 'ANT_D',     rotulo: '(−) Antecipação de recebíveis - D' }
 export const LINHA_TAXA = { chave: 'ANT_TAXA',  rotulo: '(−) Taxa de antecipação' }
-export const LINHA_RES  = { chave: 'RES_CAIXA', rotulo: '(=) Resultado de caixa' }
+export const LINHA_RES  = { chave: 'RES_CAIXA', rotulo: '(=) RESULTADO DE CAIXA' }
 
 /** Linha de memória: informativa, nunca entra em soma nem em AV. `saldo` = no período vale o
  *  valor do FIM (Consolidado, Lado a lado e coluna de total); `soma` = soma do período. */
@@ -280,7 +281,7 @@ export function visaoConsolidado(args: { centro: CentroId; anos: AnoCentro[]; me
   }
 }
 
-// ── Visão 3: "Todos" na tela (era "Lado a lado"; id `lado`) — os 5 centros nas colunas ──
+// ── Visão 3: vários centros nas colunas — "Todos" (os 5, era "Lado a lado"; id `lado`) ou os marcados ──
 //
 // Duas visões, como a de um centro (pedidos do Yan no PR #311; abre em Consolidado):
 //   · Mensal — meses EMPILHADOS: um bloco por mês com os 5 centros (só valor) + o Total presos à direita;
@@ -293,6 +294,14 @@ export const TITULO_TOTAL_LADO =
   'ao mês do vencimento) e pela taxa de antecipação, que sai do Resultado financeiro para o bloco ' +
   'de antecipação.'
 
+/** Com só ALGUNS centros marcados (seleção cumulativa, pedido do Yan no PR #311) o Total é a soma deles — e
+ *  deixa de fechar com a Empresa, que só o Todos (inclusive Sem centro) alcança. */
+export const TITULO_TOTAL_SELECAO =
+  'Soma dos centros marcados. Só com Todos (que inclui o que ficou sem centro no Monde) o Resultado de ' +
+  'caixa é igual ao da DRE da empresa.'
+
+const todosOsCentros = (cs: readonly CentroId[]) => CENTROS.every(c => cs.includes(c))
+
 /** Total (Σ centros, linha a linha — memória de saldo: Σ dos saldos no fim) + a AV dele, presos à direita. */
 function colunasTotal(
   colunas: ColunaVisao[],
@@ -300,10 +309,14 @@ function colunasTotal(
   esqueleto: LinhasCentro,
   porCentro: ReadonlyArray<Record<string, number | null>>,
   rotulo: string,
+  todos: boolean,
 ): void {
   const total: Record<string, number | null> = {}
   for (const k of Object.keys(porCentro[0] ?? {})) total[k] = porCentro.reduce((s, v) => s + (v[k] ?? 0), 0)
-  colunas.push({ id: 'total', rotulo, titulo: TITULO_TOTAL_LADO, tipo: 'valor', fixa: 'total', divisoria: true, ajuda: true })
+  colunas.push({
+    id: 'total', rotulo, titulo: todos ? TITULO_TOTAL_LADO : TITULO_TOTAL_SELECAO,
+    tipo: 'valor', fixa: 'total', divisoria: true, ajuda: true,
+  })
   valores.total = total
   const rbTotal = baseAv(total[`b:${CHAVE_BASE_AV}`] ?? null)
   colunas.push({ id: 'av', rotulo: 'AV', titulo: '% sobre a Receita Bruta da soma dos centros', tipo: 'av', fixa: 'av' })
@@ -315,8 +328,11 @@ export function visaoLadoALado(args: {
   porCentro: Record<CentroId, LinhasCentro>
   fim: number
   parcial: boolean
+  /** Centros nas colunas, na ordem canônica (default: todos, inclusive Sem centro). */
+  centros?: readonly CentroId[]
 }): VisaoTabela {
   const { porCentro, fim, parcial } = args
+  const cs = CENTROS.filter(c => (args.centros ?? CENTROS).includes(c))
   const colunas: ColunaVisao[] = []
   const valores: VisaoTabela['valores'] = {}
   const grupos: GrupoCabecalho[] = []
@@ -326,9 +342,9 @@ export function visaoLadoALado(args: {
     grupos.push({
       rotulo: `${MESES[i]}${ultimo ? SUF_PARCIAL : ''}`,
       titulo: ultimo ? 'Mês em curso — realizado até hoje' : `Realizado de ${MESES[i].toLowerCase()}`,
-      span: CENTROS.length,
+      span: cs.length,
     })
-    for (const c of CENTROS) {
+    for (const c of cs) {
       const lc = porCentro[c]
       const id = `m${i + 1}:${c}`
       colunas.push({ id, rotulo: ROTULO_CENTRO[c], titulo: `${ROTULO_CENTRO[c]} em ${MESES[i].toLowerCase()}`, tipo: 'valor' })
@@ -336,8 +352,8 @@ export function visaoLadoALado(args: {
       for (const m of lc.memoria) valores[id][chaveMemoria(m)] = m.meses[i]
     }
   }
-  const ytdPorCentro = CENTROS.map(c => colunaValor(porCentro[c].linhas, porCentro[c].memoria, fim, l => ytd(l, fim)))
-  colunasTotal(colunas, valores, porCentro.trips, ytdPorCentro, 'Total')
+  const ytdPorCentro = cs.map(c => colunaValor(porCentro[c].linhas, porCentro[c].memoria, fim, l => ytd(l, fim)))
+  colunasTotal(colunas, valores, porCentro.trips, ytdPorCentro, 'Total', todosOsCentros(cs))
   return { grupos, colunas, linhas: porCentro.trips.linhas, memoria: porCentro.trips.memoria, valores }
 }
 
@@ -351,8 +367,14 @@ export interface AnoLado {
   rbEmpresaMeses: readonly number[] | null
 }
 
-export function visaoLadoALadoConsolidado(args: { anos: AnoLado[]; mesJanela: number }): VisaoTabela | null {
+export function visaoLadoALadoConsolidado(args: {
+  anos: AnoLado[]
+  mesJanela: number
+  /** Centros nas colunas, na ordem canônica (default: todos, inclusive Sem centro). */
+  centros?: readonly CentroId[]
+}): VisaoTabela | null {
   const { anos, mesJanela } = args
+  const cs = CENTROS.filter(c => (args.centros ?? CENTROS).includes(c))
   if (anos.length === 0) return null
   const ref = anos[anos.length - 1]
   const janela = Math.min(mesJanela, 12)
@@ -362,8 +384,8 @@ export function visaoLadoALadoConsolidado(args: { anos: AnoLado[]; mesJanela: nu
   const grupos: GrupoCabecalho[] = []
   anos.forEach((a, i) => {
     if (i < anos.length - 1) {
-      grupos.push({ rotulo: String(a.ano), titulo: `${a.ano} inteiro`, span: CENTROS.length })
-      for (const c of CENTROS) {
+      grupos.push({ rotulo: String(a.ano), titulo: `${a.ano} inteiro`, span: cs.length })
+      for (const c of cs) {
         const lc = a.porCentro[c]
         const id = `a${a.ano}:${c}`
         colunas.push({ id, rotulo: ROTULO_CENTRO[c], titulo: `${ROTULO_CENTRO[c]} em ${a.ano} inteiro`, tipo: 'valor' })
@@ -373,9 +395,9 @@ export function visaoLadoALadoConsolidado(args: { anos: AnoLado[]; mesJanela: nu
     grupos.push({
       rotulo: `YTD ${anoCurto(a.ano)}${a.parcial ? '*' : ''}`,
       titulo: `Realizado de jan a ${mesJ} de ${a.ano}`,
-      span: CENTROS.length * 2,
+      span: cs.length * 2,
     })
-    for (const c of CENTROS) {
+    for (const c of cs) {
       const lc = a.porCentro[c]
       const id = `y${a.ano}:${c}`
       colunas.push({ id, rotulo: ROTULO_CENTRO[c], titulo: `${ROTULO_CENTRO[c]}, jan a ${mesJ} de ${a.ano}`, tipo: 'valor' })
@@ -389,8 +411,8 @@ export function visaoLadoALadoConsolidado(args: { anos: AnoLado[]; mesJanela: nu
     }
     const prox = anos[i + 1]
     if (prox) {
-      grupos.push({ rotulo: `Δ% YTD ${anoCurto(a.ano)}·${anoCurto(prox.ano)}`, titulo: 'Variação do YTD, por centro', span: CENTROS.length })
-      for (const c of CENTROS) {
+      grupos.push({ rotulo: `Δ% YTD ${anoCurto(a.ano)}·${anoCurto(prox.ano)}`, titulo: 'Variação do YTD, por centro', span: cs.length })
+      for (const c of cs) {
         const id = `d${a.ano}:${c}`
         colunas.push({ id, rotulo: ROTULO_CENTRO[c], titulo: `Variação do YTD de ${ROTULO_CENTRO[c]}`, tipo: 'delta' })
         const atual = valores[`y${a.ano}:${c}`]
@@ -400,7 +422,7 @@ export function visaoLadoALadoConsolidado(args: { anos: AnoLado[]; mesJanela: nu
       }
     }
   })
-  const ytdRef = CENTROS.map(c => valores[`y${ref.ano}:${c}`])
-  colunasTotal(colunas, valores, ref.porCentro.trips, ytdRef, `Total YTD ${anoCurto(ref.ano)}${ref.parcial ? '*' : ''}`)
+  const ytdRef = cs.map(c => valores[`y${ref.ano}:${c}`])
+  colunasTotal(colunas, valores, ref.porCentro.trips, ytdRef, `Total YTD ${anoCurto(ref.ano)}${ref.parcial ? '*' : ''}`, todosOsCentros(cs))
   return { grupos, colunas, linhas: ref.porCentro.trips.linhas, memoria: ref.porCentro.trips.memoria, valores }
 }

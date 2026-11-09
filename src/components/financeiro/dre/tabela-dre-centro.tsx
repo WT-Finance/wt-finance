@@ -14,7 +14,10 @@ import SeletorCentro from './seletor-centro'
 import { chaveDeLinha } from '@/lib/dre/identidade'
 import { SUF_PARCIAL } from '@/lib/dre/mes-parcial'
 import { hojeSP } from '@/lib/fmt'
-import { ROTULO_CENTRO, ROTULO_SELETOR, SELETOR_INICIAL, type CentroId, type SeletorCentro as Opcao } from '@/lib/dre-centro/centros'
+import {
+  CENTROS, CENTROS_SELECIONAVEIS, ROTULO_CENTRO, ROTULO_SELETOR, SELETOR_INICIAL, alternarCentro, selecaoInicial,
+  type CentroId, type CentroSelecionavel, type SeletorCentro as Opcao,
+} from '@/lib/dre-centro/centros'
 import {
   LINHA_C, LINHA_D, LINHA_TAXA, chaveMemoria, visaoConsolidado, visaoLadoALado, visaoLadoALadoConsolidado, visaoMensal,
   type ColunaVisao, type VisaoTabela,
@@ -240,9 +243,9 @@ function TabelaVisao({
 // ── Card ─────────────────────────────────────────────────────────────────────
 
 export interface TabelaDreCentroProps {
-  /** Abertura do card (default: Lado a lado). */
-  seletorInicial?: Opcao
-  /** Visão em que o Lado a lado abre (default: Consolidado — pedido do Yan no PR #311). Um centro abre em Mensal. */
+  /** Abertura do card: um centro, uma lista de centros marcados, ou 'lado' = Todos (default). */
+  seletorInicial?: Opcao | readonly CentroSelecionavel[]
+  /** Visão em que Todos (ou vários centros) abre (default: Consolidado — pedido do Yan no PR #311). Um centro abre em Mensal. */
   visaoLadoInicial?: VisaoCentro
   leitura: { ok: true; anos: AnoDadosCentro[] } | { ok: false; motivo: 'vazio' | 'erro' }
   anosDisponiveis: number[]
@@ -255,8 +258,9 @@ export default function TabelaDreCentro({
   seletorInicial = SELETOR_INICIAL, visaoLadoInicial = 'consolidado', leitura, anosDisponiveis, mesJanela,
 }: TabelaDreCentroProps) {
   const anos = leitura.ok ? leitura.anos : []
-  const [seletor, setSeletor] = useState<Opcao>(seletorInicial)
-  // Uma visão para os centros (abre em Mensal, decisão 4 do GATE 1) e outra para o Lado a lado (abre em Consolidado).
+  // Seleção CUMULATIVA dos centros (pedido do Yan no PR #311): as quatro marcadas = Todos (inclusive Sem centro).
+  const [selecao, setSelecao] = useState<ReadonlySet<CentroSelecionavel>>(() => selecaoInicial(seletorInicial))
+  // Uma visão para um centro só (abre em Mensal, decisão 4 do GATE 1) e outra para vários/Todos (abre em Consolidado).
   const [visaoCentro, setVisaoCentro] = useState<VisaoCentro>('mensal')
   const [visaoLado, setVisaoLado] = useState<VisaoCentro>(visaoLadoInicial)
   const [anoEscolhido, setAnoEscolhido] = useState<number | null>(null)
@@ -273,7 +277,13 @@ export default function TabelaDreCentro({
     return () => document.removeEventListener('fullscreenchange', aoMudar)
   }, [])
 
-  const lado = seletor === 'lado'
+  const marcados = CENTROS_SELECIONAVEIS.filter(c => selecao.has(c))
+  const todos = marcados.length === CENTROS_SELECIONAVEIS.length
+  /** Um centro só → a visão dele; vários → os centros nas colunas (`lado`). */
+  const unico: CentroSelecionavel | null = marcados.length === 1 ? marcados[0] : null
+  const lado = unico == null
+  const centrosColunas: readonly CentroId[] = todos ? CENTROS : marcados
+  const rotuloSelecao = todos ? ROTULO_SELETOR.lado : marcados.map(c => ROTULO_CENTRO[c]).join(' + ')
   const titulo = TITULO
   const cobertos = new Set(anos.map(a => a.ano))
   // Ano EFETIVO: o escolhido, se ainda coberto; senão o mais recente coberto (derivação de render).
@@ -296,20 +306,21 @@ export default function TabelaDreCentro({
     )
   }
 
-  const v: VisaoTabela | null = lado
+  const v: VisaoTabela | null = unico == null
     ? visaoEfetiva === 'consolidado'
       ? visaoLadoALadoConsolidado({
           mesJanela,
+          centros: centrosColunas,
           anos: anos.map(a => ({ ano: a.ano, parcial: a.parcial, fim: a.fim, porCentro: a.porCentro, rbEmpresaMeses: a.rbEmpresaMeses })),
         })
-      : visaoLadoALado({ ano: ano.ano, porCentro: ano.porCentro, fim: ano.fim, parcial: ano.parcial })
+      : visaoLadoALado({ ano: ano.ano, porCentro: ano.porCentro, fim: ano.fim, parcial: ano.parcial, centros: centrosColunas })
     : visaoEfetiva === 'consolidado'
       ? visaoConsolidado({
-          centro: seletor,
+          centro: unico,
           mesJanela,
-          anos: anos.map(a => ({ ano: a.ano, parcial: a.parcial, fim: a.fim, lc: a.porCentro[seletor], rbEmpresaMeses: a.rbEmpresaMeses })),
+          anos: anos.map(a => ({ ano: a.ano, parcial: a.parcial, fim: a.fim, lc: a.porCentro[unico], rbEmpresaMeses: a.rbEmpresaMeses })),
         })
-      : visaoMensal({ ano: ano.ano, centro: seletor, lc: ano.porCentro[seletor], fim: ano.fim, parcial: ano.parcial, rbEmpresaMeses: ano.rbEmpresaMeses })
+      : visaoMensal({ ano: ano.ano, centro: unico, lc: ano.porCentro[unico], fim: ano.fim, parcial: ano.parcial, rbEmpresaMeses: ano.rbEmpresaMeses })
 
   const expansiveis = new Set<string>()
   v?.linhas.forEach(l => { if (l.t === 'cat' && l.g) expansiveis.add(l.g) })
@@ -337,18 +348,18 @@ export default function TabelaDreCentro({
       const nomeVisao = visaoEfetiva === 'mensal' ? 'Mensal' : 'Consolidado'
       const abas = lado
         ? [
-            abaDaVisao(`${ROTULO_SELETOR.lado} ${nomeVisao}`, v),
-            ...(Object.keys(ano.porCentro) as CentroId[]).map(c =>
+            abaDaVisao(`${rotuloSelecao} ${nomeVisao}`, v),
+            ...centrosColunas.map(c =>
               abaDaVisao(ROTULO_CENTRO[c], visaoMensal({ ano: ano.ano, centro: c, lc: ano.porCentro[c], fim: ano.fim, parcial: ano.parcial, rbEmpresaMeses: ano.rbEmpresaMeses }))),
           ]
-        : [abaDaVisao(`${ROTULO_SELETOR[seletor]} ${nomeVisao}`, v)]
+        : [abaDaVisao(`${rotuloSelecao} ${nomeVisao}`, v)]
       const wb = XLSX.utils.book_new()
       for (const aba of abas) {
         const ws = XLSX.utils.aoa_to_sheet(aba.linhas)
         ws['!cols'] = aba.larguras.map(wch => ({ wch }))
         XLSX.utils.book_append_sheet(wb, ws, aba.nome)
       }
-      XLSX.writeFile(wb, nomeArquivoCentro(ROTULO_SELETOR[seletor], ano.ano, geradoEm))
+      XLSX.writeFile(wb, nomeArquivoCentro(rotuloSelecao, ano.ano, geradoEm))
     } catch (err) {
       console.error('[DRE por centro exportar]', err)
       setErroExportar(true)
@@ -379,7 +390,11 @@ export default function TabelaDreCentro({
         <CabecalhoCard titulo={titulo} />
 
         <div className="mb-4 flex flex-col gap-2">
-          <SeletorCentro atual={seletor} onEscolher={setSeletor} />
+          <SeletorCentro
+            selecao={selecao}
+            onAlternar={c => setSelecao(prev => alternarCentro(prev, c))}
+            onTodos={() => setSelecao(new Set(CENTROS_SELECIONAVEIS))}
+          />
           <div className="flex flex-wrap items-center gap-2">
             {pillVisao('mensal', 'Mensal', lado ? 'Mês a mês do ano selecionado, com os centros dentro de cada mês' : 'Visão mês a mês do ano selecionado')}
             {pillVisao('consolidado', 'Consolidado', lado ? 'Ano a ano, com os centros dentro de cada ano — só os anos com centro de custo' : 'Visão ano a ano — só os anos com centro de custo')}
@@ -411,7 +426,7 @@ export default function TabelaDreCentro({
               exportando={exportando}
               erroExportar={erroExportar}
               tituloExportar={lado
-                ? 'Baixar em Excel — uma aba com todos os centros (a visão da tela) e uma aba mensal por centro'
+                ? 'Baixar em Excel — uma aba com os centros da tela e uma aba mensal por centro'
                 : 'Baixar em Excel a visão da tela, com todas as linhas e a memória'}
             />
           </div>
@@ -436,7 +451,8 @@ export default function TabelaDreCentro({
         )}
       </div>
 
-      {lado && <QuemCobreQuem dados={ano.quem} fim={ano.fim} parcial={ano.parcial} ano={ano.ano} />}
+      {/* Quem cobre quem é da empresa inteira (usos e fontes de todos os centros): só com Todos. */}
+      {todos && <QuemCobreQuem dados={ano.quem} fim={ano.fim} parcial={ano.parcial} ano={ano.ano} />}
     </div>
   )
 }

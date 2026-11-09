@@ -4,7 +4,10 @@ import { CENTROS } from './centros'
 import { CATEGORIA_TAXA_ANTECIPACAO, fixtureDreCentro, pesosFicticios } from './fixture'
 import { BLOCOS, EMPRESA, FIM, REX, TAXA, tot } from './empresa-sintetica'
 import { montarAnoCentro } from './montar'
-import { LINHA_RES, ROTULO_RESULTADO_OPERACIONAL, visaoConsolidado, visaoLadoALado, visaoLadoALadoConsolidado, visaoMensal } from './visoes'
+import {
+  LINHA_RES, ROTULO_RESULTADO_OPERACIONAL, TITULO_TOTAL_LADO, TITULO_TOTAL_SELECAO,
+  visaoConsolidado, visaoLadoALado, visaoLadoALadoConsolidado, visaoMensal,
+} from './visoes'
 
 describe('pesos fictícios', () => {
   it.each(['ENT_H', 'PAG_H', 'RH', 'ADM', undefined])('somam 1 em todo mês (%s)', (folha) => {
@@ -149,6 +152,26 @@ describe('visões', () => {
     // a AV do CSC é sobre a receita da empresa na mesma janela; na planilha cada AV leva o centro
     const csc = v.colunas.find(c => c.id === 'av2026:csc')!
     expect(csc).toMatchObject({ rotulo: 'AV*', rotuloExport: 'AV CSC', ajuda: true })
+  })
+
+  it('vários centros marcados (parcial): colunas só deles, Total = soma deles, título do Total avisa', () => {
+    const cs = ['trips', 'corp'] as const
+    const k = `b:${LINHA_RES.chave}`
+    const m = visaoLadoALado({ ano: 2026, porCentro: ano.porCentro, fim: FIM, parcial: true, centros: cs })
+    expect(m.grupos.every(g => g.span === cs.length)).toBe(true)
+    expect(m.colunas.filter(c => !c.fixa).every(c => /:(trips|corp)$/.test(c.id))).toBe(true)
+    const somaMeses = cs.reduce((s, c) => s + Array.from({ length: FIM }, (_, i) => m.valores[`m${i + 1}:${c}`][k] ?? 0).reduce((a, x) => a + x, 0), 0)
+    expect(m.valores.total[k]).toBeCloseTo(somaMeses, 6)
+    expect(m.colunas.find(c => c.id === 'total')?.titulo).toBe(TITULO_TOTAL_SELECAO)
+    const c = visaoLadoALadoConsolidado({
+      mesJanela: FIM, centros: cs,
+      anos: [{ ano: 2026, parcial: true, fim: FIM, porCentro: ano.porCentro, rbEmpresaMeses: ano.rbEmpresaMeses }],
+    })!
+    expect(c.grupos[0].span).toBe(cs.length * 2)
+    expect(c.valores.total[k]).toBeCloseTo((c.valores['y2026:trips'][k] ?? 0) + (c.valores['y2026:corp'][k] ?? 0), 6)
+    // com os cinco (Todos), o título volta a ser o da paridade com a Empresa
+    expect(visaoLadoALado({ ano: 2026, porCentro: ano.porCentro, fim: FIM, parcial: true }).colunas.find(x => x.id === 'total')?.titulo)
+      .toBe(TITULO_TOTAL_LADO)
   })
 
   it('Todos › Consolidado com dois anos: ano inteiro, YTD, Δ% por centro e Total do YTD de referência', () => {

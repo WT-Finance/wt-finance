@@ -26,8 +26,9 @@ classificação: CHECKs de base). ADR-0184.
   com deslocamento ao mês do vencimento no centro dono e a taxa no bloco de antecipação; recebíveis, taxa do Monde por
   centro, eventos, cobertura e carimbos. `p_ajuste=false` dá Σ centros = Empresa linha a linha.
 - **Card "Demonstrativo de Resultado por Centro de Custo"** na seção Regime de Caixa da DRE, separado da tabela da
-  Empresa (decisão do GATE 1): seletor Trips/Weddings/Corp/CSC/Todos ("Sem centro" é coluna do Todos, sem pill
-  própria); visões Mensal e Consolidado por centro e no Todos — o Todos abre em Consolidado (um bloco por ano com os
+  Empresa (decisão do GATE 1): seletor Trips/Weddings/Corp/CSC marcável cumulativamente + Todos (as quatro marcadas
+  acendem o Todos e ficam num cinza mais escuro que a seleção normal; alguns marcados = colunas só deles e Total =
+  soma deles; "Sem centro" é coluna do Todos, sem pill própria); visões Mensal e Consolidado por centro e no Todos — o Todos abre em Consolidado (um bloco por ano com os
   5 centros e a AV de cada um, Δ% por centro a partir de 2027, Total do YTD) e o Mensal dele empilha os meses (um
   bloco por mês com os 5 centros, mais o Total); bloco de antecipação (C, D, taxa no fundo âmbar do previsto;
   Resultado de caixa); memória fora das somas; Quem cobre quem (Todos); Exportar da visão da tela (a coluna leva o

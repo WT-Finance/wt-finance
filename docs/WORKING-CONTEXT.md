@@ -93,7 +93,8 @@ Worktree `.claude/worktrees/v6-5-1-dre-caixa-centro-custo`. Briefing `docs/brief
   ingestão com `ENOENT` são as fixtures não versionadas — ambiente).
 - **Ajustes do Yan no PR (09/11), já no #311:** "Lado a lado" virou **"Todos"** e abre em **Consolidado** (um bloco por
   ano com os 5 centros + AV); o Mensal dele empilha os meses (um bloco por mês com os 5 centros + Total, sem acumulado);
-  pill "Sem centro" retirada (segue como coluna do Todos); notas sob a tabela retiradas (o valor da taxa pendente não
+  pill "Sem centro" retirada (segue como coluna do Todos); centros marcáveis cumulativamente (as quatro = Todos, em
+  cinza mais escuro); notas sob a tabela retiradas (o valor da taxa pendente não
   aparece mais na tela); linhas de antecipação no âmbar do previsto; pills Realizado/Realizado + Previsto retiradas.
   Out-briefing §4.1.
 
