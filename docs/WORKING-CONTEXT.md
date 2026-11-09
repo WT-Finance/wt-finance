@@ -9,7 +9,7 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-11-06 (v6.5.1 em voo: M2 feita, 0304 aplicada; patch D2 com o Yan).
+Última atualização: 2026-11-09 (v6.5.1 em voo: M2 feita, 0304 e 0305 aplicadas; próxima M3).
 
 ---
 
@@ -45,7 +45,8 @@ Worktree `.claude/worktrees/v6-5-1-dre-caixa-centro-custo`. Briefing `docs/brief
   - Conferência visual NÃO feita pelo agente (login real). Render provado por teste (`tabela-dre-centro.test.ts`).
     Suíte: 2.627 testes verdes; 5 arquivos de oráculo de ingestão falham por `ENOENT` das fixtures não versionadas
     na worktree (ambiente, não M1).
-- **M2 feita (`93ad3cdb`) — 0304 APLICADA em 06/11** (backup-gate verde; banco na **0304**, livre **0305**).
+- **M2 feita (`93ad3cdb`) — 0304 APLICADA em 06/11 e 0305 (destrutiva, CHECKs de base) APLICADA pelo Yan em TTY em
+  09/11** (banco na **0305**, livre **0306**; baseline regenerado). A carga da base nova está liberada no banco.
   Contrato da base: `docs/specs/v6-5-1-m2-base-centro-custo.md`. Base `lancamentos-centro-custo` (7ª, por último),
   parser com checksum pelo outline por centro (Σ Valor Centro Custo com o sinal da movimentação), "+" rejeita, lista
   fechada D6; dimensão `financeiro.centro_custo` (centro novo no Monde reprova a carga); rateio
@@ -53,12 +54,8 @@ Worktree `.claude/worktrees/v6-5-1-dre-caixa-centro-custo`. Briefing `docs/brief
   base por categoria do mesmo dia ≡ "Rateio sem ajuste" do protótipo AO CENTAVO nos 4 centros; 31 datas fora da faixa
   (29 Emissão + 2 Vencimento, nenhuma Movimentação) — campo nulo, linha mantida. Fixtures copiadas para
   `tests/fixtures/ingestao/` (git-ignorado) e registradas no manifest. ingestor: 28 assinaturas.
-  - 🔴 **Yan — destrutiva 0305 (D2), um comando em TTY:** pré-voo feito pelo agente em 09/11 (`git mv` do patch para
-    `supabase/migrations/0305_centro_custo_checks_ingestao.sql`, teste de paridade reapontado, classificada destrutiva,
-    ÚNICA pendente, ensaio revertido verde). Rodar na worktree: `npm run db:migrate -- --destrutiva` e confirmar.
-    Depois o agente regenera o baseline e commita. ⚠️ Aplicar ANTES de qualquer `--aditiva` da M3 (o push leva todo o
-    pendente). Até lá a carga da base falha FECHADA. Upload depois do deploy: Admin › Ingestão › Upload, card
-    "Lançamentos por Centro de Custo", MESMO dia da carga de movimentação.
+  - Upload (depois do deploy): Admin › Ingestão › Upload, card "Lançamentos por Centro de Custo", MESMO dia da carga
+    de movimentação. A 1ª carga real é checkpoint do Yan na M2 (briefing §10).
   - Revisão: `revisor-db` aprovou a 0304 e o patch (B-1/B-3 corrigidos antes de aplicar); `revisor` aprovou o app com
     ressalvas — MÉDIOs corrigidos (outline negativo/milhar no teste sintético; sonda ESTÁTICA da lista fechada
     `lista-fechada-centro-custo.test.ts`, vista reprovar com mutante). **Para o out-briefing:** a 0304 concede as 4 RPCs
