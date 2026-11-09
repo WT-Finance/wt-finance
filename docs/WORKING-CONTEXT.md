@@ -37,7 +37,8 @@ Worktree `.claude/worktrees/v6-5-1-dre-caixa-centro-custo`. Briefing `docs/brief
     conferidos), `visoes.ts` (colunas das 3 visões), `montar.ts`, `exportar.ts`. Contrato proposto em `tipos.ts`:
     o banco entrega árvore por centro (já deslocada, sem a taxa) + recebíveis identificados; o front atribui.
   - **Decidido pelo Yan (GATE 1):** (1) DRE por centro em **card separado** na seção de caixa, seletor só nele;
-    (2) AV do CSC sobre a Receita Bruta da **empresa** (`AV*`); (3) **Quem cobre quem entra**, só no Lado a lado;
+    (2) ~~AV do CSC sobre a Receita Bruta da empresa (`AV*`)~~ — **substituída no PR #311: AV do CSC igual às demais
+    (sobre a receita dele; em 2026 é negativa → "—")**; (3) **Quem cobre quem entra**, só no Lado a lado;
     (4) centro abre na visão **Mensal**; (5) coluna **"Total"** do Lado a lado com "?" explicando; (6) carimbo
     **"Caixa" mantido** (+ "Centro de custo" e "Antecipações"); (7) **memória** em faixa própria, itálico, sem AV;
     (8) **Exportar** já nesta versão (Lado a lado = aba consolidada + uma mensal por centro).

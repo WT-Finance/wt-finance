@@ -31,10 +31,8 @@ import ResumoExecutivo from '@/components/financeiro/dre/resumo-executivo'
 import { LINHAS_COMPETENCIA } from '@/lib/dre/linhas-resumo'
 import { PILL, PILL_NEUTRO } from '@/components/shared/botoes'
 import TabelaDreCentro, { type TabelaDreCentroProps } from '@/components/financeiro/dre/tabela-dre-centro'
-import { linhaBaseAv } from '@/lib/dre/av'
 import { dreCaixaCentroSchema, paraDreCentroAno } from '@/lib/dre-centro/schemas'
 import { montarAnoCentro } from '@/lib/dre-centro/montar'
-import { mesFimRealizado } from '@/lib/dre-centro/visoes'
 
 // DRE por Fluxo de Caixa (v5.3.0 · Onda 2) — a tabela hierárquica da controladoria
 // (159 linhas) na aba definitiva. M4: a tabela lê a estrutura viva + o fato real via
@@ -188,15 +186,6 @@ export default async function DrePage({
     outrosAnosCentro.map(a => rpcDre(db, 'get_dre_caixa_centro', { p_ano: a })),
   ).then(rs => rs.map((r, i) =>
     parseRpc(dreCaixaCentroSchema, r.status === 'fulfilled' ? r.value : empty, `get_dre_caixa_centro(${outrosAnosCentro[i]})`)))
-  /** Receita Bruta da Empresa, 12 meses de REALIZADO (o previsto depois do mês corrente zera) — a base
-   *  da AV do CSC; cada coluna corta a própria janela (revisor, ALTO). */
-  const rbEmpresaMesesDe = (a: number): number[] | null => {
-    const emp = dreAnos.get(a)
-    const rb = emp ? linhaBaseAv(emp.linhas) : undefined
-    if (!emp || !rb) return null
-    const fim = mesFimRealizado(emp.relacao, emp.mes_corrente)
-    return rb.meses.map((v, i) => (i < fim ? v : 0))
-  }
   const leituraCentro: TabelaDreCentroProps['leitura'] = (() => {
     if (!centroCorrente) return { ok: false, motivo: 'erro' }
     if (anosComCentro.length === 0) return { ok: false, motivo: 'vazio' }
@@ -208,7 +197,7 @@ export default async function DrePage({
     try {
       const anos = (leituras as NonNullable<(typeof leituras)[number]>[])
         .sort((x, y) => x.ano - y.ano)
-        .map(r => montarAnoCentro(paraDreCentroAno(r), rbEmpresaMesesDe(r.ano)))
+        .map(r => montarAnoCentro(paraDreCentroAno(r)))
       return { ok: true, anos }
     } catch (err) {
       // FAIL-SAFE POR CARD de verdade: uma exceção na montagem vira o estado de erro do card, não

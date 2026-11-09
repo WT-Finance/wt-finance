@@ -105,8 +105,8 @@ export interface ColunaVisao {
   fixa?: 'total' | 'av'
   /** Régua à esquerda (início do total, ou fronteira entre centros). */
   divisoria?: boolean
-  /** O cabeçalho ganha o "?" (`GatilhoAjuda`) com o `titulo` — decisão do GATE 1 para o Total do Lado a lado e a AV*
-   *  do CSC; `title` sozinho não abre por teclado nem em toque (revisor, ALTO). */
+  /** O cabeçalho ganha o "?" (`GatilhoAjuda`) com o `titulo` — decisão 5 do GATE 1 para o Total dos centros;
+   *  `title` sozinho não abre por teclado nem em toque (revisor, ALTO). */
   ajuda?: boolean
   /** Rótulo na planilha, quando o da tela é ambíguo fora do cabeçalho de dois níveis ("AV" de cada centro). */
   rotuloExport?: string
@@ -172,17 +172,10 @@ export function mesFimRealizado(relacao: 'fechado' | 'corrente' | 'futuro', mesC
   return 0
 }
 
-export const TITULO_AV_CSC =
-  'O CSC não tem receita própria: a AV dele é sobre a Receita Bruta da empresa — quanto da ' +
-  'receita total a estrutura central consome.'
-
-/** Base da AV de um centro: a própria Receita Bruta; o CSC usa a da EMPRESA (decisão do GATE 1),
- *  somada na MESMA janela do numerador — recebe os 12 meses e corta aqui, nunca um escalar de outra
- *  janela (achado ALTO do revisor: no Consolidado, "YTD" de um ano fechado dividia jan–nov por 12 meses). */
-function baseDoCentro(centro: CentroId, proprio: number | null, empresaMeses: readonly number[] | null, fim: number): number | null {
-  if (centro !== 'csc') return proprio
-  return empresaMeses ? baseAv(soma(empresaMeses.slice(0, fim))) : null
-}
+// AV de TODO centro, CSC inclusive, sobre a Receita Bruta do PRÓPRIO centro, com 100% na RECEITA BRUTA DE VENDAS
+// (decisão do Yan no PR #311, no lugar da decisão 2 do GATE 1 — "CSC sobre a receita da empresa"). Mesma regra da
+// tabela da Empresa: base ≤ 0 (o CSC quase não tem receita e em 2026 ela é negativa) → travessão.
+const TITULO_AV = 'Análise vertical — % sobre a Receita Bruta do centro'
 
 // ── Visão 1: um centro, Mensal ───────────────────────────────────────────────
 
@@ -192,10 +185,8 @@ export function visaoMensal(args: {
   lc: LinhasCentro
   fim: number
   parcial: boolean
-  /** Receita Bruta da empresa, 12 meses (base da AV do CSC, cortada na janela da coluna). */
-  rbEmpresaMeses: readonly number[] | null
 }): VisaoTabela {
-  const { ano, centro, lc, fim, parcial, rbEmpresaMeses } = args
+  const { ano, lc, fim, parcial } = args
   const colunas: ColunaVisao[] = []
   const valores: VisaoTabela['valores'] = {}
   for (let i = 0; i < fim; i++) {
@@ -218,10 +209,9 @@ export function visaoMensal(args: {
   })
   valores.total = colunaValor(lc.linhas, lc.memoria, fim, l => ytd(l, fim))
   colunas.push({
-    id: 'av', rotulo: centro === 'csc' ? 'AV*' : 'AV', tipo: 'av', fixa: 'av', ajuda: centro === 'csc',
-    titulo: centro === 'csc' ? TITULO_AV_CSC : 'Análise vertical — % sobre a Receita Bruta do centro',
+    id: 'av', rotulo: 'AV', tipo: 'av', fixa: 'av', titulo: TITULO_AV,
   })
-  valores.av = colunaAv(lc.linhas, l => ytd(l, fim), baseDoCentro(centro, receitaBruta(lc.linhas, fim), rbEmpresaMeses, fim))
+  valores.av = colunaAv(lc.linhas, l => ytd(l, fim), receitaBruta(lc.linhas, fim))
   return {
     grupos: [{ rotulo: 'Realizado', titulo: 'Realizado por data de movimentação', span: fim }],
     colunas, linhas: lc.linhas, memoria: lc.memoria, valores,
@@ -236,12 +226,10 @@ export interface AnoCentro {
   parcial: boolean
   fim: number
   lc: LinhasCentro
-  /** Receita Bruta da empresa, 12 meses (base da AV do CSC). */
-  rbEmpresaMeses: readonly number[] | null
 }
 
-export function visaoConsolidado(args: { centro: CentroId; anos: AnoCentro[]; mesJanela: number }): VisaoTabela | null {
-  const { centro, anos, mesJanela } = args
+export function visaoConsolidado(args: { anos: AnoCentro[]; mesJanela: number }): VisaoTabela | null {
+  const { anos, mesJanela } = args
   if (anos.length === 0) return null
   const ref = anos[anos.length - 1]
   const colunas: ColunaVisao[] = []
@@ -261,11 +249,8 @@ export function visaoConsolidado(args: { centro: CentroId; anos: AnoCentro[]; me
     })
     valores[idYtd] = colunaValor(a.lc.linhas, a.lc.memoria, janela, l => ytd(l, janela))
     const idAv = `av${a.ano}`
-    colunas.push({
-      id: idAv, rotulo: centro === 'csc' ? 'AV*' : 'AV', tipo: 'av', ajuda: centro === 'csc',
-      titulo: centro === 'csc' ? TITULO_AV_CSC : 'Análise vertical — % sobre a Receita Bruta do centro',
-    })
-    valores[idAv] = colunaAv(a.lc.linhas, l => ytd(l, janela), baseDoCentro(centro, receitaBruta(a.lc.linhas, janela), a.rbEmpresaMeses, janela))
+    colunas.push({ id: idAv, rotulo: 'AV', tipo: 'av', titulo: TITULO_AV })
+    valores[idAv] = colunaAv(a.lc.linhas, l => ytd(l, janela), receitaBruta(a.lc.linhas, janela))
     const prox = anos[i + 1]
     if (prox) {
       const idDelta = `d${a.ano}`
@@ -363,8 +348,6 @@ export interface AnoLado {
   parcial: boolean
   fim: number
   porCentro: Record<CentroId, LinhasCentro>
-  /** Receita Bruta da empresa, 12 meses (base da AV do CSC). */
-  rbEmpresaMeses: readonly number[] | null
 }
 
 export function visaoLadoALadoConsolidado(args: {
@@ -404,10 +387,10 @@ export function visaoLadoALadoConsolidado(args: {
       valores[id] = colunaValor(lc.linhas, lc.memoria, janela, l => ytd(l, janela))
       const idAv = `av${a.ano}:${c}`
       colunas.push({
-        id: idAv, rotulo: c === 'csc' ? 'AV*' : 'AV', rotuloExport: `AV ${ROTULO_CENTRO[c]}`, tipo: 'av', ajuda: c === 'csc',
-        titulo: c === 'csc' ? TITULO_AV_CSC : `% sobre a Receita Bruta de ${ROTULO_CENTRO[c]}`,
+        id: idAv, rotulo: 'AV', rotuloExport: `AV ${ROTULO_CENTRO[c]}`, tipo: 'av',
+        titulo: `% sobre a Receita Bruta de ${ROTULO_CENTRO[c]}`,
       })
-      valores[idAv] = colunaAv(lc.linhas, l => ytd(l, janela), baseDoCentro(c, receitaBruta(lc.linhas, janela), a.rbEmpresaMeses, janela))
+      valores[idAv] = colunaAv(lc.linhas, l => ytd(l, janela), receitaBruta(lc.linhas, janela))
     }
     const prox = anos[i + 1]
     if (prox) {

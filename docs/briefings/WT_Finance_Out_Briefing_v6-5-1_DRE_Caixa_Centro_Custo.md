@@ -137,6 +137,15 @@ Decisões de produto do Yan ao ver o card, aplicadas no mesmo PR antes do merge:
 4. **Pills "Realizado" e "Realizado + Previsto" retiradas** (por centro é sempre realizado), com o "?" delas.
 5. **"(=) RESULTADO OPERACIONAL DE CAIXA" e "(=) RESULTADO DE CAIXA" em caixa alta**, como os demais totalizadores (o
    texto das linhas de resultado da árvore já vem em maiúsculas do mapa vivo).
+6. **AV do CSC igual à das demais:** 100% na RECEITA BRUTA DE VENDAS do próprio CSC. Substitui a decisão 2 do GATE 1
+   (o `AV*` sobre a receita da empresa). Saíram o `AV*`, o "?" dele e todo o caminho da receita da empresa até a AV
+   (`rbEmpresaMeses` na página, em `montar.ts` e nas visões), incluindo a correção do ALTO da revisão final, que deixou de
+   existir junto com a regra.
+   - **Consequência medida no banco em 09/11:** a receita bruta do CSC em 2026 é **−R$ 12.336,29**, com meses entre
+     −R$ 25,7 mil e +R$ 20,6 mil. Pela regra da tabela da Empresa (base ≤ 0 → travessão), a coluna AV do CSC mostra
+     "—" em todas as linhas. Num recorte em que a receita do CSC for positiva e pequena, os percentuais ficam muito
+     grandes.
+   - Para comparar, Trips tem R$ 5,37 mi, Weddings R$ 5,00 mi, Corp R$ 3,57 mi e Sem centro R$ 57,9 mil.
 
 Gate desta rodada: dois testes que vão ao banco de produção falharam UMA vez e passaram na repetição. Foram a deriva
 sintética do `schema-baseline` e o contrato de `get_marketing_gastos_resumo`, este com `57014 statement timeout`

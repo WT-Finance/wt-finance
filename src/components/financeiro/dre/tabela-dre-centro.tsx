@@ -70,7 +70,7 @@ function RotuloColuna({ rotulo }: { rotulo: string }) {
   )
 }
 
-/** Rótulo de cabeçalho com o "?" quando a coluna pede explicação (Total do Lado a lado, AV* do CSC). O balão
+/** Rótulo de cabeçalho com o "?" quando a coluna pede explicação (o Total dos centros). O balão
  *  é o primitivo do DS (foco por teclado); perto da borda direita abre para a esquerda (`ancoraDireita`). */
 function RotuloComAjuda({ c, ancoraDireita = false }: { c: ColunaVisao; ancoraDireita?: boolean }) {
   if (!c.ajuda) return <>{c.rotulo}</>
@@ -311,16 +311,15 @@ export default function TabelaDreCentro({
       ? visaoLadoALadoConsolidado({
           mesJanela,
           centros: centrosColunas,
-          anos: anos.map(a => ({ ano: a.ano, parcial: a.parcial, fim: a.fim, porCentro: a.porCentro, rbEmpresaMeses: a.rbEmpresaMeses })),
+          anos: anos.map(a => ({ ano: a.ano, parcial: a.parcial, fim: a.fim, porCentro: a.porCentro })),
         })
       : visaoLadoALado({ ano: ano.ano, porCentro: ano.porCentro, fim: ano.fim, parcial: ano.parcial, centros: centrosColunas })
     : visaoEfetiva === 'consolidado'
       ? visaoConsolidado({
-          centro: unico,
           mesJanela,
-          anos: anos.map(a => ({ ano: a.ano, parcial: a.parcial, fim: a.fim, lc: a.porCentro[unico], rbEmpresaMeses: a.rbEmpresaMeses })),
+          anos: anos.map(a => ({ ano: a.ano, parcial: a.parcial, fim: a.fim, lc: a.porCentro[unico] })),
         })
-      : visaoMensal({ ano: ano.ano, centro: unico, lc: ano.porCentro[unico], fim: ano.fim, parcial: ano.parcial, rbEmpresaMeses: ano.rbEmpresaMeses })
+      : visaoMensal({ ano: ano.ano, centro: unico, lc: ano.porCentro[unico], fim: ano.fim, parcial: ano.parcial })
 
   const expansiveis = new Set<string>()
   v?.linhas.forEach(l => { if (l.t === 'cat' && l.g) expansiveis.add(l.g) })
@@ -350,7 +349,7 @@ export default function TabelaDreCentro({
         ? [
             abaDaVisao(`${rotuloSelecao} ${nomeVisao}`, v),
             ...centrosColunas.map(c =>
-              abaDaVisao(ROTULO_CENTRO[c], visaoMensal({ ano: ano.ano, centro: c, lc: ano.porCentro[c], fim: ano.fim, parcial: ano.parcial, rbEmpresaMeses: ano.rbEmpresaMeses }))),
+              abaDaVisao(ROTULO_CENTRO[c], visaoMensal({ ano: ano.ano, centro: c, lc: ano.porCentro[c], fim: ano.fim, parcial: ano.parcial }))),
           ]
         : [abaDaVisao(`${rotuloSelecao} ${nomeVisao}`, v)]
       const wb = XLSX.utils.book_new()

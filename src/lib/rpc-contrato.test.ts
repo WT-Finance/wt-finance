@@ -3766,7 +3766,7 @@ describe.skipIf(!ON)('contrato RPC — DRE de caixa por centro (v6.5.1)', () => 
     const e = dreMensalSchema.safeParse(emp)
     expect(p.success && e.success).toBe(true)
     if (!p.success || !e.success) return
-    const ano = montarAnoCentro(paraDreCentroAno(p.data), null)
+    const ano = montarAnoCentro(paraDreCentroAno(p.data))
     const rex = e.data.linhas.find(l => l.chave === 'REX')
     expect(rex).toBeTruthy()
     const fim = e.data.mes_corrente ?? 12

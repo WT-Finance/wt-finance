@@ -20,7 +20,7 @@ vi.mock('next/navigation', () => ({
 const { default: TabelaDreCentro } = await import('./tabela-dre-centro')
 const { default: SeletorCentro } = await import('./seletor-centro')
 
-const ano = montarAnoCentro(fixtureDreCentro(EMPRESA, BLOCOS), Array.from({ length: 12 }, () => 100_000))
+const ano = montarAnoCentro(fixtureDreCentro(EMPRESA, BLOCOS))
 const BASE: TabelaDreCentroProps = {
   leitura: { ok: true, anos: [ano] },
   anosDisponiveis: [2024, 2025, 2026],
@@ -52,8 +52,10 @@ describe('TabelaDreCentro', () => {
     expect(html).toMatch(/aria-pressed="true"[^>]*>Weddings</)
   })
 
-  it('CSC: AV sobre a receita da empresa (AV*)', () => {
-    expect(render({ ...BASE, seletorInicial: 'csc' })).toContain('AV*')
+  it('CSC: AV igual à dos demais centros (sem AV* nem a receita da empresa)', () => {
+    const html = render({ ...BASE, seletorInicial: 'csc' })
+    expect(html).not.toContain('AV*')
+    expect(html).not.toContain('Receita Bruta da empresa')
   })
 
   // Pedidos do Yan no PR #311: "Lado a lado" virou "Todos", abre em Consolidado; Mensal = meses empilhados, sem acumulado.
