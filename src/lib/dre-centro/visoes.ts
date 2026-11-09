@@ -104,6 +104,9 @@ export interface ColunaVisao {
   fixa?: 'total' | 'av'
   /** Régua à esquerda (início do total, ou fronteira entre centros). */
   divisoria?: boolean
+  /** O cabeçalho ganha o "?" (`GatilhoAjuda`) com o `titulo` — decisão do GATE 1 para o Total do Lado a lado e a AV*
+   *  do CSC; `title` sozinho não abre por teclado nem em toque (revisor, ALTO). */
+  ajuda?: boolean
 }
 
 export interface GrupoCabecalho {
@@ -170,10 +173,12 @@ export const TITULO_AV_CSC =
   'O CSC não tem receita própria: a AV dele é sobre a Receita Bruta da empresa — quanto da ' +
   'receita total a estrutura central consome.'
 
-/** Base da AV de um centro: a própria Receita Bruta; o CSC usa a da empresa (proposta do
- *  GATE 1 — a alternativa é travessão). */
-function baseDoCentro(centro: CentroId, proprio: number | null, empresa: number | null): number | null {
-  return centro === 'csc' ? empresa : proprio
+/** Base da AV de um centro: a própria Receita Bruta; o CSC usa a da EMPRESA (decisão do GATE 1),
+ *  somada na MESMA janela do numerador — recebe os 12 meses e corta aqui, nunca um escalar de outra
+ *  janela (achado ALTO do revisor: no Consolidado, "YTD" de um ano fechado dividia jan–nov por 12 meses). */
+function baseDoCentro(centro: CentroId, proprio: number | null, empresaMeses: readonly number[] | null, fim: number): number | null {
+  if (centro !== 'csc') return proprio
+  return empresaMeses ? baseAv(soma(empresaMeses.slice(0, fim))) : null
 }
 
 // ── Visão 1: um centro, Mensal ───────────────────────────────────────────────
@@ -184,10 +189,10 @@ export function visaoMensal(args: {
   lc: LinhasCentro
   fim: number
   parcial: boolean
-  /** Receita Bruta da empresa no recorte (base da AV do CSC). */
-  rbEmpresa: number | null
+  /** Receita Bruta da empresa, 12 meses (base da AV do CSC, cortada na janela da coluna). */
+  rbEmpresaMeses: readonly number[] | null
 }): VisaoTabela {
-  const { ano, centro, lc, fim, parcial, rbEmpresa } = args
+  const { ano, centro, lc, fim, parcial, rbEmpresaMeses } = args
   const colunas: ColunaVisao[] = []
   const valores: VisaoTabela['valores'] = {}
   for (let i = 0; i < fim; i++) {
@@ -210,10 +215,10 @@ export function visaoMensal(args: {
   })
   valores.total = colunaValor(lc.linhas, lc.memoria, fim, l => ytd(l, fim))
   colunas.push({
-    id: 'av', rotulo: centro === 'csc' ? 'AV*' : 'AV', tipo: 'av', fixa: 'av',
+    id: 'av', rotulo: centro === 'csc' ? 'AV*' : 'AV', tipo: 'av', fixa: 'av', ajuda: centro === 'csc',
     titulo: centro === 'csc' ? TITULO_AV_CSC : 'Análise vertical — % sobre a Receita Bruta do centro',
   })
-  valores.av = colunaAv(lc.linhas, l => ytd(l, fim), baseDoCentro(centro, receitaBruta(lc.linhas, fim), rbEmpresa))
+  valores.av = colunaAv(lc.linhas, l => ytd(l, fim), baseDoCentro(centro, receitaBruta(lc.linhas, fim), rbEmpresaMeses, fim))
   return {
     grupos: [{ rotulo: 'Realizado', titulo: 'Realizado por data de movimentação', span: fim }],
     colunas, linhas: lc.linhas, memoria: lc.memoria, valores,
@@ -228,7 +233,8 @@ export interface AnoCentro {
   parcial: boolean
   fim: number
   lc: LinhasCentro
-  rbEmpresa: number | null
+  /** Receita Bruta da empresa, 12 meses (base da AV do CSC). */
+  rbEmpresaMeses: readonly number[] | null
 }
 
 export function visaoConsolidado(args: { centro: CentroId; anos: AnoCentro[]; mesJanela: number }): VisaoTabela | null {
@@ -253,10 +259,10 @@ export function visaoConsolidado(args: { centro: CentroId; anos: AnoCentro[]; me
     valores[idYtd] = colunaValor(a.lc.linhas, a.lc.memoria, janela, l => ytd(l, janela))
     const idAv = `av${a.ano}`
     colunas.push({
-      id: idAv, rotulo: centro === 'csc' ? 'AV*' : 'AV', tipo: 'av',
+      id: idAv, rotulo: centro === 'csc' ? 'AV*' : 'AV', tipo: 'av', ajuda: centro === 'csc',
       titulo: centro === 'csc' ? TITULO_AV_CSC : 'Análise vertical — % sobre a Receita Bruta do centro',
     })
-    valores[idAv] = colunaAv(a.lc.linhas, l => ytd(l, janela), baseDoCentro(centro, receitaBruta(a.lc.linhas, janela), a.rbEmpresa))
+    valores[idAv] = colunaAv(a.lc.linhas, l => ytd(l, janela), baseDoCentro(centro, receitaBruta(a.lc.linhas, janela), a.rbEmpresaMeses, janela))
     const prox = anos[i + 1]
     if (prox) {
       const idDelta = `d${a.ano}`
@@ -285,9 +291,9 @@ export function visaoLadoALado(args: {
   porCentro: Record<CentroId, LinhasCentro>
   fim: number
   parcial: boolean
-  rbEmpresa: number | null
+  rbEmpresaMeses: readonly number[] | null
 }): VisaoTabela {
-  const { porCentro, fim, rbEmpresa } = args
+  const { porCentro, fim, rbEmpresaMeses } = args
   const esqueleto = porCentro.trips
   const colunas: ColunaVisao[] = []
   const valores: VisaoTabela['valores'] = {}
@@ -300,17 +306,17 @@ export function visaoLadoALado(args: {
     valores[`v:${c}`] = colunaValor(lc.linhas, lc.memoria, fim, l => ytd(l, fim))
     const proprio = receitaBruta(lc.linhas, fim)
     colunas.push({
-      id: `av:${c}`, rotulo: c === 'csc' ? 'AV*' : 'AV', tipo: 'av',
+      id: `av:${c}`, rotulo: c === 'csc' ? 'AV*' : 'AV', tipo: 'av', ajuda: c === 'csc',
       titulo: c === 'csc' ? TITULO_AV_CSC : `% sobre a Receita Bruta de ${ROTULO_CENTRO[c]}`,
     })
-    valores[`av:${c}`] = colunaAv(lc.linhas, l => ytd(l, fim), baseDoCentro(c, proprio, rbEmpresa))
+    valores[`av:${c}`] = colunaAv(lc.linhas, l => ytd(l, fim), baseDoCentro(c, proprio, rbEmpresaMeses, fim))
   })
   // Total = Σ centros, linha a linha (memória de saldo: Σ dos saldos no fim).
   const total: Record<string, number | null> = {}
   for (const k of Object.keys(valores['v:trips'])) {
     total[k] = CENTROS.reduce((s, c) => s + (valores[`v:${c}`][k] ?? 0), 0)
   }
-  colunas.push({ id: 'total', rotulo: 'Total', titulo: TITULO_TOTAL_LADO, tipo: 'valor', fixa: 'total', divisoria: true })
+  colunas.push({ id: 'total', rotulo: 'Total', titulo: TITULO_TOTAL_LADO, tipo: 'valor', fixa: 'total', divisoria: true, ajuda: true })
   valores.total = total
   const rbTotal = baseAv(total[`b:${CHAVE_BASE_AV}`] ?? null)
   colunas.push({ id: 'av', rotulo: 'AV', titulo: '% sobre a Receita Bruta da soma dos centros', tipo: 'av', fixa: 'av' })

@@ -1,12 +1,10 @@
 import type { DreLinha } from '@/lib/dre/schemas'
 import type { CentroId } from './centros'
 
-// ── Contrato da DRE de caixa por centro (v6.5.1) — PROPOSTA do GATE 1 ────────
+// ── Contrato da DRE de caixa por centro (v6.5.1) ─────────────────────────────
 //
-// O formato que a RPC da M3 devolve por ano. No mockup ele é preenchido pela FIXTURE
-// (`fixture.ts`, números fictícios derivados da visão Empresa); na M3 a fonte troca e o resto
-// da cadeia (atribuição, linhas, colunas, componentes) fica igual. A M3 pode ajustar nomes; o
-// que importa fixar aqui é a DIVISÃO DE TRABALHO:
+// O que o front recebe de `get_dre_caixa_centro` (0306) por ano, depois de `paraDreCentroAno`
+// (`schemas.ts`). A DIVISÃO DE TRABALHO:
 //   · o BANCO entrega o que depende do dado bruto — a árvore operacional de cada centro (já
 //     com o deslocamento dos recebíveis antecipados e sem a taxa de antecipação) e os
 //     recebíveis identificados por antecipação;
@@ -57,15 +55,3 @@ export interface DreCentroAno {
   /** Cobertura do centro no ano: valor movimentado (Σ |valor|) total e sem centro. */
   cobertura: { valorMovimentado: number; semCentro: number }
 }
-
-/** Datas de carga das três fontes — o carimbo do topo da página. */
-export interface CarimbosCentro {
-  lancamentos: string | null
-  centroCusto: string | null
-  antecipacoes: string | null
-}
-
-/** Estado do bloco por centro na página (o mockup simula os três pela URL `?estado=`). */
-export type LeituraCentro =
-  | { ok: true; anos: DreCentroAno[] }
-  | { ok: false; motivo: 'vazio' | 'erro' }

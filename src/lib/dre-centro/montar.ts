@@ -38,8 +38,8 @@ export interface AnoDadosCentro {
   fim: number
   parcial: boolean
   porCentro: Record<CentroId, LinhasCentro>
-  /** Receita Bruta da empresa no recorte realizado — base da AV do CSC. */
-  rbEmpresa: number | null
+  /** Receita Bruta da empresa, 12 meses (realizado) — base da AV do CSC, cortada na janela de cada coluna. */
+  rbEmpresaMeses: number[] | null
   quem: QuemCobreQuem
   notas: NotasCentro
 }
@@ -66,7 +66,7 @@ function montarNotas(d: DreCentroAno, naoDevolvido: number): NotasCentro {
   }
 }
 
-export function montarAnoCentro(d: DreCentroAno, rbEmpresa: number | null): AnoDadosCentro {
+export function montarAnoCentro(d: DreCentroAno, rbEmpresaMeses: number[] | null): AnoDadosCentro {
   const operacional = porCentro(c => {
     const arv = d.arvores[c]
     const i = indiceUltimoTotalizador(arv)
@@ -82,7 +82,7 @@ export function montarAnoCentro(d: DreCentroAno, rbEmpresa: number | null): AnoD
     fim,
     parcial: d.relacao === 'corrente',
     porCentro: Object.fromEntries(CENTROS.map(c => [c, montarLinhasCentro(d.arvores[c], c, atr)])) as Record<CentroId, LinhasCentro>,
-    rbEmpresa,
+    rbEmpresaMeses,
     quem: quemCobreQuem(entrada, atr),
     notas: montarNotas(d, atr.naoDevolvidoNoAno),
   }

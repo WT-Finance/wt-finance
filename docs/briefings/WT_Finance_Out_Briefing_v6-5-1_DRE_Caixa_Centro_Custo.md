@@ -64,7 +64,37 @@ oráculo de ingestão das bases antigas falham no carregamento por `ENOENT` — 
 
 ## 4. Parecer da revisão
 
-_(preenchido no fechamento — ver abaixo)_
+**`revisor-db` — 0304 e patch dos CHECKs (M2):** aprovados. ALTO-1 (ensaio que executasse o SQL) — feito antes do parecer
+chegar e repetido depois das correções. BAIXOs corrigidos antes de aplicar: B-1 (aviso quando uma linha com valor fica num
+centro de % zero/vazio e é repartida entre os outros) e B-3 (`btrim` em Número/arquivo na chegada). B-4 (comentário) já
+estava corrigido; B-5 (lock de `limpar_staging` herdado do molde 0295), B-6 (o "antes" do alarme de ano fechado fora da
+RPC, sem risco para esta base por causa do replay) e B-7 (copiar o patch por movimentação de arquivo) registrados.
+
+**`revisor` — app da M2:** aprovado com ressalvas. MÉDIOs corrigidos: outline negativo/com milhar coberto por teste
+sintético; **sonda estática da lista fechada** (vista reprovar com mutante). BAIXOs corrigidos: aviso de linhas ignoradas,
+mensagem do marcador de outline, teste de replay que afirmava o que o mock não prova, contagem da allowlist (28). Registrados:
+grant das 4 RPCs × "só a promover" (§6.3) e skills (atualizadas neste fechamento).
+
+**`revisor-db` — 0306 (M3):** aprovada com ressalvas, sem CRÍTICO/ALTO. Corrigidos antes de aplicar: M2 (só categoria
+mapeada entra como candidato — senão uma categoria nova na bandeja quebraria Σ Resultado de caixa ≡ REX), M3 (desempate
+total), B2 (caso anon 42501), B3 (NULL em comparação), B4 (Número nulo fora), B5 (ANALYZE das temp tables). M1 (cada ano
+isolado) registrado como fronteira (§6.2). B6–B8 conferidos.
+
+**`revisor` — revisão final (M1/M4, módulo `dre-centro`, testes):** dois ALTOs corrigidos antes dos gates finais:
+1. **AV* do CSC no Consolidado** dividia o YTD de um ano fechado pela receita da empresa de 12 meses (janela errada no
+   denominador; latente até jan/2027). Agora a página passa a receita bruta da empresa MÊS A MÊS e cada coluna soma a
+   própria janela; teste novo com dois anos prova o número.
+2. **Decisão 5 do GATE 1** (o "?" na coluna Total do Lado a lado) estava só em `title`, que não abre por teclado nem
+   toque: agora `GatilhoAjuda` no Total e no AV*; a explicação da memória virou nota visível sob a tabela.
+
+MÉDIOs corrigidos: ano com centro que falha deixa de sumir calado (o card mostra erro); a montagem roda sob `try/catch`
+(exceção vira erro do card, não derruba a página); a nota da taxa pendente não mostra mais parênteses vazios e declara a
+compensação. MÉDIO de testes: coberto o Consolidado com dois anos. BAIXOs corrigidos: "Realizado" deixou de ser botão
+inerte; comentários e tipos sem uso do mockup removidos de `tipos.ts`. BAIXOs registrados (decisão de produto ou
+cosmético): no Consolidado por centro as pills de ano parecem seleção mas só trocam o ano das notas; "Quem cobre quem" usa
+o sinal "−" (padrão A) enquanto a DRE usa parênteses; "Sem centro" aparece em Usos sem poder tomar antecipação (identidade
+preservada); o card marca "Nov · parcial"/"2026*" e a tabela da Empresa não marca mês parcial no caixa. Fora do escopo:
+`current_date` do banco (UTC) × `hojeSP()` da página perto da virada do mês (mesmo padrão antigo de `get_dre_mensal`).
 
 ## 5. Advisor
 

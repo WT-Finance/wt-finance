@@ -73,10 +73,10 @@ describe('fixtureDreCentro — a soma dos centros fecha com a Empresa', () => {
 })
 
 describe('visões', () => {
-  const ano = montarAnoCentro(fixtureDreCentro(EMPRESA, BLOCOS), 1_000_000)
+  const ano = montarAnoCentro(fixtureDreCentro(EMPRESA, BLOCOS), Array.from({ length: 12 }, () => 100_000))
 
   it('Mensal: 11 meses (o último parcial) + total + AV', () => {
-    const v = visaoMensal({ ano: 2026, centro: 'weddings', lc: ano.porCentro.weddings, fim: FIM, parcial: true, rbEmpresa: 1 })
+    const v = visaoMensal({ ano: 2026, centro: 'weddings', lc: ano.porCentro.weddings, fim: FIM, parcial: true, rbEmpresaMeses: null })
     expect(v.colunas.map(c => c.id)).toEqual([...Array.from({ length: 11 }, (_, i) => `m${i + 1}`), 'total', 'av'])
     expect(v.colunas[10].rotulo).toBe('Nov · parcial')
     expect(v.colunas[11].rotulo).toBe('Total 2026*')
@@ -87,13 +87,32 @@ describe('visões', () => {
   it('Consolidado com um só ano coberto: YTD + AV, sem Δ%', () => {
     const v = visaoConsolidado({
       centro: 'csc', mesJanela: FIM,
-      anos: [{ ano: 2026, parcial: true, fim: FIM, lc: ano.porCentro.csc, rbEmpresa: ano.rbEmpresa }],
+      anos: [{ ano: 2026, parcial: true, fim: FIM, lc: ano.porCentro.csc, rbEmpresaMeses: ano.rbEmpresaMeses }],
     })!
     expect(v.colunas.map(c => c.rotulo)).toEqual(['YTD 26*', 'AV*'])
   })
 
+  // Achado ALTO do revisor: num ano FECHADO, a coluna "YTD" corta jan..mesJanela — e a AV* do CSC tem
+  // de dividir pela receita da empresa NA MESMA janela, não pelos 12 meses do ano.
+  it('Consolidado com dois anos: ano cheio + YTD + AV* do CSC na mesma janela + Δ%', () => {
+    const rb2025 = Array.from({ length: 12 }, (_, i) => 1_000 * (i + 1)) // jan 1.000 … dez 12.000
+    const v = visaoConsolidado({
+      centro: 'csc', mesJanela: FIM,
+      anos: [
+        { ano: 2025, parcial: false, fim: 12, lc: ano.porCentro.csc, rbEmpresaMeses: rb2025 },
+        { ano: 2026, parcial: true, fim: FIM, lc: ano.porCentro.csc, rbEmpresaMeses: ano.rbEmpresaMeses },
+      ],
+    })!
+    expect(v.colunas.map(c => c.rotulo)).toEqual(['2025', 'YTD 25', 'AV*', 'Δ% YTD 25·26', 'YTD 26*', 'AV*'])
+    const rex = ano.porCentro.csc.linhas.find(l => l.chave === 'REX')!
+    const ytd11 = rex.meses.slice(0, FIM).reduce((s, x) => s + x, 0)
+    const rb11 = rb2025.slice(0, FIM).reduce((s, x) => s + x, 0) // 66.000 (jan..nov), não 78.000
+    expect(v.valores.av2025['b:REX']).toBeCloseTo((ytd11 / rb11) * 100, 9)
+    expect(v.valores.d2025['b:REX']).toBe(0) // mesmo centro nos dois anos ⇒ Δ% zero
+  })
+
   it('Lado a lado: Total = Σ centros e Resultado de caixa = REX da Empresa no ano', () => {
-    const v = visaoLadoALado({ ano: 2026, porCentro: ano.porCentro, fim: FIM, parcial: true, rbEmpresa: null })
+    const v = visaoLadoALado({ ano: 2026, porCentro: ano.porCentro, fim: FIM, parcial: true, rbEmpresaMeses: null })
     const k = `b:${LINHA_RES.chave}`
     expect(v.valores.total[k]).toBeCloseTo(tot(REX.slice(0, FIM)), 4)
     expect(v.colunas.filter(c => c.tipo === 'valor')).toHaveLength(6)

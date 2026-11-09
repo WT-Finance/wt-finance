@@ -31,7 +31,7 @@ import ResumoExecutivo from '@/components/financeiro/dre/resumo-executivo'
 import { LINHAS_COMPETENCIA } from '@/lib/dre/linhas-resumo'
 import { PILL, PILL_NEUTRO } from '@/components/shared/botoes'
 import TabelaDreCentro, { type TabelaDreCentroProps } from '@/components/financeiro/dre/tabela-dre-centro'
-import { baseAv, linhaBaseAv } from '@/lib/dre/av'
+import { linhaBaseAv } from '@/lib/dre/av'
 import { dreCaixaCentroSchema, paraDreCentroAno } from '@/lib/dre-centro/schemas'
 import { montarAnoCentro } from '@/lib/dre-centro/montar'
 import { mesFimRealizado } from '@/lib/dre-centro/visoes'
@@ -188,24 +188,34 @@ export default async function DrePage({
     outrosAnosCentro.map(a => rpcDre(db, 'get_dre_caixa_centro', { p_ano: a })),
   ).then(rs => rs.map((r, i) =>
     parseRpc(dreCaixaCentroSchema, r.status === 'fulfilled' ? r.value : empty, `get_dre_caixa_centro(${outrosAnosCentro[i]})`)))
-  /** Receita Bruta da Empresa no recorte realizado do ano — a base da AV do CSC. */
-  const rbEmpresaDe = (a: number): number | null => {
+  /** Receita Bruta da Empresa, 12 meses de REALIZADO (o previsto depois do mês corrente zera) — a base
+   *  da AV do CSC; cada coluna corta a própria janela (revisor, ALTO). */
+  const rbEmpresaMesesDe = (a: number): number[] | null => {
     const emp = dreAnos.get(a)
-    if (!emp) return null
-    const rb = linhaBaseAv(emp.linhas)
+    const rb = emp ? linhaBaseAv(emp.linhas) : undefined
+    if (!emp || !rb) return null
     const fim = mesFimRealizado(emp.relacao, emp.mes_corrente)
-    return baseAv(rb ? rb.meses.slice(0, fim).reduce((s, v) => s + v, 0) : null)
+    return rb.meses.map((v, i) => (i < fim ? v : 0))
   }
   const leituraCentro: TabelaDreCentroProps['leitura'] = (() => {
     if (!centroCorrente) return { ok: false, motivo: 'erro' }
     if (anosComCentro.length === 0) return { ok: false, motivo: 'vazio' }
     const porAno = new Map([[anoCorrente, centroCorrente], ...outrosAnosCentro.map((a, i) => [a, outrosCentro[i]] as const)])
-    const anos = anosComCentro
-      .map(a => porAno.get(a))
-      .filter((r): r is NonNullable<typeof r> => r != null)
-      .sort((x, y) => x.ano - y.ano)
-      .map(r => montarAnoCentro(paraDreCentroAno(r), rbEmpresaDe(r.ano)))
-    return anos.length > 0 ? { ok: true, anos } : { ok: false, motivo: 'erro' }
+    // Um ano com centro que não voltou NÃO some calado: número incompleto apresentado como completo é
+    // pior que o card de erro (revisor, MÉDIO). A tabela da Empresa segue de qualquer forma.
+    const leituras = anosComCentro.map(a => porAno.get(a) ?? null)
+    if (leituras.some(r => r === null)) return { ok: false, motivo: 'erro' }
+    try {
+      const anos = (leituras as NonNullable<(typeof leituras)[number]>[])
+        .sort((x, y) => x.ano - y.ano)
+        .map(r => montarAnoCentro(paraDreCentroAno(r), rbEmpresaMesesDe(r.ano)))
+      return { ok: true, anos }
+    } catch (err) {
+      // FAIL-SAFE POR CARD de verdade: uma exceção na montagem vira o estado de erro do card, não
+      // derruba a página (que tem a tabela da Empresa).
+      console.error('[DRE por centro] montagem', err)
+      return { ok: false, motivo: 'erro' }
+    }
   })()
   const carimbosCentro = {
     centroCusto: centroCorrente?.centro_carregado_em ?? null,

@@ -19,7 +19,7 @@ vi.mock('next/navigation', () => ({
 const { default: TabelaDreCentro } = await import('./tabela-dre-centro')
 const { default: SeletorCentro } = await import('./seletor-centro')
 
-const ano = montarAnoCentro(fixtureDreCentro(EMPRESA, BLOCOS), 1_000_000)
+const ano = montarAnoCentro(fixtureDreCentro(EMPRESA, BLOCOS), Array.from({ length: 12 }, () => 100_000))
 const BASE: TabelaDreCentroProps = {
   leitura: { ok: true, anos: [ano] },
   anosDisponiveis: [2024, 2025, 2026],

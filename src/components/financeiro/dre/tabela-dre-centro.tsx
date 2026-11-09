@@ -66,6 +66,23 @@ function RotuloColuna({ rotulo }: { rotulo: string }) {
   )
 }
 
+/** Rótulo de cabeçalho com o "?" quando a coluna pede explicação (Total do Lado a lado, AV* do CSC). O balão
+ *  é o primitivo do DS (foco por teclado); perto da borda direita abre para a esquerda (`ancoraDireita`). */
+function RotuloComAjuda({ c, ancoraDireita = false }: { c: ColunaVisao; ancoraDireita?: boolean }) {
+  if (!c.ajuda) return <>{c.rotulo}</>
+  return (
+    <span className="inline-flex items-center justify-end gap-1">
+      {c.rotulo}
+      <GatilhoAjuda
+        rotulo={c.rotulo}
+        texto={c.titulo}
+        ancoraDireita={ancoraDireita}
+        classNameBalao="z-40 w-72 !whitespace-normal text-left font-normal normal-case tracking-normal leading-snug"
+      />
+    </span>
+  )
+}
+
 function larguraColuna(c: ColunaVisao): number {
   if (c.fixa) return FIXA[c.fixa].largura
   return c.tipo === 'av' ? W_AV : c.tipo === 'delta' ? W_DELTA : W_VALOR
@@ -95,8 +112,10 @@ function Notas({ notas, ano }: { notas: NotasCentro; ano: number }) {
       {notas.taxaPendente < -0.005 && (
         <li>
           <span className="font-medium text-text-secondary">Taxa ainda não lançada no Monde:</span>{' '}
-          {fmtBRL(-notas.taxaPendente)} ({notas.datasTaxaPendente.map(dataCurta).join(', ')}). A DRE usa a taxa do Monde; o
-          registro de antecipações é a conferência.
+          {fmtBRL(-notas.taxaPendente)}
+          {notas.datasTaxaPendente.length > 0 && <> (sem nenhuma taxa no Monde: {notas.datasTaxaPendente.map(dataCurta).join(', ')})</>}.
+          A DRE usa a taxa do Monde; o registro de antecipações é a conferência (a soma compensa sobras e faltas pequenas
+          entre os dois).
         </li>
       )}
       {notas.naoDevolvido > 0.005 && (
@@ -105,6 +124,13 @@ function Notas({ notas, ano }: { notas: NotasCentro; ano: number }) {
           {fmtMi(notas.naoDevolvido)} antecipados em {ano} vencem só em {ano + 1} — a linha C já mostra, a D virá no ano seguinte.
         </li>
       )}
+      {/* A explicação da memória fica VISÍVEL (o `title` das linhas não abre por teclado nem em toque — revisor). */}
+      <li>
+        <span className="font-medium text-text-secondary">Memória (fora das somas):</span>{' '}
+        recebíveis próprios cedidos = recebíveis do centro usados nas antecipações, no mês da antecipação (quem precisou do
+        caixa leva a linha C, não o dono); saldos acumulados = soma desde 1º de janeiro, no fim de cada mês — negativo é o
+        centro que consumiu mais caixa do que gerou.
+      </li>
     </ul>
   )
 }
@@ -156,7 +182,7 @@ function TabelaVisao({
               className={`align-bottom pb-[7px] ${TH_BASE} ${c.fixa === 'total' ? 'border-l border-l-wt-border-strong' : 'px-3'} ${bordaBaseHeader} ${classeFixa(FIXA[c.fixa!], 'cabecalho')}`}
               style={estiloFixa(FIXA[c.fixa!])}
             >
-              {c.rotulo}
+              <RotuloComAjuda c={c} ancoraDireita />
             </th>
           ))}
         </tr>
@@ -168,7 +194,7 @@ function TabelaVisao({
               className={`h-[25px] whitespace-nowrap ${TH_BASE} ${c.tipo === 'av' ? 'px-3' : ''} ${inicioGrupo.has(i) && i > 0 ? 'border-l-2 border-l-wt-border-strong' : ''} ${bordaBaseHeader}`}
               style={{ width: larguraColuna(c), minWidth: larguraColuna(c) }}
             >
-              <RotuloColuna rotulo={c.rotulo} />
+              {c.ajuda ? <RotuloComAjuda c={c} /> : <RotuloColuna rotulo={c.rotulo} />}
             </th>
           ))}
         </tr>
@@ -306,14 +332,14 @@ export default function TabelaDreCentro({ seletorInicial = SELETOR_INICIAL, leit
   }
 
   const v: VisaoTabela | null = lado
-    ? visaoLadoALado({ ano: ano.ano, porCentro: ano.porCentro, fim: ano.fim, parcial: ano.parcial, rbEmpresa: ano.rbEmpresa })
+    ? visaoLadoALado({ ano: ano.ano, porCentro: ano.porCentro, fim: ano.fim, parcial: ano.parcial, rbEmpresaMeses: ano.rbEmpresaMeses })
     : visaoEfetiva === 'consolidado'
       ? visaoConsolidado({
           centro: seletor,
           mesJanela,
-          anos: anos.map(a => ({ ano: a.ano, parcial: a.parcial, fim: a.fim, lc: a.porCentro[seletor], rbEmpresa: a.rbEmpresa })),
+          anos: anos.map(a => ({ ano: a.ano, parcial: a.parcial, fim: a.fim, lc: a.porCentro[seletor], rbEmpresaMeses: a.rbEmpresaMeses })),
         })
-      : visaoMensal({ ano: ano.ano, centro: seletor, lc: ano.porCentro[seletor], fim: ano.fim, parcial: ano.parcial, rbEmpresa: ano.rbEmpresa })
+      : visaoMensal({ ano: ano.ano, centro: seletor, lc: ano.porCentro[seletor], fim: ano.fim, parcial: ano.parcial, rbEmpresaMeses: ano.rbEmpresaMeses })
 
   const expansiveis = new Set<string>()
   v?.linhas.forEach(l => { if (l.t === 'cat' && l.g) expansiveis.add(l.g) })
@@ -342,7 +368,7 @@ export default function TabelaDreCentro({ seletorInicial = SELETOR_INICIAL, leit
         ? [
             abaDaVisao('Lado a lado', v),
             ...(Object.keys(ano.porCentro) as CentroId[]).map(c =>
-              abaDaVisao(ROTULO_CENTRO[c], visaoMensal({ ano: ano.ano, centro: c, lc: ano.porCentro[c], fim: ano.fim, parcial: ano.parcial, rbEmpresa: ano.rbEmpresa }))),
+              abaDaVisao(ROTULO_CENTRO[c], visaoMensal({ ano: ano.ano, centro: c, lc: ano.porCentro[c], fim: ano.fim, parcial: ano.parcial, rbEmpresaMeses: ano.rbEmpresaMeses }))),
           ]
         : [abaDaVisao(`${ROTULO_SELETOR[seletor]} ${visaoEfetiva === 'mensal' ? 'Mensal' : 'Consolidado'}`, v)]
       const wb = XLSX.utils.book_new()
@@ -407,15 +433,10 @@ export default function TabelaDreCentro({ seletorInicial = SELETOR_INICIAL, leit
               )
             })}
             <span className="mx-1 h-4 w-px bg-wt-border-strong" aria-hidden />
-            <button
-              type="button"
-              aria-pressed
-              title="Só o que já aconteceu"
-              className={['foco-neutro', PILL_FILTRO].join(' ')}
-              style={PILL_FILTRO_ATIVO_STYLE}
-            >
+            {/* Não é botão: por centro só há Realizado, e botão inerte é pior que botão ausente (revisor). */}
+            <span className={PILL_FILTRO} style={PILL_FILTRO_ATIVO_STYLE} title="Só o que já aconteceu">
               Realizado
-            </button>
+            </span>
             <span className="inline-flex items-center gap-1">
               <button
                 type="button"
