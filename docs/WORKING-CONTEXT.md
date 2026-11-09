@@ -9,7 +9,7 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-11-09 (v6.5.1 em voo: M4 feita; próximas M5 e M6).
+Última atualização: 2026-11-09 (v6.5.1 em voo: M5 feita; próxima M6 — fechamento).
 
 ---
 
@@ -83,8 +83,12 @@ Worktree `.claude/worktrees/v6-5-1-dre-caixa-centro-custo`. Briefing `docs/brief
   vêm da RPC; `?estado=` do mockup saiu. `fixture.ts` ficou só como dado sintético dos TESTES. Tabela da Empresa
   intocada (snapshot verde). Até a 1ª carga do Yan o card mostra "a base de centro de custo ainda não foi carregada".
   Conferência visual: depende de login (Yan, no preview).
-- **Próximo passo: M5** (contratos via REST: shapes, paridade, anon e sem-área negados, `ingestor` só nas 4 RPCs — boa
-  parte já entrou na M3) → **M6** fechamento.
+- **M5 feita** — contratos de `get_dre_caixa_centro` no fim de `src/lib/rpc-contrato.test.ts`: shape (Zod) + paridade
+  linha a linha sem ajuste + Resultado de caixa ≡ REX com ajuste (verificador, REST), anon → 42501, e usuário ativo de
+  role SEM `financeiro/dre` → PERMISSAO_NEGADA (pg READ ONLY). `ingestor`: allowlist derivada = 28 assinaturas
+  (`credencial-ingestor.test.ts` verde); `verificador`: a derivação emite o GRANT que a 0306 concedeu.
+- **Próximo passo: M6** (fechamento: `/fechamento-versao` — revisor final, out-briefing com M0/mockup/oráculos/ressalvas,
+  CHANGELOG + CHANGELOG_DIRETORIA, versão 6.5.1, ADR-0184, skills `ingestao-planilhas`/`banco-e-rpc`, PR).
 
 ---
 

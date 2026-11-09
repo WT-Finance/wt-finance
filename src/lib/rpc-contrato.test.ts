@@ -3793,3 +3793,45 @@ describe.skipIf(!ON)('contrato RPC — DRE de caixa por centro (v6.5.1)', () => 
     expect(codigo, `HTTP ${res.status}, código ${codigo}`).toBe('42501')
   })
 })
+
+// ── v6.5.1/M5 — NEGAÇÃO: usuário ATIVO sem a área `financeiro/dre` ───────────────────────────────
+// Mesmo caminho da negação de Gastos de Marketing (acima): `pg` somente leitura (sessão READ ONLY,
+// sem BEGIN, claims de SESSÃO), usuário escolhido DINAMICAMENTE entre os ativos de roles sem a área.
+// `exigir_acesso` para ANTES do corpo — por isso a sessão READ ONLY não interfere (a função cria
+// tabelas TEMP, o que só aconteceria depois do guard). Exige o código E a mensagem PERMISSAO_NEGADA:
+// um erro qualquer de corpo não passa por negação. A contraprova (quem TEM a área passa) são os casos
+// de paridade acima, que rodam com o `verificador` (que tem a área).
+describe.skipIf(!ON || !DB_URL)('contrato RBAC — DRE de caixa por centro: usuário sem a área (v6.5.1)', () => {
+  it('um usuário ATIVO de cada role SEM financeiro/dre recebe PERMISSAO_NEGADA (42501) em get_dre_caixa_centro', async () => {
+    const { createRequire } = await import('node:module')
+    const pg = createRequire(process.cwd() + '/')('pg')
+    const c = new pg.Client({ connectionString: DB_URL })
+    await c.connect()
+    await c.query('SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY')
+    try {
+      const r = await c.query(
+        `SELECT DISTINCT ON (u.role_id) u.user_id::text AS uid
+           FROM app.rbac_usuarios u
+          WHERE u.ativo
+            AND NOT EXISTS (SELECT 1 FROM app.rbac_role_permissoes rp WHERE rp.role_id = u.role_id AND rp.area = 'financeiro/dre')
+          ORDER BY u.role_id, u.user_id`,
+      )
+      expect(r.rows.length, 'não há usuário ativo fora de financeiro/dre — a negação ficaria sem prova').toBeGreaterThan(0)
+      for (const u of r.rows as Array<{ uid: string }>) {
+        await c.query(`SELECT set_config('request.jwt.claims', $1, false)`, [JSON.stringify({ sub: u.uid, role: 'authenticated' })])
+        let code = ''
+        let msg = ''
+        try {
+          await c.query('SELECT public.get_dre_caixa_centro($1::int) AS r', [Number(hojeSP().slice(0, 4))])
+        } catch (e) {
+          code = String((e as { code?: string }).code)
+          msg = String((e as { message?: string }).message)
+        }
+        expect(code, `role sem financeiro/dre: ${msg}`).toBe('42501')
+        expect(msg).toMatch(/PERMISSAO_NEGADA/)
+      }
+    } finally {
+      await c.end()
+    }
+  })
+})
