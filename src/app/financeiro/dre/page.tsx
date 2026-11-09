@@ -30,6 +30,9 @@ import TabelaDre from '@/components/financeiro/dre/tabela-dre'
 import ResumoExecutivo from '@/components/financeiro/dre/resumo-executivo'
 import { LINHAS_COMPETENCIA } from '@/lib/dre/linhas-resumo'
 import { PILL, PILL_NEUTRO } from '@/components/shared/botoes'
+import TabelaDreCentro, { type TabelaDreCentroProps } from '@/components/financeiro/dre/tabela-dre-centro'
+import { dreCaixaCentroSchema, paraDreCentroAno } from '@/lib/dre-centro/schemas'
+import { montarAnoCentro } from '@/lib/dre-centro/montar'
 
 // DRE por Fluxo de Caixa (v5.3.0 · Onda 2) — a tabela hierárquica da controladoria
 // (159 linhas) na aba definitiva. M4: a tabela lê a estrutura viva + o fato real via
@@ -138,6 +141,9 @@ export default async function DrePage({
       // ler o payload de um ANO da DRE, o `parseRpc` rejeitou em silêncio e o card virou
       // "sem movimentações". Acrescentar no fim não desloca ninguém.
       ...anosDisponiveis.map(a => rpcDre(db, 'get_dre_competencia_mensal', { p_ano: a })),
+      // v6.5.1 — DRE de caixa por centro de custo do ANO CORRENTE (0306). Entra no FIM (índices
+      // posicionais, ver acima). Os demais anos com centro, se houver, vêm num 2º estágio abaixo.
+      rpcDre(db, 'get_dre_caixa_centro', { p_ano: anoCorrente }),
     ]).then(rs => rs.map(r => (r.status === 'fulfilled' ? r.value : empty))),
     buscarUltimaCargaMovimentacao(),
   ])
@@ -163,6 +169,47 @@ export default async function DrePage({
   )
 
   const dre = dreAnos.get(ano) ?? null
+
+  // ── DRE DE CAIXA POR CENTRO DE CUSTO (v6.5.1) ─────────────────────────────────
+  // `get_dre_caixa_centro` (0306): árvores por centro (mesma fonte e mapa da tabela acima),
+  // recebíveis antecipados identificados, taxa do Monde, eventos e cobertura. A atribuição das
+  // antecipações (§3.4) roda no módulo puro (`montarAnoCentro`), o mesmo que os testes provam
+  // contra o protótipo. FAIL-SAFE POR CARD: falha da RPC ⇒ o card mostra o erro sozinho; a tabela
+  // da Empresa e o resto da página seguem.
+  const OFFSET_CENTRO = OFFSET_COMP + anosDisponiveis.length
+  const centroCorrente = parseRpc(dreCaixaCentroSchema, resultados[OFFSET_CENTRO], 'get_dre_caixa_centro')
+  // Só os anos com centro de custo no dado (derivado, nunca fixo — inv. 12). O corrente já veio;
+  // os demais da janela, se houver, num 2º estágio (hoje só 2026 tem centro: não custa nada).
+  const anosComCentro = (centroCorrente?.anos_com_centro ?? []).filter(a => anosDisponiveis.includes(a))
+  const outrosAnosCentro = anosComCentro.filter(a => a !== anoCorrente)
+  const outrosCentro = await Promise.allSettled(
+    outrosAnosCentro.map(a => rpcDre(db, 'get_dre_caixa_centro', { p_ano: a })),
+  ).then(rs => rs.map((r, i) =>
+    parseRpc(dreCaixaCentroSchema, r.status === 'fulfilled' ? r.value : empty, `get_dre_caixa_centro(${outrosAnosCentro[i]})`)))
+  const leituraCentro: TabelaDreCentroProps['leitura'] = (() => {
+    if (!centroCorrente) return { ok: false, motivo: 'erro' }
+    if (anosComCentro.length === 0) return { ok: false, motivo: 'vazio' }
+    const porAno = new Map([[anoCorrente, centroCorrente], ...outrosAnosCentro.map((a, i) => [a, outrosCentro[i]] as const)])
+    // Um ano com centro que não voltou NÃO some calado: número incompleto apresentado como completo é
+    // pior que o card de erro (revisor, MÉDIO). A tabela da Empresa segue de qualquer forma.
+    const leituras = anosComCentro.map(a => porAno.get(a) ?? null)
+    if (leituras.some(r => r === null)) return { ok: false, motivo: 'erro' }
+    try {
+      const anos = (leituras as NonNullable<(typeof leituras)[number]>[])
+        .sort((x, y) => x.ano - y.ano)
+        .map(r => montarAnoCentro(paraDreCentroAno(r)))
+      return { ok: true, anos }
+    } catch (err) {
+      // FAIL-SAFE POR CARD de verdade: uma exceção na montagem vira o estado de erro do card, não
+      // derruba a página (que tem a tabela da Empresa).
+      console.error('[DRE por centro] montagem', err)
+      return { ok: false, motivo: 'erro' }
+    }
+  })()
+  const carimbosCentro = {
+    centroCusto: centroCorrente?.centro_carregado_em ?? null,
+    antecipacoes: centroCorrente?.antecipacoes_atualizado_em ?? null,
+  }
 
   // ── JANELA DO YTD ────────────────────────────────────────────────────────────
   // Quantos meses entram no "YTD" de TODOS os anos comparados. Ancorado em HOJE
@@ -392,6 +439,19 @@ export default async function DrePage({
             iconSize={12}
             vigiarAtraso={false}
           />
+          {/* v6.5.1 — as duas fontes da DRE por centro de custo (datas vindas de get_dre_caixa_centro). */}
+          <UltimaAtualizacao
+            iso={carimbosCentro.centroCusto}
+            prefixo="Centro de custo · Última atualização em"
+            iconSize={12}
+            vigiarAtraso={false}
+          />
+          <UltimaAtualizacao
+            iso={carimbosCentro.antecipacoes}
+            prefixo="Antecipações · Último registro em"
+            iconSize={12}
+            vigiarAtraso={false}
+          />
         </div>
       </div>
 
@@ -531,6 +591,11 @@ export default async function DrePage({
               Recorte PRÓPRIO (YTD do ano corrente), independente do `?ano=` da tabela —
               e desde a `0253` os números reconciliam com a coluna "YTD" dela. */}
           <RankingCaixa data={rankingCaixa} />
+
+          {/* v6.5.1 — DRE por centro de custo num CARD SEPARADO (decisão do Yan no GATE 1): a
+              tabela da Empresa acima fica exatamente como era; o seletor de centro vive só aqui.
+              Depois do "Maiores variações", que lê a tabela da Empresa e fica colado a ela. */}
+          <TabelaDreCentro leitura={leituraCentro} anosDisponiveis={anosDisponiveis} mesJanela={mesJanela} />
         </div>
       </TopSection>
     </div>

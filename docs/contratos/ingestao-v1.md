@@ -120,7 +120,7 @@ chave de uma RPA carrega relatório e nada mais.
 
 | Termo | Significado |
 |---|---|
-| **base** | uma das seis fontes de dados: `demonstrativo-competencia`, `vendas-produto`, `lancamentos-movimentacao`, `lancamentos-aberto`, `lancamentos-operacao`, `contas-receber` (esta última, **v6.4.0**, mudança aditiva — ver §3, §4 e a nota abaixo da tabela de §3) |
+| **base** | uma das sete fontes de dados: `demonstrativo-competencia`, `vendas-produto`, `lancamentos-movimentacao`, `lancamentos-aberto`, `lancamentos-operacao`, `contas-receber` (**v6.4.0**, mudança aditiva — ver §3, §4 e a nota abaixo da tabela de §3), `lancamentos-centro-custo` (**v6.5.1**, mudança aditiva — idem) |
 | **cru** | o arquivo exatamente como o Monde exporta (xlsx; csv só para `lancamentos-operacao`), sem tratamento |
 | **carga** | uma execução: 1..N arquivos crus de UMA base → parse → checksums → promoção atômica → linha em `ingestao.carga` |
 | **checksum do arquivo** | os totais/subtotais que o próprio export traz (linha de totais, linhas de outline "Grupo de Categoria: … (n, R$ …)", Total Geral) — lidos ANTES de serem descartados e conferidos contra as linhas parseadas |
@@ -275,6 +275,7 @@ Formato do erro: `{ "ok": false, "erro": { "codigo": "...", "mensagem": "...", "
 | `lancamentos-aberto` | 1 xlsx ("Lançamentos por categoria — vencimento em aberto") | `raw.titulos_em_aberto` | título em aberto |
 | `lancamentos-operacao` | 1 csv ("Análise de Operações", scrape; coluna opcional `Operacao_Id` — **errata 4(a)**) | `raw.lancamentos_operacao` (nova) → `analytics.fato_lancamento_operacao` | lançamento por operação |
 | `contas-receber` | N xlsx, um por faixa de vencimento (relatório "Contas a pagar e a receber" do Monde, filtrado em a receber) — **v6.4.0** | `raw.contas_receber` | título a receber |
+| `lancamentos-centro-custo` | 1 xlsx (relatório de lançamentos por centro de custo do Monde, agrupado por centro, todos os grupos abertos) — **v6.5.1** | raw da base (0304) → `financeiro.centro_custo_rateio` | lançamento × centro (× movimentação) |
 
 Cada carga **substitui a base inteira** (não é append). Vendas: os N arquivos são unidos no
 servidor; a cobertura é derivada do dado (`min/max(data_venda)`), nunca do nome do arquivo.
@@ -301,6 +302,30 @@ servidor; a cobertura é derivada do dado (`min/max(data_venda)`), nunca do nome
   Prazos médios saiu da página Financeiro · Geral e a série foi aposentada (ADR-0183, Emenda 1); a carga do
   Aberto não tem mais efeito colateral em outra base.
 
+**`lancamentos-centro-custo` (v6.5.1 — mudança ADITIVA do contrato: nada nas seis bases anteriores muda).**
+Contrato detalhado (colunas, RPCs, rateio) em `docs/specs/v6-5-1-m2-base-centro-custo.md`.
+- **Arquivo:** 1 por carga, só xlsx, 1 aba, cabeçalho na linha 1, 12 colunas; agrupado por centro com uma
+  linha de outline por grupo (`Centro de Custo :  <nome> (n, R$ x)`), subtotal depois de cada grupo e total
+  no fim. **Todos os grupos têm de vir abertos**: um grupo recolhido (`+`) ⇒ `422 ESTRUTURA_INESPERADA`
+  nomeando o centro, mesmo que o checksum fechasse.
+- **Lista fechada gravada:** `Número`, `Emissão`, `Vencimento`, `Movimentação`, `Centro de Custo`, `% Centro
+  Custo`, `Valor Movimentação`, `Valor Centro Custo`. `Pessoa`, `Descrição` e `Valor Lançamento` **nunca**
+  são lidas nem gravadas, e nenhuma mensagem de erro reproduz conteúdo de linha além de `Número` e do nome
+  do centro.
+- **Regras de conteúdo:** `Valor Centro Custo` vem sem sinal no arquivo e é gravado **com o sinal de
+  `Valor Movimentação`**; valor negativo no arquivo ⇒ `422 ESTRUTURA_INESPERADA` (a convenção mudou).
+  Detalhe cujo centro difere do outline corrente, detalhe antes de qualquer outline e outline repetido ⇒
+  idem. Centro não cadastrado em `financeiro.centro_custo` ⇒ a validação reprova nomeando-o. O grupo sem
+  nome é o grupo **sem centro** (`centro_custo` nulo).
+- **Efeito na promoção:** além de trocar a raw, a promoção regenera `financeiro.centro_custo_rateio` na
+  MESMA transação; Número sem rateio ou com Σ de pesos ≠ 1 ⇒ `RATEIO_NAO_FECHA`, base anterior intacta.
+- **Sem RPA e sem expectativa de vigia:** não entra em `escopo_bases` de chave de API nem em
+  `ingestao_expectativa`; entra só no card de `/admin/ingestao/upload` (sessão, área `admin/uploads`). É
+  base de **fluxo**: alarma "ano fechado alterado" (ano da movimentação, Σ `valor_centro_custo`).
+- **Dependência humana:** até o patch destrutivo `supabase/patches/centro_custo_checks_ingestao.sql`
+  (ampliação dos CHECKs de `ingestao.carga`/`promocao`, aplicado pelo Yan em TTY), a abertura da carga
+  falha FECHADA.
+
 ## 4. Checksums por base (o que o arquivo já traz)
 
 | base | fonte no cru | quantidade | tolerância |
@@ -311,6 +336,12 @@ servidor; a cobertura é derivada do dado (`min/max(data_venda)`), nunca do nome
 | `lancamentos-aberto` | idem | 95 + 1 | 0 |
 | `lancamentos-operacao` | **não há** — cruzamento: todo `Número` sem `Liquidação` existe em Aberto ∪ Movimentação e `Vencimento` coincide | baseline 3 ausentes | acima do baseline = alarme, não bloqueio |
 | `contas-receber` | linha de total de **cada arquivo** (a última linha: `Número` = contagem de títulos, `Valor Final` = Σ), conferida contra os títulos do arquivo e, na promoção, contra o GRAVADO | **1 por arquivo** — `{escopo:"arquivo", chave:{arquivo_origem}, linhas, centavos}` | 0 |
+
+| `lancamentos-centro-custo` | linha de **outline de cada centro** (`Centro de Custo :  <nome> (n, R$ x)`): n = linhas do grupo, Σ `Valor Centro Custo` (com o sinal de `Valor Movimentação`); a linha de TOTAL do arquivo **não** serve (soma o `Valor Movimentação` repetido por centro), conferida contra os detalhes e, na promoção, contra o GRAVADO | **1 por centro** (inclui o grupo sem centro) — `{escopo:"centro", chave:{centro_custo: texto \| null}, linhas, centavos}` | 0 |
+
+`lancamentos-centro-custo`: nenhum outline ⇒ `422 ESTRUTURA_INESPERADA`; checksum vazio na promoção ⇒
+`CHECKSUM_AUSENTE`; formato errado ⇒ `CHECKSUM_INVALIDO`; centro gravado sem checksum ⇒ `CHECKSUM_AUSENTE`;
+divergência ⇒ `CHECKSUM_FALHOU`.
 
 `contas-receber`: arquivo sem a linha de total ⇒ `422 ESTRUTURA_INESPERADA`; arquivo gravado sem checksum
 na promoção ⇒ `CHECKSUM_AUSENTE`. Como cada arquivo fecha sozinho, o checksum **não** pega lacuna nem
@@ -326,6 +357,7 @@ vendas-produto ─┬─► lancamentos-movimentacao ─┬─► lancamentos-op
                 └─► lancamentos-aberto ───────┘
 demonstrativo-competencia  (independente)
 contas-receber             (independente — v6.4.0)
+lancamentos-centro-custo   (independente — v6.5.1)
 ```
 
 `lancamentos-operacao` exige carga **aplicada no dia** de `lancamentos-aberto` (é de onde vem o

@@ -7,6 +7,7 @@ import * as vendas from './parsers/vendas-produto'
 import * as operacao from './parsers/lancamentos-operacao'
 import * as categoria from './parsers/lancamentos-categoria'
 import * as contasReceber from './parsers/contas-receber'
+import * as centroCusto from './parsers/lancamentos-centro-custo'
 import { CAMPOS_CANONICOS } from './parsers/demonstrativo-competencia'
 import { PESSOAS_COLUNAS } from '@/lib/carga/parse-pessoas'
 import { normalizeHeader } from '@/lib/carga/vendas-parser'
@@ -50,6 +51,15 @@ describe('instruções de upload × parser do servidor', () => {
     const rotulos = INSTRUCOES_UPLOAD.contas_receber.colunas.itens
     expect(rotulos).toHaveLength(9)
     for (const nunca of ['Documento', 'Observações', 'Conta (Previsão)', 'Valor', 'Pendente com:']) {
+      expect(rotulos, nunca).not.toContain(nunca)
+    }
+  })
+
+  it('Centro de Custo lista exatamente as 8 colunas gravadas (e nenhuma das 3 que nunca se gravam)', () => {
+    conferir('centro_custo', centroCusto.COL_MAP, centroCusto.OBRIGATORIOS)
+    const rotulos = INSTRUCOES_UPLOAD.centro_custo.colunas.itens
+    expect(rotulos).toHaveLength(8)
+    for (const nunca of ['Pessoa', 'Descrição', 'Valor Lançamento']) {
       expect(rotulos, nunca).not.toContain(nunca)
     }
   })

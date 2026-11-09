@@ -9,7 +9,105 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-11-05 (pós-merge da v6.5.0; destrutiva 0303 aplicada).
+Última atualização: 2026-11-09 (v6.5.1 fechada: PR #311 aguarda merge do Yan).
+
+---
+
+## Em voo — v6.5.1 "DRE de caixa por centro de custo" (branch `feat/v6-5-1-dre-caixa-centro-custo`)
+
+Worktree `.claude/worktrees/v6-5-1-dre-caixa-centro-custo`. Briefing `docs/briefings/briefing-v6-5-1-dre-caixa-centro-custo.md`.
+
+- **M0 (GATE 0) feita e decidida** — `docs/auditoria/v6-5-1-m0-dre-centro-custo.md` (Q1–Q7 + decisões D1–D7 do Yan em 06/11;
+  não re-propor). Migration livre **0304**, ADR livre **0184** (reconferir antes de aplicar).
+- **Fixtures** (não versionadas; nomes do briefing → arquivo real): centro de custo 06/11 =
+  `Downloads/Lancamentos_por_centro_custo_2026.xlsx` (sha256 `b27d97dc…`); categoria 06/11 =
+  `Downloads/Lancamentos_por_categoria_2026.xlsx` (`dfae02fd…`); `antecipacoes-2026-11-06.xlsx`; protótipo
+  `DRE_caixa_por_centro_de_custo_2026_v06-11.xlsx`. A negativa de 20/10 se perdeu → sintética (D4). Pessoa física nos
+  arquivos: confirmar se `tests/fixtures/ingestao/` é git-ignorado antes de copiar.
+- **M1 (GATE 1) feita; decisões do Yan em 06/11 (não re-propor).** Mockup na rota real `/financeiro/dre`, seção
+  Regime de Caixa: a tabela da Empresa fica EXATAMENTE como era (call-site idêntico ao `main`) e a DRE por centro é
+  um **card separado** abaixo dela (depois de "Maiores variações"), com o seletor só dentro dele (estado do card,
+  sem URL; abre em Lado a lado). `?estado=vazio|erro` simula a base de centro. Fonte = FIXTURE
+  (`src/lib/dre-centro/fixture.ts`): números fictícios derivados da carga real da Empresa pelas fórmulas vivas
+  (`dre_estrutura`, última chamada do `allSettled`) — Σ centros fecha com a Empresa. Conferida contra o
+  `get_dre_mensal(2026)` vivo (PAG_H corrigido, `ed5fd3c3`). Sai na M4.
+  - Arquitetura: componente IRMÃO `tabela-dre-centro.tsx`; a `TabelaDre` só ganhou `export` nos primitivos +
+    `tituloExportar` opcional. Guarda medida: `tabela-dre.test.ts` (snapshot gravado ANTES, commit `ef10d0da`).
+  - Módulo puro `src/lib/dre-centro/`: `atribuicao.ts` (regra §3.4 + Quem cobre quem; pesos do oráculo jan/fev/abr
+    conferidos), `visoes.ts` (colunas das 3 visões), `montar.ts`, `exportar.ts`. Contrato proposto em `tipos.ts`:
+    o banco entrega árvore por centro (já deslocada, sem a taxa) + recebíveis identificados; o front atribui.
+  - **Decidido pelo Yan (GATE 1):** (1) DRE por centro em **card separado** na seção de caixa, seletor só nele;
+    (2) ~~AV do CSC sobre a Receita Bruta da empresa (`AV*`)~~ — **substituída no PR #311: AV do CSC igual às demais
+    (sobre a receita dele; em 2026 é negativa → "—")**; (3) **Quem cobre quem entra**, só no Lado a lado;
+    (4) centro abre na visão **Mensal**; (5) coluna **"Total"** do Lado a lado com "?" explicando; (6) carimbo
+    **"Caixa" mantido** (+ "Centro de custo" e "Antecipações"); (7) **memória** em faixa própria, itálico, sem AV;
+    (8) **Exportar** já nesta versão (Lado a lado = aba consolidada + uma mensal por centro).
+    Escolha do agente, a confirmar no preview: o card abre em **Lado a lado**.
+  - Conferência visual NÃO feita pelo agente (login real). Render provado por teste (`tabela-dre-centro.test.ts`).
+    Suíte: 2.627 testes verdes; 5 arquivos de oráculo de ingestão falham por `ENOENT` das fixtures não versionadas
+    na worktree (ambiente, não M1).
+- **M2 feita (`93ad3cdb`) — 0304 APLICADA em 06/11 e 0305 (destrutiva, CHECKs de base) APLICADA pelo Yan em TTY em
+  09/11** (banco na **0305**, livre **0306**; baseline regenerado). A carga da base nova está liberada no banco.
+  Contrato da base: `docs/specs/v6-5-1-m2-base-centro-custo.md`. Base `lancamentos-centro-custo` (7ª, por último),
+  parser com checksum pelo outline por centro (Σ Valor Centro Custo com o sinal da movimentação), "+" rejeita, lista
+  fechada D6; dimensão `financeiro.centro_custo` (centro novo no Monde reprova a carga); rateio
+  `financeiro.centro_custo_rateio` regenerado na promoção (Σ = 1 exato). Ensaio revertido com o export real: rateio ×
+  base por categoria do mesmo dia ≡ "Rateio sem ajuste" do protótipo AO CENTAVO nos 4 centros; 31 datas fora da faixa
+  (29 Emissão + 2 Vencimento, nenhuma Movimentação) — campo nulo, linha mantida. Fixtures copiadas para
+  `tests/fixtures/ingestao/` (git-ignorado) e registradas no manifest. ingestor: 28 assinaturas.
+  - Upload (depois do deploy): Admin › Ingestão › Upload, card "Lançamentos por Centro de Custo", MESMO dia da carga
+    de movimentação. A 1ª carga real é checkpoint do Yan na M2 (briefing §10).
+  - Revisão: `revisor-db` aprovou a 0304 e o patch (B-1/B-3 corrigidos antes de aplicar); `revisor` aprovou o app com
+    ressalvas — MÉDIOs corrigidos (outline negativo/milhar no teste sintético; sonda ESTÁTICA da lista fechada
+    `lista-fechada-centro-custo.test.ts`, vista reprovar com mutante). **Para o out-briefing:** a 0304 concede as 4 RPCs
+    ao `ingestor` (o briefing inv. 6 diz "só a promover" — o pipeline precisa das quatro, precedente 0295); o header da
+    0304 diz "29 assinaturas", o medido é 28; skills `ingestao-planilhas`/`banco-e-rpc` ainda falam em 6 bases
+    (atualizar no fechamento).
+- **M3 feita — 0306 APLICADA em 09/11** (aditiva, backup-gate verde; banco na **0306**, livre **0307**). Uma leitura
+  `get_dre_caixa_centro(p_ano, p_ajuste default true)` (área `financeiro/dre`, grant ao `verificador` por assinatura) no
+  contrato de `src/lib/dre-centro/tipos.ts` + schema `src/lib/dre-centro/schemas.ts`; de-para fixo
+  `financeiro.antecipacao_conta_monde` (D3). A identificação dos recebíveis (§3.3) foi pinada por engenharia reversa do
+  protótipo: recebível = Σ Receita de Vendas positiva do Número por (data de movimentação, vencimento); janela −1/+2;
+  antecedência > 2 (Asaas) / > 7 (Blimboo); ordem antecedência ↓, valor ↓, Número (COLLATE "C") ↑; taxa do Monde vai à
+  antecipação MAIS ANTIGA cuja janela a contém. Provas (ensaio revertido com as fixtures de 06/11): **16/16 eventos e
+  3.186/3.186 recebíveis = protótipo**; Weddings/Corp/CSC = oráculo AO CENTAVO; pesos mensais idênticos; sem ajuste,
+  Σ centros ≡ `get_dre_mensal` linha a linha; com ajuste, Σ Resultado de caixa ≡ REX mês a mês; remapear categoria em
+  transação revertida muda as duas visões (inv. 2); 2,6 s (REST isolado 1,2–2,1 s). Casos permanentes no fim de
+  `rpc-contrato.test.ts` (paridade linha a linha, Resultado de caixa ≡ REX, anon 42501).
+  - **Para o out-briefing:** (a) Trips difere do oráculo em −9.540,17 = 2 linhas com movimentação FUTURA (23/11) que a
+    Empresa trata como previsto — mesmo predicado por construção; (b) revisor-db M1 (fronteira de produto): cada ano é
+    identificado isoladamente — antecipação de fim de dezembro com movimentação em janeiro, e o D de antecipação de
+    2026 que vence em 2027, não aparecem na visão de 2027; (c) a taxa pendente segue o protótipo: Σ (registro − Monde).
+- **M4 feita** — a página lê `get_dre_caixa_centro` do ano corrente (última chamada do `allSettled`, no lugar de
+  `dre_estrutura`) e, num 2º estágio, os demais anos de `anos_com_centro`; estado "vazio" = nenhum ano com centro (base
+  ainda não carregada), "erro" = RPC falhou (só o card); carimbos "Centro de custo" e "Antecipações · Último registro"
+  vêm da RPC; `?estado=` do mockup saiu. `fixture.ts` ficou só como dado sintético dos TESTES. Tabela da Empresa
+  intocada (snapshot verde). Até a 1ª carga do Yan o card mostra "a base de centro de custo ainda não foi carregada".
+  Conferência visual: depende de login (Yan, no preview).
+- **M5 feita** — contratos de `get_dre_caixa_centro` no fim de `src/lib/rpc-contrato.test.ts`: shape (Zod) + paridade
+  linha a linha sem ajuste + Resultado de caixa ≡ REX com ajuste (verificador, REST), anon → 42501, e usuário ativo de
+  role SEM `financeiro/dre` → PERMISSAO_NEGADA (pg READ ONLY). `ingestor`: allowlist derivada = 28 assinaturas
+  (`credencial-ingestor.test.ts` verde); `verificador`: a derivação emite o GRANT que a 0306 concedeu.
+- **M6 feita — PR #311 aberto (aguarda merge do Yan).** Revisor final: 2 ALTOs corrigidos (AV* do CSC no Consolidado
+  dividia pela receita de 12 meses; "?" do Total só em `title`). Out-briefing com o parecer integral (§4). ADR-0184,
+  CHANGELOGs, versão 6.5.1, skills atualizadas. Gates: build/tsc/lint verdes; 2.713 testes verdes (os 5 oráculos de
+  ingestão com `ENOENT` são as fixtures não versionadas — ambiente).
+- **Ajustes do Yan no PR (09/11), já no #311:** "Lado a lado" virou **"Todos"** e abre em **Consolidado** (um bloco por
+  ano com os 5 centros + AV); o Mensal dele empilha os meses (um bloco por mês com os 5 centros + Total, sem acumulado);
+  pill "Sem centro" retirada (segue como coluna do Todos); centros marcáveis cumulativamente (as quatro = Todos, em
+  cinza mais escuro); notas sob a tabela retiradas (o valor da taxa pendente não
+  aparece mais na tela); linhas de antecipação no âmbar do previsto; pills Realizado/Realizado + Previsto retiradas.
+  Out-briefing §4.1.
+
+> 🔴 **Yan:**
+>
+> 1. Conferir no preview do #311 o card "DRE por centro de custo" (conferência visual não feita pelo agente — login).
+>    Até a 1ª carga ele mostra "a base de centro de custo ainda não foi carregada".
+> 2. Mergear o **#311**. Nada de banco a aplicar depois (0304/0305/0306 já estão no ar).
+> 3. Depois do deploy: 1ª carga real em Admin › Ingestão › Upload › "Lançamentos por Centro de Custo", **no mesmo dia**
+>    da carga de movimentação; conferências do briefing §10.
+> 4. Lançar no Monde as taxas de antecipação pendentes (a nota do card mostra o valor) e mostrar à diretoria.
+> 5. Pós-merge: `/pos-merge` (pull na raiz + remover esta worktree).
 
 ---
 

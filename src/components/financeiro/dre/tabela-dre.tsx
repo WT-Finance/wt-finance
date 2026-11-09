@@ -267,7 +267,7 @@ type Visao = 'mensal' | 'consolidado'
 
 /** Largura (px) da coluna de TOTAL — a MESMA que ela já tinha declarada na visão Mensal
  *  (`w-[170px]`), agora também na Consolidado, onde ela era auto-dimensionada. */
-const W_TOTAL = 170
+export const W_TOTAL = 170
 
 /** Largura (px) de CADA coluna de ano seguinte. Era 150 apenas como ESTIMATIVA no
  *  cálculo da largura mínima da tabela, enquanto a coluna se auto-dimensionava; agora
@@ -288,7 +288,7 @@ const W_ANO_SEG = 170
  *  varia com a fallback: na ponta (com `PR_ULTIMA_FIXA`) sobram 86−12−20 = 54px para os
  *  ~45px de "(281,5%)" a 11px tabular. A 82px a folga caía para ~5px, fino demais para
  *  uma estimativa que ninguém mediu no browser. */
-const W_AV = 86
+export const W_AV = 86
 
 /** Folga (px) de padding-direito da coluna MAIS À DIREITA presa (v5.7.0). O thumb vertical
  *  do `ScrollAutoHide` é overlay `absolute right-1 w-1.5` do wrapper — ele ocupa de 4px a
@@ -302,7 +302,7 @@ const PR_ULTIMA_FIXA = 20
 /** Uma coluna presa à direita: onde ela encosta (`right`, px) e a largura DECLARADA.
  *  `null` em qualquer célula = coluna normal — é assim que o Consolidado no modo
  *  'realizado' não fica com `position: sticky` residual em lugar nenhum. */
-interface Fixa {
+export interface Fixa {
   right: number
   largura: number
 }
@@ -346,7 +346,7 @@ function fixasDaLinha(
  *  estática que sirva). `width` + `minWidth` SEM `maxWidth` de propósito: se um valor
  *  gigante não couber, é melhor a coluna CRESCER — desalinhamento cosmético da vizinha —
  *  do que CORTAR dígito, que é dado errado na tela. */
-function estiloFixa(fixa: Fixa | null | undefined): CSSProperties | undefined {
+export function estiloFixa(fixa: Fixa | null | undefined): CSSProperties | undefined {
   if (!fixa) return undefined
   return {
     right: fixa.right,
@@ -365,7 +365,7 @@ function estiloFixa(fixa: Fixa | null | undefined): CSSProperties | undefined {
  *  do arquivo: z-10 no corpo (mesma faixa da coluna Conta sticky à esquerda, com a qual
  *  nunca se sobrepõe) e z-30 no cabeçalho (dentro do stacking context do próprio thead,
  *  competindo só com as demais `th`). String vazia quando a coluna não é fixa. */
-function classeFixa(fixa: Fixa | null | undefined, camada: 'corpo' | 'cabecalho'): string {
+export function classeFixa(fixa: Fixa | null | undefined, camada: 'corpo' | 'cabecalho'): string {
   if (!fixa) return ''
   return camada === 'corpo' ? 'sticky z-10' : 'sticky z-30'
 }
@@ -386,7 +386,7 @@ const FOLGA_ROTULO_GRUPO = 14
  *
  *  `right = largura das colunas fixas + folga` estaciona o rótulo à ESQUERDA delas, em
  *  vez de deixá-lo deslizar por baixo da coluna de total (que é sticky e pinta acima). */
-function RotuloGrupo({ larguraFixas, children }: { larguraFixas: number; children: ReactNode }) {
+export function RotuloGrupo({ larguraFixas, children }: { larguraFixas: number; children: ReactNode }) {
   return (
     <span
       className="sticky inline-flex items-center gap-1.5"
@@ -424,7 +424,7 @@ interface EstiloLinha {
 // neutro institucional da plataforma — independente de tema), com o rótulo em
 // --action-primary-fg. É a inversão que dá a hierarquia: o olho varre os grupos
 // claros e PARA nos resultados escuros.
-function estiloLinha(t: TipoLinha): EstiloLinha {
+export function estiloLinha(t: TipoLinha): EstiloLinha {
   switch (t) {
     case 'blocoH':
       return {
@@ -522,6 +522,12 @@ const BG_PREVISTO: Record<TipoLinha, string> = {
   tot:    BG_PREV_ESCURO,
 }
 
+/** O fundo âmbar do previsto para um nível de linha — exportado para a DRE por centro pintar as linhas de
+ *  antecipação com a MESMA régua (pedido do Yan na v6.5.1), sem uma segunda cópia do mapa. */
+export function fundoPrevisto(tipo: TipoLinha): string {
+  return BG_PREVISTO[tipo]
+}
+
 /** VENCIDO (rodada 4/Refino 5) = a MESMA escala, em VERMELHO. Só a coluna "VENCIDOS" da
  *  visão Consolidado usa isto: ela não é projeção (o previsto âmbar é "ainda vai
  *  vencer"), é prazo ESTOURADO — merece cor de alerta, não de expectativa. Construção
@@ -565,7 +571,7 @@ function fundoCelula(fundo: FundoCelula, tipo: TipoLinha, bg: string, bgHover: s
  *  (Nada de escrever `BG_PREV_` + asterisco + barra aqui: a sequência fecharia ESTE
  *  comentário no meio — a mesma armadilha que mordeu o CSS na v4.26.) */
 
-function CelulaValor({ valor, tipo, fundo, corte, totalAno = false, peso, bg, bgHover, borda, fixa }: CelulaValorProps) {
+export function CelulaValor({ valor, tipo, fundo, corte, totalAno = false, peso, bg, bgHover, borda, fixa }: CelulaValorProps) {
   const cor = corPorSinal(tipo, valor)
   const fundoCls = fundoCelula(fundo, tipo, bg, bgHover)
   const bordaCorte = corte ? 'border-l-2 border-l-wt-border-strong' : ''
@@ -630,7 +636,7 @@ interface CelulaContaProps {
  *  DIREITA da célula. Linha expansível = a célula INTEIRA é o botão (alvo de clique
  *  grande, padrão acordeão). Fundo SEMPRE opaco, na cor da banda da linha (translúcido
  *  vazaria valores por baixo no scroll horizontal). */
-function CelulaConta({ rotulo, rotuloClasse, indent, borda, bg, bgHover, estrela, expansivel, aberto, onToggle }: CelulaContaProps) {
+export function CelulaConta({ rotulo, rotuloClasse, indent, borda, bg, bgHover, estrela, expansivel, aberto, onToggle }: CelulaContaProps) {
   const conteudoRotulo = (
     <span className={`truncate ${rotuloClasse}`}>
       {rotulo}
@@ -664,7 +670,7 @@ function CelulaConta({ rotulo, rotuloClasse, indent, borda, bg, bgHover, estrela
  *  (Mensal/Consolidado, Refino 13). Extraída para as duas tabelas não divergirem por
  *  cópia-e-cola. Ver a ARMADILHA do cabeçalho de 2 linhas no topo do arquivo —
  *  `bordaBaseHeader` é sempre aplicado diretamente aqui (célula rowSpan). */
-function ThConta({ bordaBaseHeader }: { bordaBaseHeader: string }) {
+export function ThConta({ bordaBaseHeader }: { bordaBaseHeader: string }) {
   return (
     <th
       rowSpan={2}
@@ -702,7 +708,7 @@ function fmtDeltaPct(pct: number): string {
  *  garante contraste AA nas bandas claras/escuras, não só o par text-positive/
  *  text-negative "base" que basta na linha `cat`). Fundo é sempre o NORMAL da linha
  *  (nunca âmbar: é uma razão entre dois REALIZADOS, não uma projeção). */
-function CelulaDeltaPct({ pct, tipo, peso, bg, bgHover, borda }: CelulaDeltaPctProps) {
+export function CelulaDeltaPct({ pct, tipo, peso, bg, bgHover, borda }: CelulaDeltaPctProps) {
   const cor = pct == null ? 'text-text-subtle' : corPorSinal(tipo, pct)
   return (
     <td className={`h-9 px-3.5 text-right tabular-nums whitespace-nowrap ${bg} ${bgHover} ${borda} ${peso} ${cor}`}>
@@ -763,7 +769,7 @@ interface CelulaAvProps {
  *    Nas demais linhas o tom segue neutro (`tomAv`) e sem peso: se TODA a coluna ganhasse
  *    a régua de cor, o par valor+AV viraria duas colunas de igual ênfase e o olho perderia
  *    qual é o dado e qual é a leitura. */
-function CelulaAv({ pct, tipo, fundo, bg, bgHover, borda, fixa }: CelulaAvProps) {
+export function CelulaAv({ pct, tipo, fundo, bg, bgHover, borda, fixa }: CelulaAvProps) {
   const fundoCls = fundoCelula(fundo, tipo, bg, bgHover)
   const ehResultado = tipo === 'tot'
   // `corPorSinal` já é ciente da banda: sobre a faixa escura dos totalizadores devolve os
@@ -1603,8 +1609,9 @@ const GHOST_ICONE = 'inline-flex items-center gap-1.5'
  *  Sem margem própria: o espaçamento é o `gap` da linha das pills.
  *  Não renderiza no FAIL-SAFE — sem tabela na tela não há hierarquia para expandir, e
  *  botão inerte é pior que botão ausente. */
-function AcoesHierarquia({
+export function AcoesHierarquia({
   onExpandir, onRecolher, telaCheia, onAlternarTelaCheia, onExportar, exportando, erroExportar,
+  tituloExportar = 'Baixar o demonstrativo em Excel — todas as linhas expandidas, nas abas Mensal e Consolidado',
 }: {
   onExpandir: () => void
   onRecolher: () => void
@@ -1614,6 +1621,9 @@ function AcoesHierarquia({
   exportando: boolean
   /** Falha ao gerar a planilha — aviso discreto na própria faixa (a tela não quebra). */
   erroExportar: boolean
+  /** `title` do Exportar. O default é o da tabela da Empresa; a DRE por centro (v6.5.1)
+   *  passa o dela, porque lá a planilha leva a visão da tela. */
+  tituloExportar?: string
 }) {
   return (
     <div className="ml-auto flex flex-wrap items-center gap-3">
@@ -1651,7 +1661,7 @@ function AcoesHierarquia({
         onClick={onExportar}
         disabled={exportando}
         className={GHOST_ICONE}
-        title="Baixar o demonstrativo em Excel — todas as linhas expandidas, nas abas Mensal e Consolidado"
+        title={tituloExportar}
       >
         {exportando ? <Loader2 size={13} className="animate-spin" aria-hidden /> : <FileSpreadsheet size={13} />}
         Exportar
@@ -1689,7 +1699,7 @@ const TITULO_PADRAO = 'Demonstrativo de Resultado por Fluxo de Caixa'
 // bases tinha de rolar a página para achar um selo em cada. Eles subiram para uma faixa
 // única no topo (`src/app/financeiro/dre/page.tsx`), onde as duas datas ficam lado a lado
 // e comparáveis — que é como elas são lidas: "a competência está mais velha que o caixa?".
-function CabecalhoCard({
+export function CabecalhoCard({
   titulo = TITULO_PADRAO,
 }: {
   titulo?: string

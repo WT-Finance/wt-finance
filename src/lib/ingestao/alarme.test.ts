@@ -125,7 +125,7 @@ describe('calcularDiffPorAno', () => {
 
   // v6.4.0 — `contas-receber` é POSIÇÃO (estoque): título de vencimento passado muda de estado/valor
   // legitimamente (liquidação, encargos, marcação), então NÃO alarma "ano fechado alterado".
-  describe('base isenta (contas-receber, exceção declarada) × as demais cinco', () => {
+  describe('base isenta (contas-receber, exceção declarada) × as demais seis', () => {
     const antes: SomaPorAno = {
       '2024': { linhas: 100, centavos: 500_000 },
       '2025': { linhas: 50, centavos: 200_000 },
@@ -155,8 +155,16 @@ describe('calcularDiffPorAno', () => {
       },
     )
 
-    it('são exatamente 5 as bases que seguem alarmando (a exceção é só contas-receber)', () => {
-      expect(BASES_INGESTAO.filter((b) => b !== 'contas-receber')).toHaveLength(5)
+    // v6.5.1 — `lancamentos-centro-custo` é base de FLUXO (lançamentos por movimentação, soma por ano da
+    // movimentação), não de posição: NÃO é isenta e alarma como as demais.
+    it('lancamentos-centro-custo (v6.5.1) é de fluxo, não isenta: alarma ano fechado alterado', () => {
+      const r = calcularDiffPorAno('lancamentos-centro-custo', 'c1', antes, depois, ANO_CORRENTE)
+      expect(r.anosFechadosAlterados).toEqual([2024, 2025])
+      expect(r.alarmes.every((x) => x.base === 'lancamentos-centro-custo' && x.tipo === 'ano_fechado_alterado')).toBe(true)
+    })
+
+    it('são exatamente 6 as bases que seguem alarmando (a exceção é só contas-receber)', () => {
+      expect(BASES_INGESTAO.filter((b) => b !== 'contas-receber')).toHaveLength(6)
     })
   })
 })

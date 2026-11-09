@@ -269,5 +269,25 @@ export async function getContasReceberStatusAction(): Promise<
   }
 }
 
+// ---------------------------------------------------------------------------
+// Lançamentos por Centro de Custo (v6.5.1) — só STATUS (a carga é `POST /api/ingestao/lancamentos-
+// centro-custo`). Mesmo molde de Contas a receber: sem RPC `status_*`, o card mostra a contagem e a data
+// da ÚLTIMA CARGA APLICADA (`ingestao_carga_ultima`). A raw é substituída inteira a cada carga. Antes da
+// 0304 a RPC recusa a base: vira `{ error }` aqui e a página usa 0 no "antes".
+// ---------------------------------------------------------------------------
+
+export async function getCentroCustoStatusAction(): Promise<
+  { total: number; ultima_atualizacao: string | null } | { error: string }
+> {
+  await requireAreaAction('admin/uploads')
+  try {
+    const r = await lerUltimaCargaAplicada('lancamentos-centro-custo')
+    if (!r.ok) return { error: r.erro }
+    return { total: r.linha?.linhas ?? 0, ultima_atualizacao: r.linha?.concluido_em ?? null }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
 // (A leitura "Sincronização Monde" — `getMondeSincronizacaoStatusAction` — mudou na v6.1.1 para
 // `src/app/admin/ingestao/actions.ts`: o cartão passou do Upload para o Log de Ingestão.)

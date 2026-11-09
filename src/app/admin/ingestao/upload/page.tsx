@@ -12,6 +12,7 @@ import {
   finalizarPessoasAction,
   getDemonstrativoCompetenciaStatusAction,
   getContasReceberStatusAction,
+  getCentroCustoStatusAction,
 } from './actions'
 import { fmtBRL2 } from '@/lib/fmt'
 import { ModalConfirmacaoUpload, type DetalhesConferencia } from '@/components/admin/modal-confirmacao-upload'
@@ -151,6 +152,14 @@ const BASES: BaseConfig[] = [
     unidade: 'títulos',
     accept: '.xlsx',
     multiplos: true,
+  },
+  {
+    key: 'centro_custo',
+    baseIngestao: 'lancamentos-centro-custo',
+    label: 'Lançamentos por Centro de Custo',
+    descricao: 'Substitui toda a base de Lançamentos por Centro de Custo (a abertura de cada lançamento por centro, base do DRE por centro). Um único arquivo, exportado com todos os grupos de centro abertos.',
+    unidade: 'lançamentos',
+    accept: '.xlsx',
   },
 ]
 
@@ -452,7 +461,8 @@ function mensagemDeSucesso(config: BaseConfig, resposta: RespostaCarga): string 
   if (resposta.diff.soma !== null) extras.push(`Σ ${fmtBRL2(resposta.diff.soma)}`)
   // Contas a receber não tem "antes" por soma (sem `status_*`), então `diff.soma` é null; o Σ do
   // próprio arquivo (que fechou com a linha de total) vem em `parse.soma`.
-  if (config.key === 'contas_receber' && resposta.parse.soma !== null) {
+  // Idem em Lançamentos por Centro de Custo: Σ do arquivo (Valor Centro Custo, com o sinal da movimentação).
+  if ((config.key === 'contas_receber' || config.key === 'centro_custo') && resposta.parse.soma !== null) {
     extras.push(`Σ ${fmtBRL2(resposta.parse.soma)}`)
   }
   if (config.key === 'demonstrativo_competencia') {
@@ -468,12 +478,12 @@ function mensagemDeSucesso(config: BaseConfig, resposta: RespostaCarga): string 
 export default function AdminUploadsPage() {
   const [status, setStatus] = useState<Record<BaseKey, StatusCarga | null>>({
     vendas: null, lancamentos: null, lancamentos_movimentacao: null, titulos_em_aberto: null, pessoas: null,
-    demonstrativo_competencia: null, contas_receber: null,
+    demonstrativo_competencia: null, contas_receber: null, centro_custo: null,
   })
   const [estados, setEstados] = useState<Record<BaseKey, EstadoUpload>>({
     vendas: ESTADO_INICIAL, lancamentos: ESTADO_INICIAL,
     lancamentos_movimentacao: ESTADO_INICIAL, titulos_em_aberto: ESTADO_INICIAL, pessoas: ESTADO_INICIAL,
-    demonstrativo_competencia: ESTADO_INICIAL, contas_receber: ESTADO_INICIAL,
+    demonstrativo_competencia: ESTADO_INICIAL, contas_receber: ESTADO_INICIAL, centro_custo: ESTADO_INICIAL,
   })
   const [modal, setModal] = useState<BaseKey | null>(null)
 
@@ -492,8 +502,8 @@ export default function AdminUploadsPage() {
     // (a armadilha que a v5.7.1 documentou na página da DRE).
     // (v6.1.1: a leitura da Sincronização Monde saiu daqui — o cartão mora no Log de Ingestão.
     // Índices reconferidos: 0 vendas · 1 lanç. · 2 lanç. mov. · 3 tít. em aberto · 4 pessoas ·
-    // 5 demonstrativo competência · 6 contas a receber (v6.4.0, no fim).)
-    const [vendasRes, lancRes, lancMovRes, titAbertoRes, pessoasRes, demoCompRes, contasReceberRes] = await Promise.allSettled([
+    // 5 demonstrativo competência · 6 contas a receber (v6.4.0) · 7 centro de custo (v6.5.1, no fim).)
+    const [vendasRes, lancRes, lancMovRes, titAbertoRes, pessoasRes, demoCompRes, contasReceberRes, centroCustoRes] = await Promise.allSettled([
       getVendasStatusAction(),
       getLancamentosStatusAction(),
       getLancamentosMovimentacaoStatusAction(),
@@ -501,6 +511,7 @@ export default function AdminUploadsPage() {
       getPessoasStatusAction(),
       getDemonstrativoCompetenciaStatusAction(),
       getContasReceberStatusAction(),
+      getCentroCustoStatusAction(),
     ])
 
     const toStatus = (
@@ -530,6 +541,7 @@ export default function AdminUploadsPage() {
       pessoas:                   toStatus(pessoasRes),
       demonstrativo_competencia: statusCompetencia,
       contas_receber:            toStatus(contasReceberRes),
+      centro_custo:              toStatus(centroCustoRes),
     })
   }, [])
 
@@ -701,6 +713,7 @@ export default function AdminUploadsPage() {
       case 'titulos_em_aberto': { const r = await getTitulosEmAbertoStatusAction(); return 'error' in r ? 0 : r.total }
       case 'demonstrativo_competencia': { const r = await getDemonstrativoCompetenciaStatusAction(); return 'error' in r ? 0 : r.total }
       case 'contas_receber': { const r = await getContasReceberStatusAction(); return 'error' in r ? 0 : r.total }
+      case 'centro_custo': { const r = await getCentroCustoStatusAction(); return 'error' in r ? 0 : r.total }
       case 'pessoas': return 0 // fluxo antigo não passa por aqui
     }
   }

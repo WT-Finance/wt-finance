@@ -44,6 +44,9 @@ import { duracaoDias, margemAnualizada } from './weddings/margem-anualizada'
 import { rendimentoFloatSchema, taxasCdiSchema } from './weddings/schemas-float'
 import { LIMITE_MESES_FLUXO } from './fluxo/janela-mensal'
 import { hojeSP } from './fmt'
+import { dreCaixaCentroSchema, paraDreCentroAno } from './dre-centro/schemas'
+import { montarAnoCentro } from './dre-centro/montar'
+import { LINHA_RES } from './dre-centro/visoes'
 import { tokenMaquina, credencialConfigurada } from './auth/credencial-maquina'
 
 // CONTRATO das RPCs críticas (números que a diretoria vê). Bate via REST com a
@@ -3498,6 +3501,9 @@ const ESCRITA_GERAL = [
   { assinatura: 'public.antecipacao_desfazer(bigint)', body: { p_diario_id: -1 } },
   { assinatura: 'public.promover_carga_contas_receber(jsonb, uuid)',
     body: { p_checksums: [], p_carga_id: '00000000-0000-0000-0000-000000000000' } },
+  // v6.5.1 (0304): escreve a raw e REGENERA `financeiro.centro_custo_rateio`. Só o `ingestor` a executa.
+  { assinatura: 'public.promover_carga_centro_custo(jsonb, uuid)',
+    body: { p_checksums: [], p_carga_id: '00000000-0000-0000-0000-000000000000' } },
 ] as const
 
 describe.skipIf(!ON || !DB_URL)('contrato RBAC — Financeiro · Geral: a credencial de verificação NÃO escreve (v6.4.0)', () => {
@@ -3713,5 +3719,119 @@ describe.skipIf(!ON || !ANON)('contrato RBAC — Fluxo de Caixa: antecipações 
     let codigo = ''
     try { codigo = String((JSON.parse(texto) as { code?: unknown }).code) } catch { /* corpo não-JSON: cai no expect abaixo */ }
     expect(codigo, `${fn}: HTTP ${res.status}, código ${codigo}`).toBe('42501')
+  })
+})
+
+// ── v6.5.1/M3 (0306) — DRE de caixa por centro de custo ──────────────────────────────────────────
+// Paridade com a visão Empresa contra o DADO VIVO (inv. 1 do briefing v6.5.1):
+//   • sem ajuste (`p_ajuste=false`, o modo de teste): Σ centros ≡ `get_dre_mensal` LINHA A LINHA, em
+//     todo mês realizado — o rateio não perde nem inventa dinheiro;
+//   • com ajuste: Σ centros do "(=) Resultado de caixa" (montado pelo módulo puro do front, o mesmo da
+//     tela) ≡ REX da Empresa mês a mês — deslocamento + C + D + taxa se conservam (inv. 4).
+// O oráculo do protótipo (inv. 5) e o remapeamento revertido (inv. 2) ficaram no ensaio da M3, com as
+// fixtures de 06/11 — registrados no out-briefing.
+describe.skipIf(!ON)('contrato RPC — DRE de caixa por centro (v6.5.1)', () => {
+  const anoSP = () => Number(hojeSP().slice(0, 4))
+  const chave = (l: { t: string; chave?: string; categoria_id?: number }) => (l.t === 'cat' ? `c${l.categoria_id}` : `b${l.chave}`)
+
+  it('get_dre_caixa_centro (sem ajuste): shape + Σ centros ≡ get_dre_mensal linha a linha nos meses realizados', async () => {
+    const [cc, emp] = await Promise.all([
+      rpc('get_dre_caixa_centro', { p_ano: anoSP(), p_ajuste: false }),
+      rpc('get_dre_mensal', { p_ano: anoSP() }),
+    ])
+    const p = dreCaixaCentroSchema.safeParse(cc)
+    expect(p.success, p.success ? '' : JSON.stringify(p.error.issues.slice(0, 3))).toBe(true)
+    const e = dreMensalSchema.safeParse(emp)
+    expect(e.success).toBe(true)
+    if (!p.success || !e.success) return
+    expect(p.data.ajuste).toBe(false)
+    expect(p.data.recebiveis).toEqual([])
+    const fim = e.data.mes_corrente ?? 12
+    const centros = Object.values(p.data.arvores)
+    for (const arv of centros) expect(arv.map(chave)).toEqual(e.data.linhas.map(chave)) // mesmo esqueleto, mesma ordem
+    for (const [i, l] of e.data.linhas.entries()) {
+      for (let m = 0; m < fim; m++) {
+        const s = centros.reduce((a, arv) => a + arv[i].meses[m], 0)
+        expect(Math.abs(s - l.meses[m]), `${chave(l)} mês ${m + 1}`).toBeLessThan(0.005)
+      }
+    }
+  })
+
+  it('get_dre_caixa_centro (com ajuste): Σ centros do Resultado de caixa ≡ REX da Empresa, mês a mês', async () => {
+    const [cc, emp] = await Promise.all([
+      rpc('get_dre_caixa_centro', { p_ano: anoSP() }),
+      rpc('get_dre_mensal', { p_ano: anoSP() }),
+    ])
+    const p = dreCaixaCentroSchema.safeParse(cc)
+    const e = dreMensalSchema.safeParse(emp)
+    expect(p.success && e.success).toBe(true)
+    if (!p.success || !e.success) return
+    const ano = montarAnoCentro(paraDreCentroAno(p.data))
+    const rex = e.data.linhas.find(l => l.chave === 'REX')
+    expect(rex).toBeTruthy()
+    const fim = e.data.mes_corrente ?? 12
+    for (let m = 0; m < fim; m++) {
+      const s = Object.values(ano.porCentro).reduce(
+        (a, lc) => a + (lc.linhas.find(l => l.chave === LINHA_RES.chave)?.meses[m] ?? NaN), 0)
+      expect(Math.abs(s - (rex?.meses[m] ?? NaN)), `mês ${m + 1}`).toBeLessThan(0.005)
+    }
+    // a taxa de antecipação sai da árvore (vai ao bloco); identificado nunca passa do registrado
+    for (const arv of Object.values(p.data.arvores)) expect(arv.some(l => l.t === 'cat' && l.categoria_id === 38)).toBe(false)
+    for (const ev of p.data.eventos) expect(ev.identificado).toBeLessThanOrEqual(ev.valor + 0.005)
+  })
+
+  it('get_dre_caixa_centro: anon → erro de permissão 42501 (HTTP 401/403)', async () => {
+    const res = await fetch(`${HOST}/rest/v1/rpc/get_dre_caixa_centro`, {
+      method: 'POST',
+      headers: { apikey: ANON as string, Authorization: `Bearer ${ANON as string}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_ano: anoSP() }),
+    })
+    const texto = await res.text()
+    expect([401, 403], `anon recebeu HTTP ${res.status}`).toContain(res.status)
+    let codigo = ''
+    try { codigo = String((JSON.parse(texto) as { code?: unknown }).code) } catch { /* corpo não-JSON: cai no expect abaixo */ }
+    expect(codigo, `HTTP ${res.status}, código ${codigo}`).toBe('42501')
+  })
+})
+
+// ── v6.5.1/M5 — NEGAÇÃO: usuário ATIVO sem a área `financeiro/dre` ───────────────────────────────
+// Mesmo caminho da negação de Gastos de Marketing (acima): `pg` somente leitura (sessão READ ONLY,
+// sem BEGIN, claims de SESSÃO), usuário escolhido DINAMICAMENTE entre os ativos de roles sem a área.
+// `exigir_acesso` para ANTES do corpo — por isso a sessão READ ONLY não interfere (a função cria
+// tabelas TEMP, o que só aconteceria depois do guard). Exige o código E a mensagem PERMISSAO_NEGADA:
+// um erro qualquer de corpo não passa por negação. A contraprova (quem TEM a área passa) são os casos
+// de paridade acima, que rodam com o `verificador` (que tem a área).
+describe.skipIf(!ON || !DB_URL)('contrato RBAC — DRE de caixa por centro: usuário sem a área (v6.5.1)', () => {
+  it('um usuário ATIVO de cada role SEM financeiro/dre recebe PERMISSAO_NEGADA (42501) em get_dre_caixa_centro', async () => {
+    const { createRequire } = await import('node:module')
+    const pg = createRequire(process.cwd() + '/')('pg')
+    const c = new pg.Client({ connectionString: DB_URL })
+    await c.connect()
+    await c.query('SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY')
+    try {
+      const r = await c.query(
+        `SELECT DISTINCT ON (u.role_id) u.user_id::text AS uid
+           FROM app.rbac_usuarios u
+          WHERE u.ativo
+            AND NOT EXISTS (SELECT 1 FROM app.rbac_role_permissoes rp WHERE rp.role_id = u.role_id AND rp.area = 'financeiro/dre')
+          ORDER BY u.role_id, u.user_id`,
+      )
+      expect(r.rows.length, 'não há usuário ativo fora de financeiro/dre — a negação ficaria sem prova').toBeGreaterThan(0)
+      for (const u of r.rows as Array<{ uid: string }>) {
+        await c.query(`SELECT set_config('request.jwt.claims', $1, false)`, [JSON.stringify({ sub: u.uid, role: 'authenticated' })])
+        let code = ''
+        let msg = ''
+        try {
+          await c.query('SELECT public.get_dre_caixa_centro($1::int) AS r', [Number(hojeSP().slice(0, 4))])
+        } catch (e) {
+          code = String((e as { code?: string }).code)
+          msg = String((e as { message?: string }).message)
+        }
+        expect(code, `role sem financeiro/dre: ${msg}`).toBe('42501')
+        expect(msg).toMatch(/PERMISSAO_NEGADA/)
+      }
+    } finally {
+      await c.end()
+    }
   })
 })
