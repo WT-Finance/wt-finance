@@ -54,7 +54,7 @@ export default function SeletorCentro({
             type="button"
             onClick={() => onAlternar(c)}
             aria-pressed={marcado}
-            title={ultimo ? 'Pelo menos um centro fica marcado' : marcado ? `Desmarcar ${ROTULO_CENTRO[c]}` : `Marcar ${ROTULO_CENTRO[c]}`}
+            title={todos ? `Ver só ${ROTULO_CENTRO[c]}` : ultimo ? 'Pelo menos um centro fica marcado' : marcado ? `Desmarcar ${ROTULO_CENTRO[c]}` : `Marcar ${ROTULO_CENTRO[c]}`}
             className={['foco-neutro', PILL_FILTRO, marcado ? '' : PILL_FILTRO_INATIVO].join(' ')}
             style={marcado ? (todos ? PILL_MARCADA_TODOS_STYLE : PILL_FILTRO_ATIVO_STYLE) : undefined}
           >

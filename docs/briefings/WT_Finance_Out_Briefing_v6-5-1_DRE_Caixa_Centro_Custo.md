@@ -123,8 +123,8 @@ Decisões de produto do Yan ao ver o card, aplicadas no mesmo PR antes do merge:
      com a Empresa.
    - Todos: os cinco, com "Sem centro" e o "Quem cobre quem". O Quem cobre quem fica só no Todos, porque usos e
      fontes são da empresa inteira.
-   - Escolha do agente, a confirmar: clicar num centro com o Todos aceso DESMARCA aquele centro (sobram três), em vez
-     de selecionar só ele. É a leitura literal de "cumulativa".
+   - Decidido pelo Yan: com o Todos aceso, clicar num centro marca SÓ ele e desmarca os outros. Fora do Todos, o
+     clique segue cumulativo, e marcar o quarto acende o Todos de novo.
 2. **Notas sob a tabela retiradas** (cobertura, antecipações identificadas/não identificadas, taxa pendente, tomado e não
    devolvido, explicação da memória e a nota "* ano em curso"). O cálculo (`montar.ts → notas`) ficou, coberto por teste,
    mas **nada mais o mostra na tela**. Ficou só a frase "Sem Δ% contra «ano−1»" do Consolidado, que não estava no print.

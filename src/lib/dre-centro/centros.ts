@@ -36,8 +36,10 @@ export function selecaoInicial(s: SeletorCentro | readonly CentroSelecionavel[])
   return new Set(unico ? [unico] : CENTROS_SELECIONAVEIS)
 }
 
-/** Marca/desmarca um centro; a seleção nunca fica vazia (o último marcado não sai). */
+/** Marca/desmarca um centro; a seleção nunca fica vazia (o último marcado não sai). Com "Todos" aceso (os quatro
+ *  marcados), o clique marca SÓ aquele centro e desmarca os outros (decisão do Yan no PR #311). */
 export function alternarCentro(sel: ReadonlySet<CentroSelecionavel>, c: CentroSelecionavel): ReadonlySet<CentroSelecionavel> {
+  if (CENTROS_SELECIONAVEIS.every(x => sel.has(x))) return new Set([c])
   const s = new Set(sel)
   if (!s.has(c)) s.add(c)
   else if (s.size > 1) s.delete(c)

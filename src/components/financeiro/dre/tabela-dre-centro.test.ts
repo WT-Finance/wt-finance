@@ -151,6 +151,14 @@ describe('seleção cumulativa (módulo puro)', () => {
     expect([...alternarCentro(s, 'corp')]).toEqual(['corp'])
   })
 
+  it('com Todos aceso, clicar num centro marca só ele e desmarca os outros', () => {
+    const todos = selecaoInicial('lado')
+    expect([...alternarCentro(todos, 'weddings')]).toEqual(['weddings'])
+    // fora do Todos segue cumulativo: três marcados + o quarto = Todos de novo
+    const tres = selecaoInicial(['trips', 'weddings', 'corp'])
+    expect(alternarCentro(tres, 'csc').size).toBe(4)
+  })
+
   it('abertura: Todos (e "Sem centro", sem pill) = os quatro marcados; lista vazia = os quatro', () => {
     expect(selecaoInicial('lado').size).toBe(4)
     expect(selecaoInicial('sem_centro').size).toBe(4)
