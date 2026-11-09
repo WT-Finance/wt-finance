@@ -9,7 +9,7 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-11-09 (v6.5.1 em voo: M5 feita; próxima M6 — fechamento).
+Última atualização: 2026-11-09 (v6.5.1 fechada: PR #311 aguarda merge do Yan).
 
 ---
 
@@ -87,8 +87,20 @@ Worktree `.claude/worktrees/v6-5-1-dre-caixa-centro-custo`. Briefing `docs/brief
   linha a linha sem ajuste + Resultado de caixa ≡ REX com ajuste (verificador, REST), anon → 42501, e usuário ativo de
   role SEM `financeiro/dre` → PERMISSAO_NEGADA (pg READ ONLY). `ingestor`: allowlist derivada = 28 assinaturas
   (`credencial-ingestor.test.ts` verde); `verificador`: a derivação emite o GRANT que a 0306 concedeu.
-- **Próximo passo: M6** (fechamento: `/fechamento-versao` — revisor final, out-briefing com M0/mockup/oráculos/ressalvas,
-  CHANGELOG + CHANGELOG_DIRETORIA, versão 6.5.1, ADR-0184, skills `ingestao-planilhas`/`banco-e-rpc`, PR).
+- **M6 feita — PR #311 aberto (aguarda merge do Yan).** Revisor final: 2 ALTOs corrigidos (AV* do CSC no Consolidado
+  dividia pela receita de 12 meses; "?" do Total só em `title`). Out-briefing com o parecer integral (§4). ADR-0184,
+  CHANGELOGs, versão 6.5.1, skills atualizadas. Gates: build/tsc/lint verdes; 2.713 testes verdes (os 5 oráculos de
+  ingestão com `ENOENT` são as fixtures não versionadas — ambiente).
+
+> 🔴 **Yan:**
+>
+> 1. Conferir no preview do #311 o card "DRE por centro de custo" (conferência visual não feita pelo agente — login).
+>    Até a 1ª carga ele mostra "a base de centro de custo ainda não foi carregada".
+> 2. Mergear o **#311**. Nada de banco a aplicar depois (0304/0305/0306 já estão no ar).
+> 3. Depois do deploy: 1ª carga real em Admin › Ingestão › Upload › "Lançamentos por Centro de Custo", **no mesmo dia**
+>    da carga de movimentação; conferências do briefing §10.
+> 4. Lançar no Monde as taxas de antecipação pendentes (a nota do card mostra o valor) e mostrar à diretoria.
+> 5. Pós-merge: `/pos-merge` (pull na raiz + remover esta worktree).
 
 ---
 
