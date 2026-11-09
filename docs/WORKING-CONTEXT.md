@@ -53,10 +53,11 @@ Worktree `.claude/worktrees/v6-5-1-dre-caixa-centro-custo`. Briefing `docs/brief
   base por categoria do mesmo dia ≡ "Rateio sem ajuste" do protótipo AO CENTAVO nos 4 centros; 31 datas fora da faixa
   (29 Emissão + 2 Vencimento, nenhuma Movimentação) — campo nulo, linha mantida. Fixtures copiadas para
   `tests/fixtures/ingestao/` (git-ignorado) e registradas no manifest. ingestor: 28 assinaturas.
-  - 🔴 **Yan — patch destrutivo D2 (TTY), antes da 1ª carga:** `cp supabase/patches/centro_custo_checks_ingestao.sql
-    supabase/migrations/0305_centro_custo_checks_ingestao.sql` (conferir que 0305 está livre), apontar o `SQL_PATCH` de
-    `src/lib/ingestao/bases-paridade.test.ts` para ela, e `npm run db:migrate -- --destrutiva`; depois `npm run
-    db:baseline`. Até lá a carga da base falha FECHADA (nada é gravado). Upload: Admin › Ingestão › Upload, card
+  - 🔴 **Yan — destrutiva 0305 (D2), um comando em TTY:** pré-voo feito pelo agente em 09/11 (`git mv` do patch para
+    `supabase/migrations/0305_centro_custo_checks_ingestao.sql`, teste de paridade reapontado, classificada destrutiva,
+    ÚNICA pendente, ensaio revertido verde). Rodar na worktree: `npm run db:migrate -- --destrutiva` e confirmar.
+    Depois o agente regenera o baseline e commita. ⚠️ Aplicar ANTES de qualquer `--aditiva` da M3 (o push leva todo o
+    pendente). Até lá a carga da base falha FECHADA. Upload depois do deploy: Admin › Ingestão › Upload, card
     "Lançamentos por Centro de Custo", MESMO dia da carga de movimentação.
   - Revisão: `revisor-db` aprovou a 0304 e o patch (B-1/B-3 corrigidos antes de aplicar); `revisor` aprovou o app com
     ressalvas — MÉDIOs corrigidos (outline negativo/milhar no teste sintético; sonda ESTÁTICA da lista fechada

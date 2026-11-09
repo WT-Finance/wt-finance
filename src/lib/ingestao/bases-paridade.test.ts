@@ -29,10 +29,9 @@ import { BASES_INGESTAO, BASES_COM_ESCOPO_DE_CHAVE, BASES_MULTIARQUIVO } from '.
 //     correspondente entra.
 //
 // v6.5.1 (`lancamentos-centro-custo`, a sétima base) — mesma forma:
-//   • os CHECKs de `ingestao.carga`/`ingestao.promocao` (7 bases) vêm do PATCH DESTRUTIVO AINDA NÃO
-//     APLICADO `supabase/patches/centro_custo_checks_ingestao.sql` (Yan em TTY). Ao aplicá-lo, o patch
-//     vira migration numerada (`git mv`) e a constante `SQL_PATCH` abaixo passa a apontar para ela — faz
-//     parte do mesmo ato;
+//   • os CHECKs de `ingestao.carga`/`ingestao.promocao` (7 bases) vêm da destrutiva
+//     `0305_centro_custo_checks_ingestao.sql` (nasceu em supabase/patches/; `git mv` em 09/11 para o Yan
+//     aplicar em TTY) — a 0298 fica com a lista de 6, como registro;
 //   • as três RPCs com `BASE_INVALIDA` são redefinidas pela `0304_centro_custo_base.sql` com a 7ª base (o
 //     teste pega a definição vigente por nome, então já a segue);
 //   • sem RPA nem expectativa do vigia: segunda exceção DECLARADA.
@@ -41,7 +40,7 @@ const PASTA_MIGRATIONS = join(RAIZ, 'supabase/migrations')
 const SQL = readFileSync(join(PASTA_MIGRATIONS, '0274_role_ingestor_e_escopo_api_chave.sql'), 'utf8')
 const SQL_0280 = readFileSync(join(PASTA_MIGRATIONS, '0280_ingestao_execucao_alarmes_vigia.sql'), 'utf8')
 const SQL_PATCH = semComentariosSql(
-  readFileSync(join(RAIZ, 'supabase/patches/centro_custo_checks_ingestao.sql'), 'utf8'),
+  readFileSync(join(PASTA_MIGRATIONS, '0305_centro_custo_checks_ingestao.sql'), 'utf8'),
 )
 
 /** Bases SEM RPA: fora do CHECK de escopo de chave (0274/0289) e da expectativa do vigia (0280). */

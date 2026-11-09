@@ -8,7 +8,7 @@
 // NA MESMA ORDEM, e o teste de paridade compara a ordem.
 //
 // `lancamentos-centro-custo` (v6.5.1) é a SÉTIMA e também entra por ÚLTIMO: o patch destrutivo
-// `supabase/patches/centro_custo_checks_ingestao.sql` (Yan em TTY) amplia os mesmos CHECKs, na mesma ordem.
+// `0305_centro_custo_checks_ingestao.sql` (destrutiva, Yan em TTY) amplia os mesmos CHECKs, na mesma ordem.
 export const BASES_INGESTAO = [
   'demonstrativo-competencia',
   'vendas-produto',
