@@ -47,7 +47,11 @@ export interface AnoDadosCentro {
 function montarNotas(d: DreCentroAno, naoDevolvido: number): NotasCentro {
   const registrado = d.eventos.reduce((s, e) => s + e.valor, 0)
   const identificado = d.eventos.reduce((s, e) => s + e.identificado, 0)
+  // Taxa ainda não lançada no Monde = Σ (registro − Monde) sobre os eventos, como o protótipo (as duas
+  // negativas; diferença negativa = falta lançar). As DATAS nomeadas são as das antecipações sem taxa
+  // nenhuma no Monde — as pequenas sobras/faltas de outras entram na soma, não na lista.
   const pendentes = d.eventos.filter(e => e.taxaMonde === 0 && e.taxaRegistro !== 0)
+  const pendenteTotal = d.eventos.reduce((s, e) => s + (e.taxaRegistro - e.taxaMonde), 0)
   return {
     coberturaPct: d.cobertura.valorMovimentado > 0 ? 1 - d.cobertura.semCentro / d.cobertura.valorMovimentado : 1,
     semCentro: d.cobertura.semCentro,
@@ -56,7 +60,7 @@ function montarNotas(d: DreCentroAno, naoDevolvido: number): NotasCentro {
     naoIdentificadas: d.eventos
       .filter(e => e.identificado < e.valor - 0.005)
       .map(e => ({ data: e.data, conta: e.conta, falta: e.valor - e.identificado, motivo: e.motivo })),
-    taxaPendente: pendentes.reduce((s, e) => s + e.taxaRegistro, 0),
+    taxaPendente: pendenteTotal,
     datasTaxaPendente: pendentes.map(e => e.data),
     naoDevolvido,
   }

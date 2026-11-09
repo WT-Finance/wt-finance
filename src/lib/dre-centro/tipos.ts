@@ -33,6 +33,8 @@ export interface EventoAntecipacao {
   valor: number
   /** Quanto a regra identificou nos recebimentos da conta (≤ `valor`). */
   identificado: number
+  /** Quantos recebíveis a regra usou (opcional: a fixture do mockup não conta). */
+  nRecebiveis?: number
   /** Taxa do registro (negativa) e a lançada no Monde na mesma data (negativa; 0 = pendente). */
   taxaRegistro: number
   taxaMonde: number

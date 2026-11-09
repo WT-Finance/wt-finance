@@ -9,7 +9,7 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-11-09 (v6.5.1 em voo: M2 feita, 0304 e 0305 aplicadas; próxima M3).
+Última atualização: 2026-11-09 (v6.5.1 em voo: M3 feita, 0306 aplicada; próxima M4).
 
 ---
 
@@ -62,7 +62,23 @@ Worktree `.claude/worktrees/v6-5-1-dre-caixa-centro-custo`. Briefing `docs/brief
     ao `ingestor` (o briefing inv. 6 diz "só a promover" — o pipeline precisa das quatro, precedente 0295); o header da
     0304 diz "29 assinaturas", o medido é 28; skills `ingestao-planilhas`/`banco-e-rpc` ainda falam em 6 bases
     (atualizar no fechamento).
-- **Próximo passo: M3** (RPCs da DRE por centro e das antecipações; identificação no banco; grant do verificador).
+- **M3 feita — 0306 APLICADA em 09/11** (aditiva, backup-gate verde; banco na **0306**, livre **0307**). Uma leitura
+  `get_dre_caixa_centro(p_ano, p_ajuste default true)` (área `financeiro/dre`, grant ao `verificador` por assinatura) no
+  contrato de `src/lib/dre-centro/tipos.ts` + schema `src/lib/dre-centro/schemas.ts`; de-para fixo
+  `financeiro.antecipacao_conta_monde` (D3). A identificação dos recebíveis (§3.3) foi pinada por engenharia reversa do
+  protótipo: recebível = Σ Receita de Vendas positiva do Número por (data de movimentação, vencimento); janela −1/+2;
+  antecedência > 2 (Asaas) / > 7 (Blimboo); ordem antecedência ↓, valor ↓, Número (COLLATE "C") ↑; taxa do Monde vai à
+  antecipação MAIS ANTIGA cuja janela a contém. Provas (ensaio revertido com as fixtures de 06/11): **16/16 eventos e
+  3.186/3.186 recebíveis = protótipo**; Weddings/Corp/CSC = oráculo AO CENTAVO; pesos mensais idênticos; sem ajuste,
+  Σ centros ≡ `get_dre_mensal` linha a linha; com ajuste, Σ Resultado de caixa ≡ REX mês a mês; remapear categoria em
+  transação revertida muda as duas visões (inv. 2); 2,6 s (REST isolado 1,2–2,1 s). Casos permanentes no fim de
+  `rpc-contrato.test.ts` (paridade linha a linha, Resultado de caixa ≡ REX, anon 42501).
+  - **Para o out-briefing:** (a) Trips difere do oráculo em −9.540,17 = 2 linhas com movimentação FUTURA (23/11) que a
+    Empresa trata como previsto — mesmo predicado por construção; (b) revisor-db M1 (fronteira de produto): cada ano é
+    identificado isoladamente — antecipação de fim de dezembro com movimentação em janeiro, e o D de antecipação de
+    2026 que vence em 2027, não aparecem na visão de 2027; (c) a taxa pendente segue o protótipo: Σ (registro − Monde).
+- **Próximo passo: M4** (front: o card por centro passa a ler `get_dre_caixa_centro` no lugar da fixture; carimbos
+  reais; remover `fixture.ts`/`dre_estrutura` da página; Empresa intocada).
 
 ---
 

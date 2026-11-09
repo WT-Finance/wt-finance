@@ -470,6 +470,10 @@ export type Database = {
         }
         Returns: Json
       }
+      get_dre_caixa_centro: {
+        Args: { p_ajuste?: boolean; p_ano: number }
+        Returns: Json
+      }
       get_dre_competencia_mensal: { Args: { p_ano: number }; Returns: Json }
       get_dre_mensal: { Args: { p_ano: number }; Returns: Json }
       get_executiva_kpis: {

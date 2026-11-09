@@ -136,18 +136,18 @@ export function fixtureDreCentro(empresa: DreMensalLike, blocos: readonly BlocoF
     const identificado = recebiveis.filter(r => r.mesAntecipacao === a).reduce((s, r) => s + r.valor, 0)
     const ultimo = idx === meses.length - 1
     const dd = (d: number) => `${ano}-${String(a).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-    const taxaDoMes = taxaCat ? taxaCat.meses[a - 1] : 0
     // Duas antecipações no mês (Asaas e Blimboo). A última do ano vem com recebíveis ainda não
-    // baixados no Monde (identificação parcial) e com a taxa ainda não lançada.
+    // baixados no Monde (identificação parcial) e com a taxa ainda não lançada; nas demais o Monde
+    // lançou exatamente a taxa do registro (a nota soma registro − Monde, regra do protótipo).
     const partes: Array<[string, number, number]> = [['Asaas', 0.7, 8], ['Blimboo', 0.3, 22]]
     for (const [conta, f, dia] of partes) {
       const ident = Math.round(identificado * f * 100) / 100
       const extra = ultimo && conta === 'Asaas' ? Math.round(ident * 0.35 / 100) * 100 : 0
       const valor = ident + extra
+      const taxaRegistro = -Math.round(valor * 0.021 * 100) / 100
       eventos.push({
-        data: dd(dia), conta, valor, identificado: ident,
-        taxaRegistro: -Math.round(valor * 0.021 * 100) / 100,
-        taxaMonde: ultimo && conta === 'Asaas' ? 0 : taxaDoMes * f,
+        data: dd(dia), conta, valor, identificado: ident, taxaRegistro,
+        taxaMonde: ultimo && conta === 'Asaas' ? 0 : taxaRegistro,
         motivo: extra > 0 ? 'recebíveis ainda não baixados no Monde' : undefined,
       })
     }

@@ -3021,6 +3021,31 @@
       "security_definer": true,
       "volatilidade": "VOLATILE"
     },
+    "public.get_dre_caixa_centro(integer, boolean)": {
+      "acl": {
+        "authenticated": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        },
+        "verificador": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "1b677ca41db34f81bd45f56427c2db0dc4146ef01d4b2920159980d1f87b4ea2",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "json",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
     "public.get_dre_competencia_mensal(integer)": {
       "acl": {
         "authenticated": {
@@ -7701,6 +7726,7 @@
         "public.get_carteira_weddings(text)",
         "public.get_contratos_casamento_mes(date, date)",
         "public.get_decomposicao_bloco(text, text)",
+        "public.get_dre_caixa_centro(integer, boolean)",
         "public.get_dre_competencia_mensal(integer)",
         "public.get_dre_mensal(integer)",
         "public.get_executiva_kpis(date, date, text, date, date, date, date)",
@@ -11896,6 +11922,60 @@
       "indices": {
         "antecipacao_conta_nome_uniq": "CREATE UNIQUE INDEX antecipacao_conta_nome_uniq ON financeiro.antecipacao_conta USING btree (nome)",
         "antecipacao_conta_pkey": "CREATE UNIQUE INDEX antecipacao_conta_pkey ON financeiro.antecipacao_conta USING btree (id)"
+      },
+      "policies": {},
+      "rls_forcado": false,
+      "rls_habilitado": true,
+      "tipo": "tabela",
+      "triggers": {}
+    },
+    "financeiro.antecipacao_conta_monde": {
+      "acl": {
+        "postgres": {
+          "DELETE": false,
+          "INSERT": false,
+          "MAINTAIN": false,
+          "REFERENCES": false,
+          "SELECT": false,
+          "TRIGGER": false,
+          "TRUNCATE": false,
+          "UPDATE": false
+        }
+      },
+      "colunas": {
+        "antecedencia_min_dias": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "integer"
+        },
+        "antecipacao_conta_id": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "smallint"
+        },
+        "conta_bancaria_id": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "integer"
+        }
+      },
+      "constraints": {
+        "antecipacao_conta_monde_antecedencia": "CHECK (antecedencia_min_dias >= 0)",
+        "antecipacao_conta_monde_antecipacao_conta_id_fkey": "FOREIGN KEY (antecipacao_conta_id) REFERENCES financeiro.antecipacao_conta(id)",
+        "antecipacao_conta_monde_conta_bancaria_id_fkey": "FOREIGN KEY (conta_bancaria_id) REFERENCES financeiro.dim_conta_bancaria(id)",
+        "antecipacao_conta_monde_conta_bancaria_id_key": "UNIQUE (conta_bancaria_id)",
+        "antecipacao_conta_monde_pkey": "PRIMARY KEY (antecipacao_conta_id)"
+      },
+      "dono": "postgres",
+      "indices": {
+        "antecipacao_conta_monde_conta_bancaria_id_key": "CREATE UNIQUE INDEX antecipacao_conta_monde_conta_bancaria_id_key ON financeiro.antecipacao_conta_monde USING btree (conta_bancaria_id)",
+        "antecipacao_conta_monde_pkey": "CREATE UNIQUE INDEX antecipacao_conta_monde_pkey ON financeiro.antecipacao_conta_monde USING btree (antecipacao_conta_id)"
       },
       "policies": {},
       "rls_forcado": false,
@@ -17113,7 +17193,7 @@
       "triggers": {}
     }
   },
-  "ultima_migration": "0305",
+  "ultima_migration": "0306",
   "views": {
     "analytics.mv_ranking_produtos_mensal": {
       "acl": {
