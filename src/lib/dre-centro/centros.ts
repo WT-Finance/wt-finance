@@ -5,7 +5,9 @@
 // Monde, no próprio lançamento. O CSC é um centro próprio; o rateio dele entre as unidades
 // é fronteira (§11 do briefing).
 
-export const CENTROS = ['trips', 'weddings', 'corp', 'csc', 'sem_centro'] as const
+/** Ordem canônica de exibição (pills, colunas, Quem cobre quem, Exportar): CSC primeiro (pedido do Yan no PR #311).
+ *  Nenhum cálculo depende da ordem — a atribuição só soma por centro e os dados vêm por chave. */
+export const CENTROS = ['csc', 'trips', 'weddings', 'corp', 'sem_centro'] as const
 export type CentroId = (typeof CENTROS)[number]
 
 export const ROTULO_CENTRO: Record<CentroId, string> = {
@@ -18,7 +20,7 @@ export const ROTULO_CENTRO: Record<CentroId, string> = {
 
 /** Centros que podem TOMAR uma antecipação (§3.4: "todos, menos Sem centro"). Mudar esta
  *  lista é decisão de produto — volta ao Chat. */
-export const CENTROS_ELEGIVEIS_DEFICIT: readonly CentroId[] = ['trips', 'weddings', 'corp', 'csc']
+export const CENTROS_ELEGIVEIS_DEFICIT: readonly CentroId[] = ['csc', 'trips', 'weddings', 'corp']
 
 /** Abertura do card: um centro ou todos (id `lado`, rótulo "Todos"). A visão Empresa é a tabela de cima,
  *  separada (decisão do Yan no GATE 1) — não é opção aqui. */
@@ -26,7 +28,7 @@ export type SeletorCentro = CentroId | 'lado'
 
 /** Centros com pill no seletor, marcáveis CUMULATIVAMENTE (pedido do Yan no PR #311). "Sem centro" NÃO tem pill
  *  própria — é coluna do "Todos", que é onde fecha a soma com a Empresa. As quatro marcadas = "Todos". */
-export const CENTROS_SELECIONAVEIS = ['trips', 'weddings', 'corp', 'csc'] as const
+export const CENTROS_SELECIONAVEIS = ['csc', 'trips', 'weddings', 'corp'] as const
 export type CentroSelecionavel = (typeof CENTROS_SELECIONAVEIS)[number]
 
 /** Seleção inicial a partir da abertura pedida: 'lado' (ou "Sem centro", que não tem pill) = todas marcadas. */

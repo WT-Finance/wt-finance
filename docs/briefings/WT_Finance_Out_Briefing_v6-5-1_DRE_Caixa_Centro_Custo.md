@@ -114,7 +114,7 @@ Decisões de produto do Yan ao ver o card, aplicadas no mesmo PR antes do merge:
    - Os centros seguem abrindo em Mensal (decisão 4 do GATE 1): a visão do Todos e a dos centros são estados separados.
 1b. **Pill "Sem centro" retirada** do seletor; "Sem centro" segue como coluna do Todos (é onde fecha a soma com a
    Empresa) e o texto do "?" do seletor diz isso.
-1c. **Seleção cumulativa** de Trips/Weddings/Corp/CSC. Cada clique marca ou desmarca uma; a última marcada não sai. Com
+1c. **Seleção cumulativa** de CSC/Trips/Weddings/Corp. Cada clique marca ou desmarca uma; a última marcada não sai. Com
    as quatro marcadas, ou com um clique em "Todos", acende "Todos" e as quatro ficam em `color-mix(--brand 30%,
    --brand-soft)`. É um cinza um degrau mais escuro que o da seleção normal (`--brand-soft`), com a mesma borda e tinta
    (≈ 4,9:1 no tema neutro).

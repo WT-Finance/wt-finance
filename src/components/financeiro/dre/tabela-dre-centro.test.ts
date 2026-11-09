@@ -101,6 +101,13 @@ describe('TabelaDreCentro', () => {
     expect(html).toMatch(/aria-pressed="false"[^>]*>Todos</)
   })
 
+  it('CSC vem primeiro nas pills e nas colunas (pedido do Yan no PR #311)', () => {
+    const html = render(BASE)
+    const ordem = (re: RegExp) => [...html.matchAll(re)].map(m => m[1])
+    expect(ordem(/<button[^>]*>(CSC|Trips|Weddings|Corp)<\/button>/g)).toEqual(['CSC', 'Trips', 'Weddings', 'Corp'])
+    expect(ordem(/>(CSC|Trips|Weddings|Corp|Sem centro)<\/th>/g)).toEqual(['CSC', 'Trips', 'Weddings', 'Corp', 'Sem centro'])
+  })
+
   it('estados vazio e erro: mensagem no lugar da tabela', () => {
     expect(render({ ...BASE, seletorInicial: 'trips', leitura: { ok: false, motivo: 'vazio' } }))
       .toContain('A base de centro de custo ainda não foi carregada')
