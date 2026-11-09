@@ -64,7 +64,7 @@ describe('TabelaDreCentro', () => {
     expect(html).toMatch(/aria-pressed="true"[^>]*>Todos</)
     expect(html).toMatch(/aria-pressed="true"[^>]*>Consolidado</)
     expect(html).not.toContain('Lado a lado')
-    for (const t of ['>Trips<', '>Weddings<', '>Corp<', '>CSC<', '>Sem centro<', 'YTD 26', 'Total YTD 26', 'Quem cobre quem', 'Total das fontes']) {
+    for (const t of ['>Trips<', '>Weddings<', '>Corporativo<', '>CSC<', '>Sem centro<', 'YTD 26', 'Total YTD 26', 'Quem cobre quem', 'Total das fontes']) {
       expect(html).toContain(t)
     }
     // um só ano coberto: cada centro uma vez no cabeçalho, sem blocos de mês (o "Jan" que existe é o do Quem cobre quem)
@@ -97,7 +97,7 @@ describe('TabelaDreCentro', () => {
     const html = render({ ...BASE, seletorInicial: ['trips', 'corp'] })
     expect(html).toMatch(/aria-pressed="true"[^>]*>Consolidado</)
     expect(html.match(/>Trips<\/th>/g)?.length).toBe(1)
-    expect(html.match(/>Corp<\/th>/g)?.length).toBe(1)
+    expect(html.match(/>Corporativo<\/th>/g)?.length).toBe(1)
     for (const t of ['>Weddings</th>', '>CSC</th>', '>Sem centro</th>', 'Quem cobre quem']) expect(html).not.toContain(t)
     expect(html).toContain('Soma dos centros marcados')
     expect(html).toMatch(/aria-pressed="false"[^>]*>Todos</)
@@ -106,8 +106,8 @@ describe('TabelaDreCentro', () => {
   it('CSC vem primeiro nas pills e nas colunas (pedido do Yan no PR #311)', () => {
     const html = render(BASE)
     const ordem = (re: RegExp) => [...html.matchAll(re)].map(m => m[1])
-    expect(ordem(/<button[^>]*>(CSC|Trips|Weddings|Corp)<\/button>/g)).toEqual(['CSC', 'Trips', 'Weddings', 'Corp'])
-    expect(ordem(/>(CSC|Trips|Weddings|Corp|Sem centro)<\/th>/g)).toEqual(['CSC', 'Trips', 'Weddings', 'Corp', 'Sem centro'])
+    expect(ordem(/<button[^>]*>(CSC|Trips|Weddings|Corporativo)<\/button>/g)).toEqual(['CSC', 'Trips', 'Weddings', 'Corporativo'])
+    expect(ordem(/>(CSC|Trips|Weddings|Corporativo|Sem centro)<\/th>/g)).toEqual(['CSC', 'Trips', 'Weddings', 'Corporativo', 'Sem centro'])
   })
 
   // Pedido do Yan no PR #311: sem asterisco de "ano em curso" — como a tabela da Empresa ("YTD 26").
@@ -137,7 +137,7 @@ describe('SeletorCentro', () => {
 
   it('quatro centros + Todos (sem Empresa: ela é a tabela de cima; sem pill de Sem centro)', () => {
     const html = sel(['csc'])
-    for (const t of ['Trips', 'Weddings', 'Corp', 'CSC', 'Todos']) expect(html).toContain(`>${t}<`)
+    for (const t of ['Trips', 'Weddings', 'Corporativo', 'CSC', 'Todos']) expect(html).toContain(`>${t}<`)
     for (const t of ['Empresa', 'Sem centro', 'Lado a lado']) expect(html).not.toContain(`>${t}<`)
     expect(html).toMatch(/aria-pressed="true"[^>]*>CSC</)
   })
@@ -154,7 +154,7 @@ describe('SeletorCentro', () => {
     const html = sel(['trips', 'weddings', 'corp', 'csc'])
     expect(pill(html, 'Todos')).toContain('aria-pressed="true"')
     expect(pill(html, 'Todos')).toContain('background:var(--brand-soft)')
-    for (const c of ['Trips', 'Weddings', 'Corp', 'CSC']) {
+    for (const c of ['Trips', 'Weddings', 'Corporativo', 'CSC']) {
       expect(pill(html, c)).toContain('aria-pressed="true"')
       expect(pill(html, c)).toContain('color-mix(in srgb, var(--brand) 30%, var(--brand-soft))')
       expect(pill(html, c)).not.toContain('background:var(--brand-soft)')

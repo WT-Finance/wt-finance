@@ -13,7 +13,7 @@ export type CentroId = (typeof CENTROS)[number]
 export const ROTULO_CENTRO: Record<CentroId, string> = {
   trips:      'Trips',
   weddings:   'Weddings',
-  corp:       'Corp',
+  corp:       'Corporativo', // era "Corp" (pedido do Yan no PR #311)
   csc:        'CSC',
   sem_centro: 'Sem centro',
 }
