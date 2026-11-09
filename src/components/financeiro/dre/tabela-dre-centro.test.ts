@@ -40,7 +40,7 @@ describe('TabelaDreCentro', () => {
       '(=) RESULTADO DE CAIXA',
       'Memória',
       'Saldo operacional acumulado',
-      'Total 2026*',
+      'Total 2026',
     ]) expect(html).toContain(t)
     // pedidos do Yan no PR #311: sem notas sob a tabela e sem as pills Realizado / Realizado + Previsto
     for (const t of ['Cobertura de centro', 'Taxa ainda não lançada', 'Tomado e ainda não devolvido', 'Memória (fora das somas)',
@@ -64,7 +64,7 @@ describe('TabelaDreCentro', () => {
     expect(html).toMatch(/aria-pressed="true"[^>]*>Todos</)
     expect(html).toMatch(/aria-pressed="true"[^>]*>Consolidado</)
     expect(html).not.toContain('Lado a lado')
-    for (const t of ['>Trips<', '>Weddings<', '>Corp<', '>CSC<', '>Sem centro<', 'YTD 26*', 'Total YTD 26*', 'Quem cobre quem', 'Total das fontes']) {
+    for (const t of ['>Trips<', '>Weddings<', '>Corp<', '>CSC<', '>Sem centro<', 'YTD 26', 'Total YTD 26', 'Quem cobre quem', 'Total das fontes']) {
       expect(html).toContain(t)
     }
     // um só ano coberto: cada centro uma vez no cabeçalho, sem blocos de mês (o "Jan" que existe é o do Quem cobre quem)
@@ -108,6 +108,18 @@ describe('TabelaDreCentro', () => {
     const ordem = (re: RegExp) => [...html.matchAll(re)].map(m => m[1])
     expect(ordem(/<button[^>]*>(CSC|Trips|Weddings|Corp)<\/button>/g)).toEqual(['CSC', 'Trips', 'Weddings', 'Corp'])
     expect(ordem(/>(CSC|Trips|Weddings|Corp|Sem centro)<\/th>/g)).toEqual(['CSC', 'Trips', 'Weddings', 'Corp', 'Sem centro'])
+  })
+
+  // Pedido do Yan no PR #311: sem asterisco de "ano em curso" — como a tabela da Empresa ("YTD 26").
+  it('nenhum rótulo com asterisco, em nenhuma visão', () => {
+    for (const p of [
+      BASE,
+      { ...BASE, visaoLadoInicial: 'mensal' as const },
+      { ...BASE, seletorInicial: 'weddings' as const },
+      { ...BASE, seletorInicial: ['trips', 'corp'] as const },
+    ]) {
+      expect(render(p)).not.toMatch(/(YTD \d{2}|Total( YTD)? \d{2,4})\*/)
+    }
   })
 
   it('estados vazio e erro: mensagem no lugar da tabela', () => {

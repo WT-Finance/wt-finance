@@ -83,7 +83,7 @@ describe('visões', () => {
     const v = visaoMensal({ ano: 2026, centro: 'weddings', lc: ano.porCentro.weddings, fim: FIM, parcial: true })
     expect(v.colunas.map(c => c.id)).toEqual([...Array.from({ length: 11 }, (_, i) => `m${i + 1}`), 'total', 'av'])
     expect(v.colunas[10].rotulo).toBe('Nov · parcial')
-    expect(v.colunas[11].rotulo).toBe('Total 2026*')
+    expect(v.colunas[11].rotulo).toBe('Total 2026')
     // memória de saldo: o total é o saldo do fim, não a soma
     expect(v.valores.total['m:MEM_SALDO_OP']).toBe(ano.porCentro.weddings.memoria[1].meses[FIM - 1])
   })
@@ -93,7 +93,7 @@ describe('visões', () => {
       mesJanela: FIM,
       anos: [{ ano: 2026, parcial: true, fim: FIM, lc: ano.porCentro.csc }],
     })!
-    expect(v.colunas.map(c => c.rotulo)).toEqual(['YTD 26*', 'AV'])
+    expect(v.colunas.map(c => c.rotulo)).toEqual(['YTD 26', 'AV'])
   })
 
   // Num ano FECHADO, a coluna "YTD" corta jan..mesJanela — a AV divide pela Receita Bruta do centro NA MESMA janela.
@@ -105,7 +105,7 @@ describe('visões', () => {
         { ano: 2026, parcial: true, fim: FIM, lc: ano.porCentro.weddings },
       ],
     })!
-    expect(v.colunas.map(c => c.rotulo)).toEqual(['2025', 'YTD 25', 'AV', 'Δ% YTD 25·26', 'YTD 26*', 'AV'])
+    expect(v.colunas.map(c => c.rotulo)).toEqual(['2025', 'YTD 25', 'AV', 'Δ% YTD 25·26', 'YTD 26', 'AV'])
     const soma11 = (k: string) => ano.porCentro.weddings.linhas.find(l => l.chave === k)!.meses.slice(0, FIM).reduce((s, x) => s + x, 0)
     expect(v.valores.av2025['b:REX']).toBeCloseTo((soma11('REX') / soma11(CHAVE_BASE_AV)) * 100, 9)
     expect(v.valores.av2025[`b:${CHAVE_BASE_AV}`]).toBeCloseTo(100, 9)
@@ -159,8 +159,8 @@ describe('visões', () => {
       mesJanela: FIM,
       anos: [{ ano: 2026, parcial: true, fim: FIM, porCentro: ano.porCentro }],
     })!
-    expect(v.grupos).toEqual([expect.objectContaining({ rotulo: 'YTD 26*', span: CENTROS.length * 2 })])
-    expect(v.colunas.at(-2)).toMatchObject({ id: 'total', rotulo: 'Total YTD 26*', fixa: 'total' })
+    expect(v.grupos).toEqual([expect.objectContaining({ rotulo: 'YTD 26', span: CENTROS.length * 2 })])
+    expect(v.colunas.at(-2)).toMatchObject({ id: 'total', rotulo: 'Total YTD 26', fixa: 'total' })
     const k = `b:${LINHA_RES.chave}`
     const soma = CENTROS.reduce((s, c) => s + (v.valores[`y2026:${c}`][k] ?? 0), 0)
     expect(v.valores.total[k]).toBeCloseTo(soma, 6)
@@ -199,10 +199,10 @@ describe('visões', () => {
         { ano: 2026, parcial: true, fim: FIM, porCentro: ano.porCentro },
       ],
     })!
-    expect(v.grupos.map(g => g.rotulo)).toEqual(['2025', 'YTD 25', 'Δ% YTD 25·26', 'YTD 26*'])
+    expect(v.grupos.map(g => g.rotulo)).toEqual(['2025', 'YTD 25', 'Δ% YTD 25·26', 'YTD 26'])
     expect(v.grupos.reduce((s, g) => s + g.span, 0)).toBe(v.colunas.filter(c => !c.fixa).length)
     const k = `b:${LINHA_RES.chave}`
     for (const c of CENTROS) expect(v.valores[`d2025:${c}`][k]).toBe(0) // mesmo dado nos dois anos ⇒ Δ% zero
-    expect(v.colunas.at(-2)?.rotulo).toBe('Total YTD 26*')
+    expect(v.colunas.at(-2)?.rotulo).toBe('Total YTD 26')
   })
 })

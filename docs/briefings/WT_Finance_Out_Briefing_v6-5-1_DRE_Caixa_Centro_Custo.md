@@ -103,12 +103,12 @@ Decisões de produto do Yan ao ver o card, aplicadas no mesmo PR antes do merge:
 1. **"Lado a lado" virou "Todos"**, com as duas visões (o id interno segue `lado`):
    - **Consolidado** (abre nele): um bloco por ano com os 5 centros e a AV de cada um — ano inteiro dos fechados, YTD de
      todos, Δ% por centro entre YTDs — e o "Total YTD" do ano de referência + AV presos à direita. Hoje (só 2026 coberto)
-     é um bloco "YTD 26*"; o Δ% aparece sozinho em 2027.
+     é um bloco "YTD 26"; o Δ% aparece sozinho em 2027.
    - **Mensal**: os meses empilhados — um bloco por mês (jan até o mês corrente, este "· parcial") com os 5 centros, só
      valor — e o Total + AV presos à direita. O bloco "Acumulado" saiu (o Consolidado cumpre o papel). Memória: no bloco
      do mês, a de soma é a do mês e a de saldo é a do fim do mês.
    - Testes provam Σ centros do mês ≡ REX do mês, Total ≡ REX do ano, Total do Consolidado ≡ Σ centros, Δ% e a ordem dos
-     blocos com dois anos. No Exportar, a coluna leva o bloco ("Jan · Trips", "YTD 26* · AV CSC").
+     blocos com dois anos. No Exportar, a coluna leva o bloco ("Jan · Trips", "YTD 26 · AV CSC").
    - A frase "Sem Δ% contra 2025" do Consolidado passa a aparecer na abertura do card (ela já existia no Consolidado por
      centro).
    - Os centros seguem abrindo em Mensal (decisão 4 do GATE 1): a visão do Todos e a dos centros são estados separados.
@@ -128,7 +128,7 @@ Decisões de produto do Yan ao ver o card, aplicadas no mesmo PR antes do merge:
 2. **Notas sob a tabela retiradas** (cobertura, antecipações identificadas/não identificadas, taxa pendente, tomado e não
    devolvido, explicação da memória e a nota "* ano em curso"). O cálculo (`montar.ts → notas`) ficou, coberto por teste,
    mas **nada mais o mostra na tela**. Ficou só a frase "Sem Δ% contra «ano−1»" do Consolidado, que não estava no print.
-   Efeitos: a explicação da memória segue só no `title` das linhas (não abre por teclado/toque); o "*" de "Total 2026*"
+   Efeitos: a explicação da memória segue só no `title` das linhas (não abre por teclado/toque); o asterisco de "Total 2026*" (depois retirado, item 7)
    fica explicado só no `title` da coluna; no Consolidado as pills de ano já não mudam nada visível (antes trocavam o ano
    das notas).
 3. **Linhas de antecipação (C, D, taxa) no âmbar do previsto** da DRE de caixa — a MESMA régua (`fundoPrevisto`, exportado
@@ -146,6 +146,8 @@ Decisões de produto do Yan ao ver o card, aplicadas no mesmo PR antes do merge:
      "—" em todas as linhas. Num recorte em que a receita do CSC for positiva e pequena, os percentuais ficam muito
      grandes.
    - Para comparar, Trips tem R$ 5,37 mi, Weddings R$ 5,00 mi, Corp R$ 3,57 mi e Sem centro R$ 57,9 mil.
+7. **Sem asterisco de "ano em curso"** ("YTD 26", "Total 2026", "Total YTD 26"), como a tabela da Empresa. O mês em curso
+   segue marcado só por "Nov · parcial" no Mensal. Teste novo garante que nenhuma visão volta a ter rótulo com asterisco.
 
 Gate desta rodada: dois testes que vão ao banco de produção falharam UMA vez e passaram na repetição. Foram a deriva
 sintética do `schema-baseline` e o contrato de `get_marketing_gastos_resumo`, este com `57014 statement timeout`

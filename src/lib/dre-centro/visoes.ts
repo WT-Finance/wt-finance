@@ -202,7 +202,7 @@ export function visaoMensal(args: {
     // Na coluna de um mês a memória de SOMA é a do mês, não a acumulada.
     for (const m of lc.memoria) valores[id][chaveMemoria(m)] = m.meses[i]
   }
-  const rotuloTotal = `Total ${ano}${parcial ? '*' : ''}`
+  const rotuloTotal = `Total ${ano}`
   colunas.push({
     id: 'total', rotulo: rotuloTotal, tipo: 'valor', fixa: 'total', divisoria: true,
     titulo: parcial ? `Realizado de jan a ${MESES[fim - 1].toLowerCase()} (ano em curso)` : 'Realizado do ano',
@@ -222,7 +222,7 @@ export function visaoMensal(args: {
 
 export interface AnoCentro {
   ano: number
-  /** Ano em curso (o total é parcial, marcado com `*`). */
+  /** Ano em curso (o total é parcial; sem asterisco no rótulo — pedido do Yan no PR #311). */
   parcial: boolean
   fim: number
   lc: LinhasCentro
@@ -244,7 +244,7 @@ export function visaoConsolidado(args: { anos: AnoCentro[]; mesJanela: number })
     }
     const idYtd = `y${a.ano}`
     colunas.push({
-      id: idYtd, rotulo: `YTD ${anoCurto(a.ano)}${a.parcial ? '*' : ''}`, tipo: 'valor',
+      id: idYtd, rotulo: `YTD ${anoCurto(a.ano)}`, tipo: 'valor',
       titulo: `Realizado de jan a ${MESES[janela - 1].toLowerCase()} de ${a.ano}`,
     })
     valores[idYtd] = colunaValor(a.lc.linhas, a.lc.memoria, janela, l => ytd(l, janela))
@@ -344,7 +344,7 @@ export function visaoLadoALado(args: {
 
 export interface AnoLado {
   ano: number
-  /** Ano em curso (o YTD é parcial, marcado com `*`). */
+  /** Ano em curso (o YTD é parcial; sem asterisco no rótulo). */
   parcial: boolean
   fim: number
   porCentro: Record<CentroId, LinhasCentro>
@@ -376,7 +376,7 @@ export function visaoLadoALadoConsolidado(args: {
       }
     }
     grupos.push({
-      rotulo: `YTD ${anoCurto(a.ano)}${a.parcial ? '*' : ''}`,
+      rotulo: `YTD ${anoCurto(a.ano)}`,
       titulo: `Realizado de jan a ${mesJ} de ${a.ano}`,
       span: cs.length * 2,
     })
@@ -406,6 +406,6 @@ export function visaoLadoALadoConsolidado(args: {
     }
   })
   const ytdRef = cs.map(c => valores[`y${ref.ano}:${c}`])
-  colunasTotal(colunas, valores, ref.porCentro.trips, ytdRef, `Total YTD ${anoCurto(ref.ano)}${ref.parcial ? '*' : ''}`, todosOsCentros(cs))
+  colunasTotal(colunas, valores, ref.porCentro.trips, ytdRef, `Total YTD ${anoCurto(ref.ano)}`, todosOsCentros(cs))
   return { grupos, colunas, linhas: ref.porCentro.trips.linhas, memoria: ref.porCentro.trips.memoria, valores }
 }
