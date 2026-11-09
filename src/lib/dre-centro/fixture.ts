@@ -3,9 +3,11 @@ import { CENTROS, porCentro, zeros12, type CentroId } from './centros'
 import { mesFimRealizado } from './visoes'
 import type { DreCentroAno, EventoAntecipacao, RecebivelAntecipado } from './tipos'
 
-// ── FIXTURE do mockup do GATE 1 (v6.5.1) — números FICTÍCIOS ─────────────────
+// ── Dados SINTÉTICOS da DRE por centro (v6.5.1) — números FICTÍCIOS, só para TESTES ──────────
 //
-// ⚠️ Sai na M4, quando a RPC da M3 entra no lugar. Nada daqui é regra de negócio.
+// Nasceu como a fixture do mockup do GATE 1; desde a M4 a página lê a RPC real
+// (`get_dre_caixa_centro`, 0306) e este módulo ficou só como gerador de dado coerente para os
+// testes do componente e do módulo puro. Nada daqui é regra de negócio; a regra real vive na 0306.
 //
 // Os centros são a carga REAL da visão Empresa (`get_dre_mensal` do ano corrente) repartida por
 // pesos fictícios por FOLHA da árvore (operação × pessoas × estrutura), com um pouco de
@@ -23,22 +25,6 @@ import type { DreCentroAno, EventoAntecipacao, RecebivelAntecipado } from './tip
 
 /** `dim_categoria.id` de "Taxa de Antecipação" (bloco FIN) — medido na M0 (Q3). */
 export const CATEGORIA_TAXA_ANTECIPACAO = 38
-
-export type EstadoFixture = 'normal' | 'vazio' | 'erro'
-
-export function estadoDaUrl(v: string | string[] | undefined): EstadoFixture {
-  const s = Array.isArray(v) ? v[0] : v
-  return s === 'vazio' || s === 'erro' ? s : 'normal'
-}
-
-/** Carimbos do mockup: as duas bases novas "carregadas" junto com a de lançamentos (o dia da
- *  carga é o que a nota de cobertura cobra). `vazio` = base de centro nunca carregada. */
-export function carimbosFixture(ultimaCargaMovimentacao: string | null, estado: EstadoFixture) {
-  return {
-    centroCusto: estado === 'vazio' ? null : ultimaCargaMovimentacao,
-    antecipacoes: ultimaCargaMovimentacao,
-  }
-}
 
 export interface BlocoFormula {
   chave: string

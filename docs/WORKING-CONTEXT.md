@@ -9,7 +9,7 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-11-09 (v6.5.1 em voo: M3 feita, 0306 aplicada; próxima M4).
+Última atualização: 2026-11-09 (v6.5.1 em voo: M4 feita; próximas M5 e M6).
 
 ---
 
@@ -77,8 +77,14 @@ Worktree `.claude/worktrees/v6-5-1-dre-caixa-centro-custo`. Briefing `docs/brief
     Empresa trata como previsto — mesmo predicado por construção; (b) revisor-db M1 (fronteira de produto): cada ano é
     identificado isoladamente — antecipação de fim de dezembro com movimentação em janeiro, e o D de antecipação de
     2026 que vence em 2027, não aparecem na visão de 2027; (c) a taxa pendente segue o protótipo: Σ (registro − Monde).
-- **Próximo passo: M4** (front: o card por centro passa a ler `get_dre_caixa_centro` no lugar da fixture; carimbos
-  reais; remover `fixture.ts`/`dre_estrutura` da página; Empresa intocada).
+- **M4 feita** — a página lê `get_dre_caixa_centro` do ano corrente (última chamada do `allSettled`, no lugar de
+  `dre_estrutura`) e, num 2º estágio, os demais anos de `anos_com_centro`; estado "vazio" = nenhum ano com centro (base
+  ainda não carregada), "erro" = RPC falhou (só o card); carimbos "Centro de custo" e "Antecipações · Último registro"
+  vêm da RPC; `?estado=` do mockup saiu. `fixture.ts` ficou só como dado sintético dos TESTES. Tabela da Empresa
+  intocada (snapshot verde). Até a 1ª carga do Yan o card mostra "a base de centro de custo ainda não foi carregada".
+  Conferência visual: depende de login (Yan, no preview).
+- **Próximo passo: M5** (contratos via REST: shapes, paridade, anon e sem-área negados, `ingestor` só nas 4 RPCs — boa
+  parte já entrou na M3) → **M6** fechamento.
 
 ---
 
