@@ -1,6 +1,6 @@
 ---
 name: ingestao-planilhas
-description: Ingestão de planilhas/Excel no Janus — desde a v6.0.0 as bases financeiras vivas (Demonstrativo, Vendas, Movimentação, Aberto, Operação; a sexta, Contas a receber, desde a v6.4.0) parseiam no SERVIDOR via API Route (`/api/ingestao/{base}`, checksum do arquivo como gate); Pessoas é a única que ainda parseia no cliente + Web Worker + Server Action (Server Action só quando apenas linhas já parseadas viajam). Leitura de datas e números pelo valor NATIVO da célula (cellDates/raw: true), coerção canônica única em @/lib/carga/coercao.ts (toNum/toIsoDate/toCentavos — o lint wt/no-coercao-reimpl bloqueia reimplementação), parser único de Vendas e pipeline atômico de carga. Use ao mexer em upload, parser, importação, coerção de número/data vindos de arquivo ou input do usuário, ou quando uma soma do cliente for comparada com uma soma do banco.
+description: Ingestão de planilhas/Excel no Janus — desde a v6.0.0 as bases financeiras vivas (Demonstrativo, Vendas, Movimentação, Aberto, Operação; a sexta, Contas a receber, desde a v6.4.0; a sétima, Lançamentos por Centro de Custo, desde a v6.5.1) parseiam no SERVIDOR via API Route (`/api/ingestao/{base}`, checksum do arquivo como gate); Pessoas é a única que ainda parseia no cliente + Web Worker + Server Action (Server Action só quando apenas linhas já parseadas viajam). Leitura de datas e números pelo valor NATIVO da célula (cellDates/raw: true), coerção canônica única em @/lib/carga/coercao.ts (toNum/toIsoDate/toCentavos — o lint wt/no-coercao-reimpl bloqueia reimplementação), parser único de Vendas e pipeline atômico de carga. Use ao mexer em upload, parser, importação, coerção de número/data vindos de arquivo ou input do usuário, ou quando uma soma do cliente for comparada com uma soma do banco.
 ---
 
 # Ingestão de planilhas (Janus)
@@ -26,7 +26,7 @@ v4.7 (PEND-001) quando uma Server Action de upload quebrava silenciosamente.
 acrescentada na v5.8.0, onde a redação genérica anterior induziu o plano ao caminho errado).
 
 **Desde a v6.0.0, as bases financeiras vivas (Demonstrativo, Vendas, Movimentação, Aberto,
-Operação — seis com Contas a receber, v6.4.0) migraram para API Route** (`POST /api/ingestao/{base}`, §8 adiante): o navegador sobe o
+Operação — seis com Contas a receber, v6.4.0; sete com Lançamentos por Centro de Custo, v6.5.1) migraram para API Route** (`POST /api/ingestao/{base}`, §8 adiante): o navegador sobe o
 `File` cru por signed upload URL e quem parseia é o servidor, com `@e965/xlsx` em runtime Node
 puro — exatamente o caso que esta regra sempre existiu para prever. **Pessoas é a única que
 continua no caminho antigo** (decisão 11 do briefing v6.0.0: fica fora da fundação, parada mas
@@ -37,7 +37,7 @@ Escolha assim:
 
 | O que atravessa a rede | Caminho | Precedente |
 |---|---|---|
-| o `File`/buffer | **API Route** `runtime = 'nodejs'` | `src/app/api/ingestao/{base}/route.ts` (6 bases) · `src/app/api/gerencial/import/route.ts` |
+| o `File`/buffer | **API Route** `runtime = 'nodejs'` | `src/app/api/ingestao/{base}/route.ts` (7 bases) · `src/app/api/gerencial/import/route.ts` |
 | arrays já parseados no cliente | **Server Action** em lotes | `src/app/admin/ingestao/upload/actions.ts` (só **Pessoas**) |
 
 ## 2. Parse pesado no cliente → Web Worker, nunca a main thread
@@ -65,7 +65,7 @@ regra — o parse funcionava perfeitamente em dev com arquivos pequenos e só qu
 volume de produção.
 
 **Desde a v6.0.0, este caminho (parse no navegador + Web Worker) vale só para Pessoas.** As outras
-seis bases parseiam no servidor (§8) — o navegador delas só calcula sha256 e sobe o arquivo cru.
+sete bases parseiam no servidor (§8) — o navegador delas só calcula sha256 e sobe o arquivo cru.
 
 ## 3. Célula de planilha: ler o valor NATIVO — vale para data E para dinheiro
 
@@ -338,7 +338,7 @@ numa função separada: é o que permite testar o arquivo caractere a caractere 
 ## 8. Ingestão v6.0.0: parser único por base no SERVIDOR, checksum do arquivo como gate
 
 Desde a v6.0.0 as bases vivas (Demonstrativo, Vendas, Movimentação, Aberto, Operação; **Contas a receber**
-desde a v6.4.0 — seis ao todo) entram
+desde a v6.4.0; **Lançamentos por Centro de Custo** desde a v6.5.1 — sete ao todo) entram
 por `POST /api/ingestao/{base}` (contrato: `docs/contratos/ingestao-v1.md`) — o navegador sobe o
 **cru** por signed upload URL, o servidor parseia (núcleo `*Rows` de `src/lib/ingestao/parsers/`,
 compartilhado com o card de `/admin/ingestao/upload`) e a carga inteira roda numa transação. Cada base tem
@@ -429,6 +429,26 @@ Lições permanentes, detalhadas nos anexos `docs/briefings/anexo-v6-0-0-m{3,4,5
   - **Dependência humana**: ampliar os CHECKs de `base` de `ingestao.carga`/`promocao` é o patch destrutivo
     `supabase/patches/contas_receber_checks_ingestao.sql` (skill `banco-e-rpc` §5); até ele, a carga da base
     falha FECHADA. `api_chave` e `expectativa` seguem com 5 bases (exceção declarada em `bases.ts`).
+- **Base `lancamentos-centro-custo` (v6.5.1, ADR-0184) — a sétima; "Lançamentos por Centro de Custo" do Monde.**
+  Parser `parsers/lancamentos-centro-custo.ts`, RPCs `*_centro_custo` (0304), contrato
+  `docs/specs/v6-5-1-m2-base-centro-custo.md`. Um arquivo por carga; base de FLUXO (alarma "ano fechado alterado").
+  - **Checksum = o OUTLINE de cada centro** (`Centro de Custo :  WG - Corp (2980, R$ 1.325.290,56)`): contagem e Σ de
+    `Valor Centro Custo` — que o export traz **SEM sinal** — com o sinal de `Valor Movimentação`. O parser grava o valor
+    JÁ assinado. A linha de total do rodapé soma `Valor Movimentação` repetido por centro e **não** serve de checksum.
+  - **Grupo recolhido (`+` na coluna A) REJEITA a carga**, mesmo com o checksum fechando: o Excel não exporta as linhas
+    de um grupo recolhido (o primeiro export de teste perdeu 83% das linhas assim). A fixture negativa é **sintética**
+    (derivada do export real: o outline vira `+` e as linhas do grupo saem).
+  - **Lista fechada com sonda ESTÁTICA** (`lista-fechada-centro-custo.test.ts`): além da prova dinâmica (saída do parser),
+    a sonda lê o DDL de todas as migrations e reprova coluna nova na raw — `Pessoa`, `Descrição` e `Valor Lançamento`
+    nunca entram. Foi vista reprovar com um mutante `ADD COLUMN pessoa`.
+  - **Centro desconhecido reprova** (dimensão fechada `financeiro.centro_custo`); nunca cai calado em "Sem centro".
+  - **A promoção regenera o RATEIO** (`financeiro.centro_custo_rateio`, Σ pesos = 1 exato por Número) na mesma transação.
+  - **Datas:** no export real, 31 caem fora da faixa da errata 1 (29 Emissão — datas zero do Excel e emissões antigas —,
+    2 Vencimento, **nenhuma Movimentação**); contadas por campo no oráculo. ⚠️ A delegação dizia "nenhuma data
+    rejeitada" sem medir — o oráculo com o arquivo real pegou: **afirmação sobre o arquivo se mede antes de virar asserção.**
+  - Sem RPA e sem expectativa do vigia (`BASES_SEM_ESCOPO_DE_CHAVE`). Ampliar os CHECKs de base foi a 0305 (destrutiva por
+    classificação): o agente fez o pré-voo (patch movido para `migrations/`, teste de paridade reapontado, classificação,
+    única pendente, ensaio revertido) e o Yan só rodou o `db:migrate -- --destrutiva`.
 
 ## 9. Entrega pelas RPAs (v6.1.0, errata 4, ADR-0179)
 
