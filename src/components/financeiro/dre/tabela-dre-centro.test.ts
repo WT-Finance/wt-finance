@@ -39,11 +39,11 @@ describe('TabelaDreCentro', () => {
       '(=) Resultado de caixa',
       'Memória',
       'Saldo operacional acumulado',
-      'Cobertura de centro em 2026',
-      'Taxa ainda não lançada no Monde',
       'Total 2026*',
-      'Realizado + Previsto',
     ]) expect(html).toContain(t)
+    // pedidos do Yan no PR #311: sem notas sob a tabela e sem as pills Realizado / Realizado + Previsto
+    for (const t of ['Cobertura de centro', 'Taxa ainda não lançada', 'Tomado e ainda não devolvido', 'Memória (fora das somas)',
+      '2026 em curso', 'Realizado + Previsto', 'Só o que já aconteceu', 'Por que não há previsto']) expect(html).not.toContain(t)
     // anos sem cobertura desabilitados; o resultado do exercício não aparece com o rótulo antigo
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*title="2025 não tem centro de custo/)
     expect(html).not.toContain('(=) Resultado do exercício')
@@ -55,12 +55,27 @@ describe('TabelaDreCentro', () => {
     expect(render({ ...BASE, seletorInicial: 'csc' })).toContain('AV*')
   })
 
-  it('abre em Lado a lado: colunas por centro, Total e o card Quem cobre quem', () => {
+  it('abre em Lado a lado: um bloco por mês com os centros, o acumulado, Total e o card Quem cobre quem', () => {
     const html = render(BASE)
     expect(html).toMatch(/aria-pressed="true"[^>]*>Lado a lado</)
-    for (const t of ['>Trips<', '>Weddings<', '>Corp<', '>CSC<', '>Sem centro<', '>Total<', 'Quem cobre quem', 'Total das fontes']) {
+    for (const t of ['>Trips<', '>Weddings<', '>Corp<', '>CSC<', '>Sem centro<', '>Total<', 'Quem cobre quem', 'Total das fontes',
+      '>Jan<', '>Out<', 'Acumulado 2026']) {
       expect(html).toContain(t)
     }
+    // o mês corrente (parcial) também vira bloco, com o sufixo em caixa normal
+    expect(html).toMatch(/Nov<span[^>]*>\s*·\s*parcial<\/span>/)
+    // no cabeçalho da tabela, cada centro aparece uma vez por mês (11) + uma no acumulado
+    expect(html.match(/>Weddings<\/th>/g)?.length).toBe(12)
+  })
+
+  it('linhas de antecipação no âmbar do previsto (a mesma régua da DRE de caixa da Empresa)', () => {
+    const html = render({ ...BASE, seletorInicial: 'weddings' })
+    const linha = (rotulo: string) => html.split('<tr').find(tr => tr.includes(rotulo)) ?? ''
+    for (const r of ['(+) Antecipação de recebíveis - C', '(−) Antecipação de recebíveis - D', '(−) Taxa de antecipação']) {
+      expect(linha(r)).toContain('var(--warning-bg)')
+    }
+    expect(linha('(=) Resultado de caixa')).not.toContain('var(--warning')
+    expect(linha('(=) Resultado operacional de caixa')).not.toContain('var(--warning')
   })
 
   it('estados vazio e erro: mensagem no lugar da tabela', () => {

@@ -115,8 +115,32 @@ describe('visões', () => {
     const v = visaoLadoALado({ ano: 2026, porCentro: ano.porCentro, fim: FIM, parcial: true, rbEmpresaMeses: null })
     const k = `b:${LINHA_RES.chave}`
     expect(v.valores.total[k]).toBeCloseTo(tot(REX.slice(0, FIM)), 4)
-    expect(v.colunas.filter(c => c.tipo === 'valor')).toHaveLength(6)
+    // 11 meses × 5 centros + 5 centros no acumulado + o Total
+    expect(v.colunas.filter(c => c.tipo === 'valor')).toHaveLength(FIM * CENTROS.length + CENTROS.length + 1)
     const somaCentros = CENTROS.reduce((s, c) => s + (v.valores[`v:${c}`][k] ?? 0), 0)
     expect(v.valores.total[k]).toBeCloseTo(somaCentros, 6)
+  })
+
+  // Pedido do Yan no PR #311: os meses empilhados, um bloco por mês com os 5 centros.
+  it('Lado a lado: um bloco por mês (5 centros), o mês fecha com o acumulado e Σ centros do mês = REX do mês', () => {
+    const v = visaoLadoALado({ ano: 2026, porCentro: ano.porCentro, fim: FIM, parcial: true, rbEmpresaMeses: null })
+    expect(v.grupos.map(g => g.rotulo)).toEqual([
+      'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov · parcial', 'Acumulado 2026',
+    ])
+    expect(v.grupos.slice(0, FIM).every(g => g.span === CENTROS.length)).toBe(true)
+    // os spans cobrem exatamente as colunas não presas
+    expect(v.grupos.reduce((s, g) => s + g.span, 0)).toBe(v.colunas.filter(c => !c.fixa).length)
+    const k = `b:${LINHA_RES.chave}`
+    for (let i = 0; i < FIM; i++) {
+      const doMes = CENTROS.reduce((s, c) => s + (v.valores[`m${i + 1}:${c}`][k] ?? 0), 0)
+      expect(doMes).toBeCloseTo(REX[i], 6)
+    }
+    for (const c of CENTROS) {
+      const somaMeses = Array.from({ length: FIM }, (_, i) => v.valores[`m${i + 1}:${c}`][k] ?? 0).reduce((s, x) => s + x, 0)
+      expect(somaMeses).toBeCloseTo(v.valores[`v:${c}`][k] ?? 0, 6)
+      // memória de saldo no mês = saldo do fim do mês; a de soma = a do mês
+      expect(v.valores[`m${FIM}:${c}`]['m:MEM_SALDO_OP']).toBe(ano.porCentro[c].memoria[1].meses[FIM - 1])
+      expect(v.valores[`m3:${c}`]['m:MEM_CEDIDOS']).toBe(ano.porCentro[c].memoria[0].meses[2])
+    }
   })
 })

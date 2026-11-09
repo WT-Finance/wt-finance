@@ -278,7 +278,7 @@ export function visaoConsolidado(args: { centro: CentroId; anos: AnoCentro[]; me
   }
 }
 
-// ── Visão 3: Lado a lado (um ano; centros nas colunas) ───────────────────────
+// ── Visão 3: Lado a lado (um ano; um bloco por mês com os centros + o acumulado do ano) ──
 
 export const TITULO_TOTAL_LADO =
   'Soma dos centros. O Resultado de caixa é igual ao último totalizador da visão Empresa; as ' +
@@ -293,15 +293,39 @@ export function visaoLadoALado(args: {
   parcial: boolean
   rbEmpresaMeses: readonly number[] | null
 }): VisaoTabela {
-  const { porCentro, fim, rbEmpresaMeses } = args
+  const { ano, porCentro, fim, parcial, rbEmpresaMeses } = args
   const esqueleto = porCentro.trips
   const colunas: ColunaVisao[] = []
   const valores: VisaoTabela['valores'] = {}
-  CENTROS.forEach((c, i) => {
+  const grupos: GrupoCabecalho[] = []
+  // Meses EMPILHADOS (pedido do Yan no PR #311): um bloco por mês com os 5 centros, só valor (AV por
+  // mês × centro dobraria as colunas). Memória de SOMA = a do mês; de SALDO = a do fim do mês.
+  for (let i = 0; i < fim; i++) {
+    const ultimo = parcial && i === fim - 1
+    grupos.push({
+      rotulo: `${MESES[i]}${ultimo ? SUF_PARCIAL : ''}`,
+      titulo: ultimo ? 'Mês em curso — realizado até hoje' : `Realizado de ${MESES[i].toLowerCase()}`,
+      span: CENTROS.length,
+    })
+    for (const c of CENTROS) {
+      const lc = porCentro[c]
+      const id = `m${i + 1}:${c}`
+      colunas.push({ id, rotulo: ROTULO_CENTRO[c], titulo: `${ROTULO_CENTRO[c]} em ${MESES[i].toLowerCase()}`, tipo: 'valor' })
+      valores[id] = colunaValor(lc.linhas, lc.memoria, i + 1, l => l.meses[i])
+      for (const m of lc.memoria) valores[id][chaveMemoria(m)] = m.meses[i]
+    }
+  }
+  // Bloco do ano (o Lado a lado de antes): cada centro com a AV dele, depois o Total presos à direita.
+  grupos.push({
+    rotulo: `Acumulado ${ano}`,
+    titulo: `Realizado de jan a ${MESES[fim - 1].toLowerCase()} de ${ano}${parcial ? ' (ano em curso)' : ''}`,
+    span: CENTROS.length * 2,
+  })
+  CENTROS.forEach((c) => {
     const lc = porCentro[c]
     colunas.push({
-      id: `v:${c}`, rotulo: 'Realizado', titulo: `Realizado de ${ROTULO_CENTRO[c]}, jan a ${MESES[fim - 1].toLowerCase()}`,
-      tipo: 'valor', divisoria: i > 0,
+      id: `v:${c}`, rotulo: ROTULO_CENTRO[c], titulo: `Realizado de ${ROTULO_CENTRO[c]}, jan a ${MESES[fim - 1].toLowerCase()}`,
+      tipo: 'valor',
     })
     valores[`v:${c}`] = colunaValor(lc.linhas, lc.memoria, fim, l => ytd(l, fim))
     const proprio = receitaBruta(lc.linhas, fim)
@@ -321,8 +345,5 @@ export function visaoLadoALado(args: {
   const rbTotal = baseAv(total[`b:${CHAVE_BASE_AV}`] ?? null)
   colunas.push({ id: 'av', rotulo: 'AV', titulo: '% sobre a Receita Bruta da soma dos centros', tipo: 'av', fixa: 'av' })
   valores.av = colunaAv(esqueleto.linhas, l => total[chaveDeLinha(l) ?? ''] ?? 0, rbTotal)
-  return {
-    grupos: CENTROS.map(c => ({ rotulo: ROTULO_CENTRO[c], titulo: `Centro de custo ${ROTULO_CENTRO[c]}`, span: 2 })),
-    colunas, linhas: esqueleto.linhas, memoria: esqueleto.memoria, valores,
-  }
+  return { grupos, colunas, linhas: esqueleto.linhas, memoria: esqueleto.memoria, valores }
 }

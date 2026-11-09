@@ -522,6 +522,12 @@ const BG_PREVISTO: Record<TipoLinha, string> = {
   tot:    BG_PREV_ESCURO,
 }
 
+/** O fundo âmbar do previsto para um nível de linha — exportado para a DRE por centro pintar as linhas de
+ *  antecipação com a MESMA régua (pedido do Yan na v6.5.1), sem uma segunda cópia do mapa. */
+export function fundoPrevisto(tipo: TipoLinha): string {
+  return BG_PREVISTO[tipo]
+}
+
 /** VENCIDO (rodada 4/Refino 5) = a MESMA escala, em VERMELHO. Só a coluna "VENCIDOS" da
  *  visão Consolidado usa isto: ela não é projeção (o previsto âmbar é "ainda vai
  *  vencer"), é prazo ESTOURADO — merece cor de alerta, não de expectativa. Construção

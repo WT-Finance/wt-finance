@@ -7,19 +7,18 @@ import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/com
 import { ConteudoContabil } from './celula-contabil'
 import {
   AcoesHierarquia, CabecalhoCard, CelulaAv, CelulaConta, CelulaDeltaPct, CelulaValor, RotuloGrupo, ThConta,
-  W_AV, W_TOTAL, classeFixa, estiloFixa, estiloLinha, type Fixa,
+  W_AV, W_TOTAL, classeFixa, estiloFixa, estiloLinha, fundoPrevisto, type Fixa,
 } from './tabela-dre'
 import QuemCobreQuem from './quem-cobre-quem'
 import SeletorCentro from './seletor-centro'
 import { chaveDeLinha } from '@/lib/dre/identidade'
 import { SUF_PARCIAL } from '@/lib/dre/mes-parcial'
-import { MESES } from '@/lib/dre/colunas-tabela'
-import { fmtBRL, fmtMi, hojeSP } from '@/lib/fmt'
+import { hojeSP } from '@/lib/fmt'
 import { ROTULO_CENTRO, ROTULO_SELETOR, SELETOR_INICIAL, type CentroId, type SeletorCentro as Opcao } from '@/lib/dre-centro/centros'
 import {
-  chaveMemoria, visaoConsolidado, visaoLadoALado, visaoMensal, type ColunaVisao, type VisaoTabela,
+  LINHA_C, LINHA_D, LINHA_TAXA, chaveMemoria, visaoConsolidado, visaoLadoALado, visaoMensal, type ColunaVisao, type VisaoTabela,
 } from '@/lib/dre-centro/visoes'
-import type { AnoDadosCentro, NotasCentro } from '@/lib/dre-centro/montar'
+import type { AnoDadosCentro } from '@/lib/dre-centro/montar'
 import { abaDaVisao, nomeArquivoCentro } from '@/lib/dre-centro/exportar'
 
 // ── DRE de caixa por centro de custo (v6.5.1) — componente IRMÃO da `TabelaDre` ─────────────
@@ -32,17 +31,18 @@ import { abaDaVisao, nomeArquivoCentro } from '@/lib/dre-centro/exportar'
 // `@/lib/dre-centro/visoes`.
 //
 // Diferenças declaradas em relação à Empresa (§2 do briefing):
-//   · só Realizado — "Realizado + Previsto" fica desabilitado com o "?" explicando;
+//   · só Realizado — sem as pills Realizado/Realizado + Previsto (pedido do Yan no PR #311: por centro
+//     é sempre realizado; o título em aberto quase nunca tem centro no Monde);
 //   · só os anos com cobertura de centro (derivados do dado) — os demais ficam desabilitados;
 //   · o último totalizador vira "(=) Resultado operacional de caixa", seguido do bloco de
-//     antecipação e do "(=) Resultado de caixa";
-//   · memória fora das somas, em estilo próprio (itálico, sem AV, sem cor por sinal).
+//     antecipação (C, D e taxa no fundo âmbar do previsto, pedido do Yan) e do "(=) Resultado de caixa";
+//   · memória fora das somas, em estilo próprio (itálico, sem AV, sem cor por sinal);
+//   · sem notas de cobertura sob a tabela (saíram a pedido do Yan: poluíam a leitura).
 
 type VisaoCentro = 'mensal' | 'consolidado'
 
-const AJUDA_PREVISTO =
-  'Por centro só há Realizado. O título em aberto quase nunca tem centro de custo no Monde (90% do ' +
-  'valor em aberto de 2026 está sem centro), então uma projeção por centro seria quase toda "Sem centro".'
+/** Linhas do bloco de antecipação — pintadas com o fundo âmbar do previsto da DRE de caixa. */
+const CHAVES_ANTECIPACAO: ReadonlySet<string> = new Set([LINHA_C.chave, LINHA_D.chave, LINHA_TAXA.chave])
 
 const W_VALOR = 132
 const W_DELTA = 104
@@ -88,53 +88,6 @@ function larguraColuna(c: ColunaVisao): number {
   return c.tipo === 'av' ? W_AV : c.tipo === 'delta' ? W_DELTA : W_VALOR
 }
 
-// ── Notas de cobertura (sob a tabela) ────────────────────────────────────────
-const dataCurta = (iso: string) => iso.split('-').reverse().slice(0, 2).join('/') // date puro
-const pct = (x: number) => `${(x * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
-
-function Notas({ notas, ano }: { notas: NotasCentro; ano: number }) {
-  const pctIdent = notas.registrado > 0 ? notas.identificado / notas.registrado : 1
-  return (
-    <ul className="mt-3 space-y-1 text-xs leading-relaxed text-text-muted">
-      <li>
-        <span className="font-medium text-text-secondary">Cobertura de centro em {ano}:</span>{' '}
-        {pct(notas.coberturaPct)} do valor movimentado tem centro de custo
-        {notas.semCentro > 0.005 && <> ({fmtMi(notas.semCentro)} sem centro — corrige-se no lançamento, no Monde)</>}.
-      </li>
-      <li>
-        <span className="font-medium text-text-secondary">Antecipações de {ano}:</span>{' '}
-        {fmtMi(notas.identificado)} identificadas nos recebimentos, de {fmtMi(notas.registrado)} registradas ({pct(pctIdent)}).
-        {notas.naoIdentificadas.length > 0 && (
-          <> Não identificado: {notas.naoIdentificadas.map(n =>
-            `${dataCurta(n.data)} (${n.conta}, ${fmtMi(n.falta)}${n.motivo ? ` — ${n.motivo}` : ''})`).join('; ')}.</>
-        )}
-      </li>
-      {notas.taxaPendente < -0.005 && (
-        <li>
-          <span className="font-medium text-text-secondary">Taxa ainda não lançada no Monde:</span>{' '}
-          {fmtBRL(-notas.taxaPendente)}
-          {notas.datasTaxaPendente.length > 0 && <> (sem nenhuma taxa no Monde: {notas.datasTaxaPendente.map(dataCurta).join(', ')})</>}.
-          A DRE usa a taxa do Monde; o registro de antecipações é a conferência (a soma compensa sobras e faltas pequenas
-          entre os dois).
-        </li>
-      )}
-      {notas.naoDevolvido > 0.005 && (
-        <li>
-          <span className="font-medium text-text-secondary">Tomado e ainda não devolvido:</span>{' '}
-          {fmtMi(notas.naoDevolvido)} antecipados em {ano} vencem só em {ano + 1} — a linha C já mostra, a D virá no ano seguinte.
-        </li>
-      )}
-      {/* A explicação da memória fica VISÍVEL (o `title` das linhas não abre por teclado nem em toque — revisor). */}
-      <li>
-        <span className="font-medium text-text-secondary">Memória (fora das somas):</span>{' '}
-        recebíveis próprios cedidos = recebíveis do centro usados nas antecipações, no mês da antecipação (quem precisou do
-        caixa leva a linha C, não o dono); saldos acumulados = soma desde 1º de janeiro, no fim de cada mês — negativo é o
-        centro que consumiu mais caixa do que gerou.
-      </li>
-    </ul>
-  )
-}
-
 // ── Tabela (as três visões desenham pelo mesmo corpo) ────────────────────────
 
 function TabelaVisao({
@@ -171,7 +124,7 @@ function TabelaVisao({
               title={g.titulo}
               className={`whitespace-nowrap py-1.5 ${TH_BASE} ${i > 0 ? 'border-l-2 border-l-wt-border-strong' : ''}`}
             >
-              <RotuloGrupo larguraFixas={larguraFixas}>{g.rotulo}</RotuloGrupo>
+              <RotuloGrupo larguraFixas={larguraFixas}><RotuloColuna rotulo={g.rotulo} /></RotuloGrupo>
             </th>
           ))}
           {fixas.map(c => (
@@ -207,12 +160,17 @@ function TabelaVisao({
           const k = chaveDeLinha(l)
           const chave = l.chave ?? null
           const expansivel = chave != null && expansiveis.has(chave)
+          // Antecipação: a linha inteira (Conta inclusive) no âmbar do previsto — opaco, serve à coluna presa.
+          const ant = chave != null && CHAVES_ANTECIPACAO.has(chave)
+          const fundo = ant ? 'previsto' : 'normal'
+          const bg = ant ? fundoPrevisto(l.t) : est.bg
+          const bgHover = ant ? '' : est.bgHover
           let iNaoFixa = -1
           return (
             <tr key={`${l.t}-${k ?? l.rotulo}-${i}`} className="group">
               <CelulaConta
                 rotulo={l.rotulo} rotuloClasse={est.rotulo} indent={est.indent} borda={est.borda}
-                bg={est.bg} bgHover={est.bgHover} estrela={l.estrela}
+                bg={bg} bgHover={bgHover} estrela={l.estrela}
                 expansivel={expansivel} aberto={chave != null && abertos.has(chave)}
                 onToggle={expansivel && chave != null ? () => onToggle(chave) : undefined}
               />
@@ -222,15 +180,15 @@ function TabelaVisao({
                 if (!c.fixa) iNaoFixa++
                 const corte = !c.fixa && iNaoFixa > 0 && inicioGrupo.has(iNaoFixa)
                 if (c.tipo === 'av') {
-                  return <CelulaAv key={c.id} pct={valor} tipo={l.t} fundo="normal" bg={est.bg} bgHover={est.bgHover} borda={est.borda} fixa={fixa} />
+                  return <CelulaAv key={c.id} pct={valor} tipo={l.t} fundo={fundo} bg={bg} bgHover={bgHover} borda={est.borda} fixa={fixa} />
                 }
                 if (c.tipo === 'delta') {
-                  return <CelulaDeltaPct key={c.id} pct={valor} tipo={l.t} peso={est.peso} bg={est.bg} bgHover={est.bgHover} borda={est.borda} />
+                  return <CelulaDeltaPct key={c.id} pct={valor} tipo={l.t} peso={est.peso} bg={bg} bgHover={bgHover} borda={est.borda} />
                 }
                 return (
                   <CelulaValor
-                    key={c.id} valor={valor} tipo={l.t} fundo="normal" corte={corte} totalAno={c.fixa === 'total'}
-                    peso={est.peso} bg={est.bg} bgHover={est.bgHover} borda={est.borda} fixa={fixa}
+                    key={c.id} valor={valor} tipo={l.t} fundo={fundo} corte={corte} totalAno={c.fixa === 'total'}
+                    peso={est.peso} bg={bg} bgHover={bgHover} borda={est.borda} fixa={fixa}
                   />
                 )
               })}
@@ -392,7 +350,7 @@ export default function TabelaDreCentro({ seletorInicial = SELETOR_INICIAL, leit
       onClick={() => setVisao(alvo)}
       disabled={lado}
       aria-pressed={visaoEfetiva === alvo && !lado}
-      title={lado ? 'Lado a lado mostra o ano escolhido, um centro por coluna' : title}
+      title={lado ? 'Lado a lado mostra o ano escolhido mês a mês, com os centros dentro de cada mês' : title}
       className={['foco-neutro', PILL_FILTRO, visaoEfetiva === alvo && !lado ? '' : PILL_FILTRO_INATIVO, 'disabled:opacity-50 disabled:cursor-not-allowed'].join(' ')}
       style={visaoEfetiva === alvo && !lado ? PILL_FILTRO_ATIVO_STYLE : undefined}
     >
@@ -432,25 +390,6 @@ export default function TabelaDreCentro({ seletorInicial = SELETOR_INICIAL, leit
                 </button>
               )
             })}
-            <span className="mx-1 h-4 w-px bg-wt-border-strong" aria-hidden />
-            {/* Não é botão: por centro só há Realizado, e botão inerte é pior que botão ausente (revisor). */}
-            <span className={PILL_FILTRO} style={PILL_FILTRO_ATIVO_STYLE} title="Só o que já aconteceu">
-              Realizado
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <button
-                type="button"
-                disabled
-                className={['foco-neutro', PILL_FILTRO, PILL_FILTRO_INATIVO, 'disabled:opacity-50 disabled:cursor-not-allowed'].join(' ')}
-              >
-                Realizado + Previsto
-              </button>
-              <GatilhoAjuda
-                rotulo="Por que não há previsto por centro"
-                texto={AJUDA_PREVISTO}
-                classNameBalao="z-30 w-72 !whitespace-normal font-normal normal-case tracking-normal leading-snug"
-              />
-            </span>
             <AcoesHierarquia
               onExpandir={() => setAbertos(new Set(expansiveis))}
               onRecolher={() => setAbertos(new Set())}
@@ -478,15 +417,9 @@ export default function TabelaDreCentro({ seletorInicial = SELETOR_INICIAL, leit
           </div>
         </div>
 
-        <Notas notas={ano.notas} ano={ano.ano} />
         {visaoEfetiva === 'consolidado' && anos.length === 1 && (
-          <p className="mt-1 text-xs text-text-muted">
+          <p className="mt-3 text-xs text-text-muted">
             Sem Δ% contra {ano.ano - 1}: o Monde não tem centro de custo antes de {anos[0].ano}.
-          </p>
-        )}
-        {ano.parcial && (
-          <p className="mt-1 text-xs text-text-muted">
-            * {ano.ano} em curso: realizado de jan a {MESES[ano.fim - 1].toLowerCase()}, o último mês parcial.
           </p>
         )}
       </div>

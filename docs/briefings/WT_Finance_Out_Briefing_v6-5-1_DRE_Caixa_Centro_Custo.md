@@ -96,6 +96,25 @@ o sinal "−" (padrão A) enquanto a DRE usa parênteses; "Sem centro" aparece e
 preservada); o card marca "Nov · parcial"/"2026*" e a tabela da Empresa não marca mês parcial no caixa. Fora do escopo:
 `current_date` do banco (UTC) × `hojeSP()` da página perto da virada do mês (mesmo padrão antigo de `get_dre_mensal`).
 
+### 4.1 Ajustes pedidos pelo Yan no PR #311 (depois da revisão)
+
+Decisões de produto do Yan ao ver o card, aplicadas no mesmo PR antes do merge:
+
+1. **Lado a lado com os meses empilhados:** um bloco por mês (jan até o mês corrente, este marcado "· parcial") com os 5
+   centros, só valor; depois o bloco "Acumulado «ano»" (o Lado a lado de antes: cada centro com a AV dele) e o Total + AV
+   presos à direita. Memória: no bloco do mês, a de soma é a do mês e a de saldo é a do fim do mês. Teste novo prova
+   Σ centros do mês ≡ REX do mês e Σ meses ≡ acumulado por centro. No Exportar, a coluna leva o mês ("Jan · Trips").
+2. **Notas sob a tabela retiradas** (cobertura, antecipações identificadas/não identificadas, taxa pendente, tomado e não
+   devolvido, explicação da memória e a nota "* ano em curso"). O cálculo (`montar.ts → notas`) ficou, coberto por teste,
+   mas **nada mais o mostra na tela**. Ficou só a frase "Sem Δ% contra «ano−1»" do Consolidado, que não estava no print.
+   Efeitos: a explicação da memória segue só no `title` das linhas (não abre por teclado/toque); o "*" de "Total 2026*"
+   fica explicado só no `title` da coluna; no Consolidado as pills de ano já não mudam nada visível (antes trocavam o ano
+   das notas).
+3. **Linhas de antecipação (C, D, taxa) no âmbar do previsto** da DRE de caixa — a MESMA régua (`fundoPrevisto`, exportado
+   de `tabela-dre.tsx`; a tabela da Empresa não mudou, snapshot verde), a linha inteira, Conta inclusive. O Resultado de
+   caixa fica na banda escura.
+4. **Pills "Realizado" e "Realizado + Previsto" retiradas** (por centro é sempre realizado), com o "?" delas.
+
 ## 5. Advisor
 
 - **Orquestrador:** 2 consultas na M1 (escolha de arquitetura e conferência antes de declarar o GATE 1), **contra a Carta**
@@ -131,7 +150,10 @@ preservada); o card marca "Nov · parcial"/"2026*" e a tabela da Empresa não ma
    carga de Lançamentos por Categoria (movimentação), relatório com todos os grupos abertos.
 4. Conferir um centro contra o protótipo, a soma dos centros contra a visão Empresa em dois meses e as antecipações de
    2026 contra o registro (briefing §10).
-5. Pedir ao Financeiro o lançamento das taxas de antecipação pendentes no Monde (aparecem na nota sob a tabela).
+5. Pedir ao Financeiro o lançamento das taxas de antecipação pendentes no Monde. Com as notas fora da tela, o valor não
+   aparece mais no card. No print do Yan de 09/11 eram R$ 23.098, nas antecipações de 09/04, 24/09, 09/10, 13/10 e 30/10.
+   No mesmo print, a de 30/10 (Asaas, R$ 519,6 k) estava sem recebíveis identificados. Se isso continuar depois da carga
+   do mesmo dia, essa antecipação fica fora do bloco C/D dos centros.
 6. **Mostrar à diretoria** e anotar o que ela pedir.
 
 ## 8. Arquivos

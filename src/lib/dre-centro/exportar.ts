@@ -14,8 +14,17 @@ export interface AbaExport {
 
 const arred = (v: number | null | undefined) => (v == null ? null : Math.round(v * 100) / 100)
 
+/** Rótulo de cada coluna na planilha. Com mais de um grupo (Lado a lado: um por mês + o acumulado), o
+ *  grupo vai junto — senão o cabeçalho repetiria "Trips" doze vezes. Coluna presa (Total/AV) fica como está. */
+function rotulosExport(v: VisaoTabela): string[] {
+  if (v.grupos.length <= 1) return v.colunas.map(c => c.rotulo)
+  const grupoDe: string[] = v.grupos.flatMap(g => Array.from({ length: g.span }, () => g.rotulo))
+  let i = 0
+  return v.colunas.map(c => (c.fixa ? c.rotulo : `${grupoDe[i++] ?? ''} · ${c.rotulo}`))
+}
+
 export function abaDaVisao(nome: string, v: VisaoTabela): AbaExport {
-  const cab = ['Conta', ...v.colunas.map(c => c.rotulo)]
+  const cab = ['Conta', ...rotulosExport(v)]
   const linhas: AbaExport['linhas'] = [cab]
   for (const l of v.linhas) {
     const k = chaveDeLinha(l)

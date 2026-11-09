@@ -27,8 +27,11 @@ classificação: CHECKs de base). ADR-0184.
   centro, eventos, cobertura e carimbos. `p_ajuste=false` dá Σ centros = Empresa linha a linha.
 - **Card "Demonstrativo de Resultado por Centro de Custo"** na seção Regime de Caixa da DRE, separado da tabela da
   Empresa (decisão do GATE 1): seletor Trips/Weddings/Corp/CSC/Sem centro/Lado a lado; visões Mensal e Consolidado
-  por centro e Lado a lado; bloco de antecipação (C, D, taxa, Resultado de caixa); memória fora das somas; notas de
-  cobertura; Quem cobre quem (Lado a lado); Exportar da visão da tela; carimbos "Centro de custo" e "Antecipações".
+  por centro e Lado a lado (meses empilhados: um bloco por mês com os 5 centros, depois o acumulado do ano por centro
+  e o Total); bloco de antecipação (C, D, taxa no fundo âmbar do previsto; Resultado de caixa); memória fora das
+  somas; Quem cobre quem (Lado a lado); Exportar da visão da tela (no Lado a lado a coluna leva o mês: "Jan · Trips");
+  carimbos "Centro de custo" e "Antecipações". Só Realizado, sem pills de modo e sem notas sob a tabela (pedidos do
+  Yan na revisão do PR).
 - Módulo puro `src/lib/dre-centro/` (atribuição §3.4, visões, notas, exportação) com testes contra o protótipo.
 
 ### Verificado
