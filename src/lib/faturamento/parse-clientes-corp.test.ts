@@ -24,7 +24,7 @@ describe('parseClientesCorpFile — Fase 3 (v4.33.0)', () => {
     expect(r[0].empresa).toBe('Acme Ltda')
     expect(r[0].situacao).toBe('ativo')
     expect(r[0].destinatarios).toBe('a@x.com; b@y.com') // do ENVIAR PARA
-    expect(r[0].pct_juros).toBe('1% ao mês')
+    expect(r[0].pct_juros).toBe('1%') // normalizado na entrada (v6.5.2; era '1% ao mês')
     expect(r[0].pct_multa).toBe('2%')
     expect(r[0].faturar_em).toBe('01 / 10 / 20')
     expect(r[0].contato_whats).toBe('11 99999-0000')
@@ -42,6 +42,35 @@ describe('parseClientesCorpFile — Fase 3 (v4.33.0)', () => {
     if (!Array.isArray(r)) throw new Error('esperava array')
     expect(r[0].situacao).toBe('inativo')
     expect(r[1].situacao).toBeNull()
+  })
+
+  it('EVENTUAL da planilha vira "eventual" (não some como null) — v6.5.2', async () => {
+    const f = xlsxFile([
+      ['Situação', 'EMPRESA ', 'CONTRATO'],
+      ['EVENTUAL', 'Excom', 'Não'],
+      ['ATIVO', 'Acme', 'Sim'],
+    ])
+    const r = await parseClientesCorpFile(f)
+    if (!Array.isArray(r)) throw new Error('esperava array')
+    expect(r.map(c => c.situacao)).toEqual(['eventual', 'ativo'])
+  })
+
+  it('acha a aba pelo cabeçalho (planilha oficial abre em "calculo reverso") — v6.5.2', async () => {
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([[' 10.000,00 / 97% = 10.309,28'], [1, 2]]), 'calculo reverso')
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([]), 'Planilha1')
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+      ['Situação', 'EMPRESA ', 'CONTRATO', '% JUROS', '% MULTA'],
+      ['ATIVO', 'Acme', 'Sim', '1% ao mês', '10% sobre o valor integral da fatura'],
+      ['EVENTUAL', 'Beta', 'Não', 'padrão', 'padrão'],
+    ]), 'FATURAMENTO')
+    const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer
+    const r = await parseClientesCorpFile(new File([buf], 'Faturamento Clientes - Corporativo.xlsx'))
+    if (!Array.isArray(r)) throw new Error(`esperava array: ${JSON.stringify(r)}`)
+    expect(r.map(c => [c.empresa, c.situacao, c.contrato, c.pct_juros, c.pct_multa])).toEqual([
+      ['Acme', 'ativo', 'sim', '1%', '10%'],
+      ['Beta', 'eventual', 'nao', '2%', '2%'],
+    ])
   })
 
   it('sem coluna EMPRESA → erro claro', async () => {

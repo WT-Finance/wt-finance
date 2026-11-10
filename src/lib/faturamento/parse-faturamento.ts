@@ -78,6 +78,14 @@ export async function parseFaturamentoFile(
       const fcnRaw    = get('fatura_cliente_no')
       const numRaw    = get('numero')
 
+      // Linha de TOTAL do Monde (v6.5.2): o export termina com uma linha só com a contagem em Número
+      // e a soma em Valor/Valor Final — sem Pessoa, sem Fatura Cliente Nº e SEM DATAS. Ela não é
+      // fatura: entrava como "não identificada" e DOBRAVA o valor total do resumo. A assinatura é
+      // ESTREITA de propósito (as 4 vazias): qualquer linha com Emissão ou Vencimento continua
+      // entrando e aparece na revisão — dado financeiro não some em silêncio (revisor v6.5.2).
+      const vazio = (v: unknown) => v == null || String(v).trim() === ''
+      if (vazio(pessoaRaw) && vazio(fcnRaw) && vazio(get('emissao')) && vazio(get('vencimento'))) continue
+
       linhas.push({
         linha:             i + 2, // cabeçalho = linha 1
         numero:            numRaw == null || numRaw === '' ? null : String(numRaw).trim(),

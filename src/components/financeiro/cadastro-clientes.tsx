@@ -7,13 +7,14 @@
 // mantém manual), Apagar (respeita o filtro de origem). Cadastro é REFERÊNCIA (Visão A): só
 // guarda os dados; a Emissão NÃO consome isto ainda. Destinatários = texto (split = Fase 4).
 
-import { useState, useMemo, useRef, useTransition, type ReactNode } from 'react'
+import { useState, useMemo, useRef, useTransition, useEffect, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Upload, Trash2, Loader2, Check, X, FileSpreadsheet, PencilLine, AlertTriangle } from 'lucide-react'
+import { Plus, Upload, Trash2, Loader2, Check, X, FileSpreadsheet, PencilLine, AlertTriangle, Maximize, Minimize } from 'lucide-react'
 import ConfirmModal from '@/components/shared/confirm-modal'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { Card } from '@/components/ui/card'
 import { parseClientesCorpFile } from '@/lib/faturamento/parse-clientes-corp'
+import { SITUACOES_CLIENTE, CONTRATO_OPCOES, type SituacaoCliente } from '@/lib/faturamento/situacao-cliente'
 import {
   inserirClienteCorp, atualizarClienteCorp, excluirClienteCorp, apagarClientesCorp,
   importarClientesCorp, type ResultadoImportClientes,
@@ -31,11 +32,12 @@ export interface ClienteCorp {
   destinatarios: string | null
   forma_pgto:    string | null
   contato_whats: string | null
+  contrato?:     string | null   // 'sim' | 'nao' | null (v6.5.2; ausente antes da 0307)
   origem:        string
 }
 
-type CampoEditavel = 'empresa' | 'situacao' | 'faturar_em' | 'vencimento' | 'obs' | 'pct_juros' | 'pct_multa' | 'destinatarios' | 'forma_pgto' | 'contato_whats'
-type SituacaoFiltro = 'todas' | 'ativo' | 'inativo'
+type CampoEditavel = 'empresa' | 'situacao' | 'contrato' | 'faturar_em' | 'vencimento' | 'obs' | 'pct_juros' | 'pct_multa' | 'destinatarios' | 'forma_pgto' | 'contato_whats'
+type SituacaoFiltro = 'todas' | SituacaoCliente
 
 const FILTRO_INPUT = 'w-full text-2xs border border-zinc-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:border-[var(--setor-corporativo)] placeholder:text-zinc-300'
 const EDIT_BORDER  = 'border border-[var(--setor-corporativo)]'
@@ -109,7 +111,15 @@ function EditableCell({ value, onSave, type = 'text', options, truncate = true }
 
 const situacaoBadge = (s: string | null): ReactNode => {
   if (s === 'ativo')   return <span className="inline-block rounded-full border border-success bg-success-bg text-success px-2 py-0.5 text-3xs font-medium">Ativo</span>
+  if (s === 'eventual') return <span className="inline-block rounded-full border border-warning bg-warning-bg text-warning-deep px-2 py-0.5 text-3xs font-medium">Eventual</span>
   if (s === 'inativo') return <span className="inline-block rounded-full border border-zinc-200 bg-zinc-100 text-zinc-500 px-2 py-0.5 text-3xs font-medium">Inativo</span>
+  return <span className="text-zinc-400 text-xs">—</span>
+}
+
+// Contrato (v6.5.2): selo ✓ (com contrato) / ✗ (sem contrato); "—" quando não informado.
+const contratoBadge = (s: string | null | undefined): ReactNode => {
+  if (s === 'sim') return <span className="inline-flex items-center justify-center rounded-full border border-success bg-success-bg text-success w-5 h-5" title="Com contrato" aria-label="Com contrato"><Check size={11} strokeWidth={3} /></span>
+  if (s === 'nao') return <span className="inline-flex items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-zinc-500 w-5 h-5" title="Sem contrato" aria-label="Sem contrato"><X size={11} strokeWidth={3} /></span>
   return <span className="text-zinc-400 text-xs">—</span>
 }
 
@@ -155,6 +165,7 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
     planilha: itens.filter(c => c.origem === 'planilha').length,
     manual: itens.filter(c => c.origem === 'manual').length,
     ativos: itens.filter(c => c.situacao === 'ativo').length,
+    eventuais: itens.filter(c => c.situacao === 'eventual').length,
   }), [itens])
 
   // ── Seleção ────────────────────────────────────────────────────────────────
@@ -212,10 +223,38 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
         vencimento: novo.vencimento ?? null, obs: novo.obs ?? null, pct_juros: novo.pct_juros ?? null,
         pct_multa: novo.pct_multa ?? null, destinatarios: novo.destinatarios ?? null,
         forma_pgto: novo.forma_pgto ?? null, contato_whats: novo.contato_whats ?? null,
+        contrato: novo.contrato ?? null,
       })
       if (res.ok) { setCriando(false); setNovo({}); router.refresh() }
       else setErroNovo(res.motivo === 'duplicado' ? 'Já existe um cliente com esse nome.' : res.motivo === 'empresa_obrigatoria' ? 'Informe o nome da empresa.' : 'Não foi possível salvar.')
     })
+  }
+
+  // ── Tela cheia (v6.5.2) — mesmo desenho do Demonstrativo (tabela-dre.tsx, v5.7.0): Fullscreen
+  // API sobre o bloco INTEIRO (resumo + botões + tabela), para Importar/Nova linha/filtros virem
+  // junto. O estado espelha o DOCUMENTO (`fullscreenchange`), não o clique — assim o ícone fica
+  // certo quando a saída vem do Esc. O setState vive no handler do evento, nunca no corpo do efeito.
+  const refTela = useRef<HTMLDivElement | null>(null)
+  const [telaCheia, setTelaCheia] = useState(false)
+  useEffect(() => {
+    const aoMudar = () => setTelaCheia(document.fullscreenElement === refTela.current)
+    document.addEventListener('fullscreenchange', aoMudar)
+    return () => document.removeEventListener('fullscreenchange', aoMudar)
+  }, [])
+  function alternarTelaCheia() {
+    const el = refTela.current
+    if (!el) return
+    // Recusa do browser (sem gesto/política) não é erro da aplicação: a tela segue como está.
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+    else void el.requestFullscreen?.().catch(() => {})
+  }
+
+  // A confirmação de apagar é um ModalCentral (portal no <body>), que fica FORA do bloco em tela
+  // cheia — em fullscreen ela abriria invisível, com o scroll travado, e só apareceria ao sair.
+  // Ação destrutiva nunca se confirma às cegas: sai da tela cheia ANTES de abrir (revisor v6.5.2).
+  async function abrirConfirmApagar() {
+    if (document.fullscreenElement) await document.exitFullscreen().catch(() => {})
+    setConfirmBulk(true)
   }
 
   async function onArquivo(e: React.ChangeEvent<HTMLInputElement>) {
@@ -234,13 +273,16 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
   return (
     // Card em volta: a tabela vive sobre fundo BRANCO (padrão DS), não no fundo cru da página.
     <Card>
-    <div className="space-y-4">
+    {/* Em TELA CHEIA este bloco vira o documento: bg-surface é o fundo da tela (sem ele o
+        ::backdrop preto aparece) e a tabela ganha a altura toda. */}
+    <div ref={refTela} className={telaCheia ? 'h-full w-full overflow-auto bg-surface p-5 space-y-4' : 'space-y-4'}>
       {/* Resumo (esquerda) + controles (direita) na MESMA linha */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 text-sm">
           <span className="font-semibold text-zinc-800">{totais.total} {totais.total === 1 ? 'cliente' : 'clientes'}</span>
           <span className="text-zinc-500">{totais.planilha} da planilha · {totais.manual} manual</span>
           <span className="text-success">{totais.ativos} {totais.ativos === 1 ? 'ativo' : 'ativos'}</span>
+          <span className="text-warning-deep">{totais.eventuais} {totais.eventuais === 1 ? 'eventual' : 'eventuais'}</span>
         </div>
         <div className="flex gap-2 items-center">
           <button onClick={() => { setCriando(true); setErroNovo(null) }} disabled={criando}
@@ -252,9 +294,15 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
             className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded text-action-primary-fg bg-action-primary hover:opacity-90 transition-opacity disabled:opacity-50">
             {importando ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />} {importando ? 'Importando…' : 'Importar'}
           </button>
-          <button onClick={() => setConfirmBulk(true)} disabled={idsApagar.length === 0}
+          <button onClick={abrirConfirmApagar} disabled={idsApagar.length === 0}
             className="flex items-center justify-center gap-1 w-[168px] px-2.5 py-1.5 text-xs rounded border border-danger text-danger hover:bg-danger-bg transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
             <Trash2 size={12} /> {apagarTodos ? 'Apagar todos' : 'Apagar selecionados'}
+          </button>
+          <button type="button" onClick={alternarTelaCheia} aria-pressed={telaCheia}
+            aria-label={telaCheia ? 'Sair da tela cheia' : 'Ver em tela cheia'}
+            title={telaCheia ? 'Voltar ao tamanho normal (ou tecle Esc)' : 'Ver a tabela em tela cheia'}
+            className="flex items-center justify-center p-1.5 rounded border border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:text-zinc-700 transition-colors">
+            {telaCheia ? <Minimize size={14} /> : <Maximize size={14} />}
           </button>
         </div>
       </div>
@@ -280,11 +328,11 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
           VAZAM pelo cabeçalho ao rolar. Em separate, cada CÉLULA pinta fundo + borda e
           tudo gruda junto — por isso as bordas ficam nos th/td, nunca no <tr>.
           min-w (v5.1.9): sem ela as colunas de texto (Contato/Destinatários/Observações) colapsavam
-          e os CABEÇALHOS se sobrepunham em telas menores; com `min-w-[1160px]` as colunas mantêm
+          e os CABEÇALHOS se sobrepunham em telas menores; com `min-w-[1232px]` (1160 + 72 do Contrato, v6.5.2) as colunas mantêm
           largura legível e o ScrollAutoHide (eixo both) rola na horizontal abaixo desse limite —
           acima, a tabela preenche o container sem scroll (o objetivo original do refino v4.34.1). */}
-      <ScrollAutoHide eixo="both" className="max-h-[70vh]" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
-        <table className="w-full min-w-[1160px] text-sm table-fixed border-separate border-spacing-0">
+      <ScrollAutoHide eixo="both" className={telaCheia ? 'max-h-[calc(100vh-9rem)]' : 'max-h-[70vh]'} onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
+        <table className="w-full min-w-[1232px] text-sm table-fixed border-separate border-spacing-0">
           <thead className={`sticky top-0 z-20 [&_tr:first-child_th:first-child]:rounded-tl-lg [&_tr:first-child_th:last-child]:rounded-tr-lg [&_th]:bg-zinc-50 [&_tr:first-child_th]:border-b [&_tr:first-child_th]:border-zinc-100 [&_tr:last-child_th]:border-b [&_tr:last-child_th]:border-zinc-200 ${rolado ? '[&_tr:last-child_th]:shadow-[0_6px_8px_-6px_rgba(28,25,23,0.22)]' : ''}`}>
             <tr className="text-left text-xs font-medium text-zinc-400">
               <th className="py-2 px-2 w-[32px] text-center">
@@ -292,6 +340,7 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
               </th>
               <th className="py-2 px-2 w-[22%]">Empresa</th>
               <th className="py-2 px-2 w-[92px]">Situação</th>
+              <th className="py-2 px-2 w-[72px] text-center">Contrato</th>
               <th className="py-2 px-2 w-[88px]">Faturar em</th>
               <th className="py-2 px-2 w-[84px]">Vencimento</th>
               <th className="py-2 px-2 w-[72px]">% Juros</th>
@@ -308,11 +357,10 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
               <th className="py-1.5 px-2">
                 <select value={situacaoFiltro} onChange={e => setSituacao(e.target.value as SituacaoFiltro)} className={FILTRO_INPUT} aria-label="Filtrar por situação">
                   <option value="todas">Toda</option>
-                  <option value="ativo">Ativo</option>
-                  <option value="inativo">Inativo</option>
+                  {SITUACOES_CLIENTE.map(s => <option key={s.valor} value={s.valor}>{s.rotulo}</option>)}
                 </select>
               </th>
-              <th colSpan={9} className="py-1.5 px-2"></th>
+              <th colSpan={10} className="py-1.5 px-2"></th>
             </tr>
           </thead>
           <tbody>
@@ -322,7 +370,12 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
                 <td className="py-1 px-2"><input autoFocus type="text" placeholder="Empresa *" value={novo.empresa ?? ''} onChange={e => setNovo(p => ({ ...p, empresa: e.target.value }))} className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5" /></td>
                 <td className="py-1 px-2">
                   <select value={novo.situacao ?? ''} onChange={e => setNovo(p => ({ ...p, situacao: e.target.value || null }))} className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5 bg-white">
-                    <option value="">—</option><option value="ativo">Ativo</option><option value="inativo">Inativo</option>
+                    <option value="">—</option>{SITUACOES_CLIENTE.map(s => <option key={s.valor} value={s.valor}>{s.rotulo}</option>)}
+                  </select>
+                </td>
+                <td className="py-1 px-2">
+                  <select value={novo.contrato ?? ''} onChange={e => setNovo(p => ({ ...p, contrato: e.target.value || null }))} className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5 bg-white" aria-label="Contrato">
+                    <option value="">—</option>{CONTRATO_OPCOES.map(o => <option key={o.valor} value={o.valor}>{o.rotulo}</option>)}
                   </select>
                 </td>
                 {(['faturar_em','vencimento','pct_juros','pct_multa','forma_pgto','contato_whats','destinatarios','obs'] as CampoEditavel[]).map(campo => (
@@ -341,7 +394,7 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
               </tr>
             )}
             {erroNovo && criando && (
-              <tr><td colSpan={12} className="px-2 py-1 text-3xs text-danger">{erroNovo}</td></tr>
+              <tr><td colSpan={13} className="px-2 py-1 text-3xs text-danger">{erroNovo}</td></tr>
             )}
 
             {filtrados.map(c => (
@@ -400,6 +453,7 @@ function ClienteRow({ cliente: c, makeSaver, onDelete, selecionado, onToggleSel 
       <EditableCell value={c.empresa} onSave={makeSaver(c.id, 'empresa')} />
       {/* Situação: badge no display, select ao editar */}
       <td className="py-1 px-2"><SituacaoCell cliente={c} onSave={makeSaver(c.id, 'situacao')} /></td>
+      <td className="py-1 px-2 text-center"><ContratoCell cliente={c} onSave={makeSaver(c.id, 'contrato')} /></td>
       <EditableCell value={c.faturar_em} onSave={makeSaver(c.id, 'faturar_em')} />
       <EditableCell value={c.vencimento} onSave={makeSaver(c.id, 'vencimento')} />
       <EditableCell value={c.pct_juros} onSave={makeSaver(c.id, 'pct_juros')} />
@@ -424,6 +478,30 @@ function ClienteRow({ cliente: c, makeSaver, onDelete, selecionado, onToggleSel 
   )
 }
 
+// Contrato com selo ✓/✗ no display + select ao editar (mesmo molde da SituacaoCell). v6.5.2
+function ContratoCell({ cliente: c, onSave }: { cliente: ClienteCorp; onSave: (v: string) => Promise<boolean> }) {
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const salvar = async (v: string) => {
+    setSaving(true); const ok = await onSave(v); setSaving(false); setEditing(false)
+    return ok
+  }
+  if (editing) {
+    return (
+      <select autoFocus defaultValue={c.contrato ?? ''} onChange={e => void salvar(e.target.value)} onBlur={() => setEditing(false)}
+        className={`w-full text-xs ${EDIT_BORDER} rounded px-1 py-0.5 outline-none bg-white`} aria-label="Contrato">
+        <option value="">—</option>{CONTRATO_OPCOES.map(o => <option key={o.valor} value={o.valor}>{o.rotulo}</option>)}
+      </select>
+    )
+  }
+  return (
+    <button type="button" onClick={() => setEditing(true)} className="cursor-pointer inline-flex items-center gap-1" title="Editar contrato">
+      {contratoBadge(c.contrato)}
+      {saving && <Loader2 size={10} className="animate-spin" />}
+    </button>
+  )
+}
+
 // Situação com badge no display + select ao editar (reusa EditableCell type=select, mas com badge).
 function SituacaoCell({ cliente: c, onSave }: { cliente: ClienteCorp; onSave: (v: string) => Promise<boolean> }) {
   const [editing, setEditing] = useState(false)
@@ -436,7 +514,7 @@ function SituacaoCell({ cliente: c, onSave }: { cliente: ClienteCorp; onSave: (v
     return (
       <select autoFocus defaultValue={c.situacao ?? ''} onChange={e => void salvar(e.target.value)} onBlur={() => setEditing(false)}
         className={`w-full text-xs ${EDIT_BORDER} rounded px-1 py-0.5 outline-none bg-white`}>
-        <option value="">—</option><option value="ativo">Ativo</option><option value="inativo">Inativo</option>
+        <option value="">—</option>{SITUACOES_CLIENTE.map(s => <option key={s.valor} value={s.valor}>{s.rotulo}</option>)}
       </select>
     )
   }
