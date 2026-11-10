@@ -1538,7 +1538,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "bdf5496dd1b967e00c355d309359bafdb6c2d512aa637045dd7ff76068339020",
+      "hash_corpo": "05aabf556580531cac2c21085366cd78f7d09f54307d43e3d604178e5116b49c",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -3018,6 +3018,31 @@
         "search_path=\"\""
       ],
       "retorno": "jsonb",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
+    "public.get_dre_caixa_centro(integer, boolean)": {
+      "acl": {
+        "authenticated": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        },
+        "verificador": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "1b677ca41db34f81bd45f56427c2db0dc4146ef01d4b2920159980d1f87b4ea2",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "json",
       "security_definer": true,
       "volatilidade": "VOLATILE"
     },
@@ -4759,7 +4784,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "56248a45706a8a2b618860f56667d376c19b919ffeddd1fc47c49337a721bfee",
+      "hash_corpo": "c3a2a1ea508d2f5dbfbb20199f30e1448912427bdf10e32725d2efd91918c5c7",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -4835,7 +4860,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "4de052fd003f95ac965783ca9fa02f15c2f03fdd8f0c395a3f38c33045cd1da3",
+      "hash_corpo": "e3b1332673cf8778431bc4d6449a9c64bf365e381d5f630e38739b09a5a96986",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -4892,7 +4917,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "f3df8d72a71705cdf0b8561073a8680933d93d6b145bf1d4c6c260dd6c94e561",
+      "hash_corpo": "42a144d0a364b1f73aa5ec39ca9f83a71f0b30371616ba3b840f2333bc2c32fe",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -5050,7 +5075,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "3f514705aa8de7467a126961fcb26880d77f6cfce7c40ade3aa15c8baf8713ca",
+      "hash_corpo": "47ab1652034f8858500a78b92066da63b5ac5dafe6f93e7e9cf18afa8c77fc89",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -5132,7 +5157,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "35a6742b27971c93fce020fed2f915ea54b18392a6282469f83c115bb79bacf8",
+      "hash_corpo": "079425e17cb7a8769585c37f219e6b5207dac0773352b6049a32e498546b0023",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -5177,6 +5202,28 @@
       },
       "dono": "postgres",
       "hash_corpo": "0564b61a637fa8d8bfaa2ded080d0edf490d8c60121be160e78c10e2bf47f23f",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "void",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
+    "public.inserir_lote_staging_centro_custo(jsonb)": {
+      "acl": {
+        "ingestor": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "3c9990cefbe81705845da2c785627310bd3c26070ed7b4d97cff5af9972a68bf",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -5325,6 +5372,28 @@
       },
       "dono": "postgres",
       "hash_corpo": "998c89093c20b2f308cb683230452eb5069f20c89915cde7dfa22d991377b900",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "void",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
+    "public.limpar_staging_centro_custo()": {
+      "acl": {
+        "ingestor": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "f639ab09f9206f5217b0076ccaa90c5c6a0d093a89d6c9f5f61dc493f0cc50a7",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -6317,6 +6386,28 @@
       },
       "dono": "postgres",
       "hash_corpo": "58ab79dc8f0b202e4403ccec068b4c23f1527566e200089671822cee46056ac0",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "jsonb",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
+    "public.promover_carga_centro_custo(jsonb, uuid)": {
+      "acl": {
+        "ingestor": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "e6a8858a0892eac5f111808bed260c8b44cbc8787fc520da0dfdb3b9945dda68",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -7410,6 +7501,28 @@
       "security_definer": true,
       "volatilidade": "VOLATILE"
     },
+    "public.validar_carga_centro_custo()": {
+      "acl": {
+        "ingestor": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "b0f2b2fb8a8a7be2824b07729d32cdb581d440438f8f7b56a3a7887bd99052cb",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "jsonb",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
     "public.validar_carga_contas_receber()": {
       "acl": {
         "ingestor": {
@@ -7548,23 +7661,27 @@
       "allowlist": [
         "public.inserir_lote_staging(jsonb)",
         "public.inserir_lote_staging_aberto(jsonb)",
+        "public.inserir_lote_staging_centro_custo(jsonb)",
         "public.inserir_lote_staging_contas_receber(jsonb)",
         "public.inserir_lote_staging_demonstrativo(jsonb)",
         "public.inserir_lote_staging_movimentacao(jsonb)",
         "public.inserir_lote_staging_operacao(jsonb)",
         "public.limpar_staging_aberto()",
+        "public.limpar_staging_centro_custo()",
         "public.limpar_staging_contas_receber()",
         "public.limpar_staging_demonstrativo()",
         "public.limpar_staging_movimentacao()",
         "public.limpar_staging_operacao()",
         "public.limpar_staging_vendas()",
         "public.promover_carga_aberto(jsonb, uuid)",
+        "public.promover_carga_centro_custo(jsonb, uuid)",
         "public.promover_carga_contas_receber(jsonb, uuid)",
         "public.promover_carga_demonstrativo(jsonb, uuid)",
         "public.promover_carga_movimentacao(jsonb, uuid)",
         "public.promover_carga_operacao(jsonb, uuid)",
         "public.promover_carga_vendas(jsonb, uuid)",
         "public.validar_carga_aberto()",
+        "public.validar_carga_centro_custo()",
         "public.validar_carga_contas_receber()",
         "public.validar_carga_demonstrativo()",
         "public.validar_carga_movimentacao()",
@@ -7609,6 +7726,7 @@
         "public.get_carteira_weddings(text)",
         "public.get_contratos_casamento_mes(date, date)",
         "public.get_decomposicao_bloco(text, text)",
+        "public.get_dre_caixa_centro(integer, boolean)",
         "public.get_dre_competencia_mensal(integer)",
         "public.get_dre_mensal(integer)",
         "public.get_executiva_kpis(date, date, text, date, date, date, date)",
@@ -9545,6 +9663,13 @@
           "not_null": false,
           "tipo": "text"
         },
+        "contrato": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "text"
+        },
         "criado_em": {
           "default": "now()",
           "generated": null,
@@ -9631,6 +9756,7 @@
         }
       },
       "constraints": {
+        "cliente_corporativo_contrato_check": "CHECK (contrato = ANY (ARRAY['sim'::text, 'nao'::text]))",
         "cliente_corporativo_origem_check": "CHECK (origem = ANY (ARRAY['planilha'::text, 'manual'::text]))",
         "cliente_corporativo_pkey": "PRIMARY KEY (id)"
       },
@@ -11811,6 +11937,172 @@
       "tipo": "tabela",
       "triggers": {}
     },
+    "financeiro.antecipacao_conta_monde": {
+      "acl": {
+        "postgres": {
+          "DELETE": false,
+          "INSERT": false,
+          "MAINTAIN": false,
+          "REFERENCES": false,
+          "SELECT": false,
+          "TRIGGER": false,
+          "TRUNCATE": false,
+          "UPDATE": false
+        }
+      },
+      "colunas": {
+        "antecedencia_min_dias": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "integer"
+        },
+        "antecipacao_conta_id": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "smallint"
+        },
+        "conta_bancaria_id": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "integer"
+        }
+      },
+      "constraints": {
+        "antecipacao_conta_monde_antecedencia": "CHECK (antecedencia_min_dias >= 0)",
+        "antecipacao_conta_monde_antecipacao_conta_id_fkey": "FOREIGN KEY (antecipacao_conta_id) REFERENCES financeiro.antecipacao_conta(id)",
+        "antecipacao_conta_monde_conta_bancaria_id_fkey": "FOREIGN KEY (conta_bancaria_id) REFERENCES financeiro.dim_conta_bancaria(id)",
+        "antecipacao_conta_monde_conta_bancaria_id_key": "UNIQUE (conta_bancaria_id)",
+        "antecipacao_conta_monde_pkey": "PRIMARY KEY (antecipacao_conta_id)"
+      },
+      "dono": "postgres",
+      "indices": {
+        "antecipacao_conta_monde_conta_bancaria_id_key": "CREATE UNIQUE INDEX antecipacao_conta_monde_conta_bancaria_id_key ON financeiro.antecipacao_conta_monde USING btree (conta_bancaria_id)",
+        "antecipacao_conta_monde_pkey": "CREATE UNIQUE INDEX antecipacao_conta_monde_pkey ON financeiro.antecipacao_conta_monde USING btree (antecipacao_conta_id)"
+      },
+      "policies": {},
+      "rls_forcado": false,
+      "rls_habilitado": true,
+      "tipo": "tabela",
+      "triggers": {}
+    },
+    "financeiro.centro_custo": {
+      "acl": {
+        "postgres": {
+          "DELETE": false,
+          "INSERT": false,
+          "MAINTAIN": false,
+          "REFERENCES": false,
+          "SELECT": false,
+          "TRIGGER": false,
+          "TRUNCATE": false,
+          "UPDATE": false
+        }
+      },
+      "colunas": {
+        "id": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "text"
+        },
+        "nome_monde": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "text"
+        },
+        "ordem": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "smallint"
+        },
+        "rotulo": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "text"
+        }
+      },
+      "constraints": {
+        "centro_custo_nome_monde_key": "UNIQUE (nome_monde)",
+        "centro_custo_ordem_key": "UNIQUE (ordem)",
+        "centro_custo_pkey": "PRIMARY KEY (id)",
+        "centro_custo_sem_nome_so_sem_centro": "CHECK ((id = 'sem_centro'::text) = (nome_monde IS NULL))"
+      },
+      "dono": "postgres",
+      "indices": {
+        "centro_custo_nome_monde_key": "CREATE UNIQUE INDEX centro_custo_nome_monde_key ON financeiro.centro_custo USING btree (nome_monde)",
+        "centro_custo_ordem_key": "CREATE UNIQUE INDEX centro_custo_ordem_key ON financeiro.centro_custo USING btree (ordem)",
+        "centro_custo_pkey": "CREATE UNIQUE INDEX centro_custo_pkey ON financeiro.centro_custo USING btree (id)"
+      },
+      "policies": {},
+      "rls_forcado": false,
+      "rls_habilitado": true,
+      "tipo": "tabela",
+      "triggers": {}
+    },
+    "financeiro.centro_custo_rateio": {
+      "acl": {
+        "postgres": {
+          "DELETE": false,
+          "INSERT": false,
+          "MAINTAIN": false,
+          "REFERENCES": false,
+          "SELECT": false,
+          "TRIGGER": false,
+          "TRUNCATE": false,
+          "UPDATE": false
+        }
+      },
+      "colunas": {
+        "centro": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "text"
+        },
+        "numero": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "text"
+        },
+        "peso": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "numeric"
+        }
+      },
+      "constraints": {
+        "centro_custo_rateio_centro_fkey": "FOREIGN KEY (centro) REFERENCES financeiro.centro_custo(id)",
+        "centro_custo_rateio_peso_faixa": "CHECK (peso > 0::numeric AND peso <= 1::numeric)",
+        "centro_custo_rateio_pkey": "PRIMARY KEY (numero, centro)"
+      },
+      "dono": "postgres",
+      "indices": {
+        "centro_custo_rateio_pkey": "CREATE UNIQUE INDEX centro_custo_rateio_pkey ON financeiro.centro_custo_rateio USING btree (numero, centro)"
+      },
+      "policies": {},
+      "rls_forcado": false,
+      "rls_habilitado": true,
+      "tipo": "tabela",
+      "triggers": {}
+    },
     "financeiro.contas_receber_foto": {
       "acl": {
         "postgres": {
@@ -13236,7 +13528,7 @@
         "carga_chave_id_fkey": "FOREIGN KEY (chave_id) REFERENCES app.api_chave(id)",
         "carga_pkey": "PRIMARY KEY (carga_id)",
         "carga_usuario_id_fkey": "FOREIGN KEY (usuario_id) REFERENCES auth.users(id)",
-        "ingestao_carga_base_valida": "CHECK (base = ANY (ARRAY['demonstrativo-competencia'::text, 'vendas-produto'::text, 'lancamentos-movimentacao'::text, 'lancamentos-aberto'::text, 'lancamentos-operacao'::text, 'contas-receber'::text]))",
+        "ingestao_carga_base_valida": "CHECK (base = ANY (ARRAY['demonstrativo-competencia'::text, 'vendas-produto'::text, 'lancamentos-movimentacao'::text, 'lancamentos-aberto'::text, 'lancamentos-operacao'::text, 'contas-receber'::text, 'lancamentos-centro-custo'::text]))",
         "ingestao_carga_status_valido": "CHECK (status = ANY (ARRAY['aberta'::text, 'aplicada'::text, 'rejeitada'::text, 'erro'::text]))"
       },
       "dono": "postgres",
@@ -13490,7 +13782,7 @@
       },
       "constraints": {
         "ingestao_promocao_base_carga_uniq": "UNIQUE (base, carga_id)",
-        "ingestao_promocao_base_valida": "CHECK (base = ANY (ARRAY['demonstrativo-competencia'::text, 'vendas-produto'::text, 'lancamentos-movimentacao'::text, 'lancamentos-aberto'::text, 'lancamentos-operacao'::text, 'contas-receber'::text]))",
+        "ingestao_promocao_base_valida": "CHECK (base = ANY (ARRAY['demonstrativo-competencia'::text, 'vendas-produto'::text, 'lancamentos-movimentacao'::text, 'lancamentos-aberto'::text, 'lancamentos-operacao'::text, 'contas-receber'::text, 'lancamentos-centro-custo'::text]))",
         "promocao_pkey": "PRIMARY KEY (id)"
       },
       "dono": "postgres",
@@ -15210,6 +15502,232 @@
       "tipo": "tabela",
       "triggers": {}
     },
+    "raw.lancamentos_centro_custo": {
+      "acl": {
+        "postgres": {
+          "DELETE": false,
+          "INSERT": false,
+          "MAINTAIN": false,
+          "REFERENCES": false,
+          "SELECT": false,
+          "TRIGGER": false,
+          "TRUNCATE": false,
+          "UPDATE": false
+        },
+        "service_role": {
+          "DELETE": false,
+          "INSERT": false,
+          "SELECT": false
+        }
+      },
+      "colunas": {
+        "arquivo_origem": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "text"
+        },
+        "carregado_em": {
+          "default": "now()",
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "timestamp with time zone"
+        },
+        "centro_custo": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "text"
+        },
+        "emissao": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "date"
+        },
+        "id": {
+          "default": "nextval('raw.lancamentos_centro_custo_id_seq'::regclass)",
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "bigint"
+        },
+        "linha_origem": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "integer"
+        },
+        "movimentacao": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "date"
+        },
+        "numero": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "text"
+        },
+        "pct_centro": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "numeric(9,4)"
+        },
+        "valor_centro_custo": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "numeric(18,2)"
+        },
+        "valor_movimentacao": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "numeric(18,2)"
+        },
+        "vencimento": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "date"
+        }
+      },
+      "constraints": {
+        "lancamentos_centro_custo_pkey": "PRIMARY KEY (id)"
+      },
+      "dono": "postgres",
+      "indices": {
+        "lancamentos_centro_custo_numero_idx": "CREATE INDEX lancamentos_centro_custo_numero_idx ON raw.lancamentos_centro_custo USING btree (numero)",
+        "lancamentos_centro_custo_pkey": "CREATE UNIQUE INDEX lancamentos_centro_custo_pkey ON raw.lancamentos_centro_custo USING btree (id)"
+      },
+      "policies": {},
+      "rls_forcado": false,
+      "rls_habilitado": true,
+      "tipo": "tabela",
+      "triggers": {}
+    },
+    "raw.lancamentos_centro_custo_staging": {
+      "acl": {
+        "postgres": {
+          "DELETE": false,
+          "INSERT": false,
+          "MAINTAIN": false,
+          "REFERENCES": false,
+          "SELECT": false,
+          "TRIGGER": false,
+          "TRUNCATE": false,
+          "UPDATE": false
+        }
+      },
+      "colunas": {
+        "arquivo_origem": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "text"
+        },
+        "carregado_em": {
+          "default": "now()",
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "timestamp with time zone"
+        },
+        "centro_custo": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "text"
+        },
+        "emissao": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "date"
+        },
+        "id": {
+          "default": "nextval('raw.lancamentos_centro_custo_id_seq'::regclass)",
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "bigint"
+        },
+        "linha_origem": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "integer"
+        },
+        "movimentacao": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "date"
+        },
+        "numero": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "text"
+        },
+        "pct_centro": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "numeric(9,4)"
+        },
+        "valor_centro_custo": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "numeric(18,2)"
+        },
+        "valor_movimentacao": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "numeric(18,2)"
+        },
+        "vencimento": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "date"
+        }
+      },
+      "constraints": {},
+      "dono": "postgres",
+      "indices": {},
+      "policies": {},
+      "rls_forcado": false,
+      "rls_habilitado": true,
+      "tipo": "tabela",
+      "triggers": {}
+    },
     "raw.lancamentos_movimentacao": {
       "acl": {
         "postgres": {
@@ -16683,7 +17201,7 @@
       "triggers": {}
     }
   },
-  "ultima_migration": "0303",
+  "ultima_migration": "0307",
   "views": {
     "analytics.mv_ranking_produtos_mensal": {
       "acl": {
