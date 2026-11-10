@@ -15,13 +15,13 @@ describe('parseFaturamentoFile — linha de total do Monde (v6.5.2)', () => {
   it('ignora a linha de total (sem Pessoa e sem Fatura Cliente Nº) — o resumo não dobra', async () => {
     const r = await parseFaturamentoFile(xlsxFile([
       CAB,
-      [1, '10/11/2026', 'ABRAT', '20/11/2026', 4008.77, 4008.77, '10629'],
-      [2, '10/11/2026', 'ASSOAUDI', '20/11/2026', 5613.93, 5613.93, '10630'],
-      [2, null, null, null, 9622.70, 9622.70, null], // total do Monde
+      [1, '10/11/2026', 'Alfa Ltda', '20/11/2026', 1000.10, 1000.10, '90001'],
+      [2, '10/11/2026', 'Beta SA', '20/11/2026', 2000.20, 2000.20, '90002'],
+      [2, null, null, null, 3000.30, 3000.30, null], // total do Monde
     ]))
     if (!Array.isArray(r)) throw new Error(`esperava array: ${JSON.stringify(r)}`)
-    expect(r.map(f => f.pessoa)).toEqual(['ABRAT', 'ASSOAUDI'])
-    expect(r.reduce((s, f) => s + (f.valor ?? 0), 0)).toBeCloseTo(9622.70, 2)
+    expect(r.map(f => f.pessoa)).toEqual(['Alfa Ltda', 'Beta SA'])
+    expect(r.reduce((s, f) => s + (f.valor ?? 0), 0)).toBeCloseTo(3000.30, 2)
   })
 
   it('fatura com só UMA das chaves faltando continua entrando (vai para a revisão)', async () => {

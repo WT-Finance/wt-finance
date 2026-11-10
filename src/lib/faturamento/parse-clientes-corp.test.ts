@@ -47,7 +47,7 @@ describe('parseClientesCorpFile — Fase 3 (v4.33.0)', () => {
   it('EVENTUAL da planilha vira "eventual" (não some como null) — v6.5.2', async () => {
     const f = xlsxFile([
       ['Situação', 'EMPRESA ', 'CONTRATO'],
-      ['EVENTUAL', 'Excom', 'Não'],
+      ['EVENTUAL', 'Gama ME', 'Não'],
       ['ATIVO', 'Acme', 'Sim'],
     ])
     const r = await parseClientesCorpFile(f)

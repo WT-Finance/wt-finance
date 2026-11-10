@@ -87,8 +87,11 @@ botão de tela cheia, Esc, apagar em tela cheia) fica para o Yan conferir no pre
 
 ## 6. Advisor
 
-Orquestrador: 1 consulta na sessão (antes da primeira atualização do Cadastro; mudou o rumo — preparar o arquivo
-para o Importar da tela em vez de SQL por fora, e não escolher a EXCOM pelo Yan). Revisores: 0. 🔴 Custo: pendência do Yan (`/usage`).
+Orquestrador: 2 consultas na sessão, as duas mudaram o rumo. (1) Antes da primeira atualização do Cadastro:
+preparar o arquivo para o Importar da tela em vez de SQL por fora, e não escolher a EXCOM pelo Yan. (2) No
+fechamento: auditar o código pós-revisão contra os arquivos REAIS (feito — delta exato: 27 vazios→eventual, EXCOM
+na linha da planilha, contrato nos 249, nada mais muda; `faturamento.xlsx` real → 9 faturas, total ignorado) e
+trocar dados reais de cliente nos testes por fictícios. Revisores: 0. 🔴 Custo: pendência do Yan (`/usage`).
 
 ## 7. 🔴 Pendências do Yan
 
