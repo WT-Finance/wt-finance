@@ -35,6 +35,26 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '6.5.2',
+    data: '2026-11-10T14:35', // horário real de autoria — reconciliar ao horário do merge no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'O Cadastro de clientes do Faturamento Corporativo passa a mostrar se o cliente tem contrato ' +
+          '(✓ ou ✗) e a reconhecer o cliente Eventual — que fatura de vez em quando e agora recebe a ' +
+          'fatura por e-mail como os ativos. A tabela também pode ser aberta em tela cheia.',
+      },
+      {
+        tipo: 'correcao',
+        texto:
+          'A planilha oficial de clientes volta a ser importada direto, sem ajustes à mão, e os juros e ' +
+          'multas especiais de cada cliente são preservados na importação. Na planilha de faturamento, a ' +
+          'linha de total deixa de ser contada como fatura (o resumo não dobra mais o valor).',
+      },
+    ],
+  },
+  {
     versao: '6.5.0',
     data: '2026-11-05T17:25', // horário real do merge (PR #308), reconciliado no /pos-merge
     itens: [

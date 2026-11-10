@@ -17,6 +17,21 @@ export function parsePctContrato(v: string | null | undefined): number | null {
   return CONTRATO[(v ?? '').trim()] ?? null
 }
 
+/**
+ * Normaliza o texto de juros/multa NA ENTRADA do Cadastro (import da planilha) para o formato do
+ * contrato (v6.5.2 — a regra da migration 0170, que limpou o legado em jul/26, agora vale também
+ * para cada novo import): vazio ou "padrão" → "2%"; "N% <qualquer texto>" → "N%"; o resto fica
+ * como veio (e cai no default 2/2 do `parsePctContrato`, como antes).
+ * Sem isto, a planilha ("1% ao mês", "10% sobre o valor integral da fatura") reimportada crua
+ * rebaixava em SILÊNCIO os clientes de condição especial para 2/2 no boleto.
+ */
+export function normalizarPctEntrada(v: string | null | undefined): string {
+  const s = (v ?? '').trim()
+  if (s === '' || /^padr[aã]o/i.test(s)) return '2%'
+  const m = s.match(/^(\d+)\s*%/)
+  return m ? `${Number(m[1])}%` : s
+}
+
 export interface JurosMulta { fine: number; interest: number }
 
 /** Default fail-safe (comportamento atual do boleto: 2% multa, 2% juros/mês). */

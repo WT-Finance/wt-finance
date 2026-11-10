@@ -1,5 +1,28 @@
 import { describe, it, expect } from 'vitest'
-import { parsePctContrato, jurosMultaDoCadastro, JUROS_MULTA_DEFAULT } from './juros-multa'
+import { normalizarPctEntrada, parsePctContrato, jurosMultaDoCadastro, JUROS_MULTA_DEFAULT } from './juros-multa'
+
+describe('normalizarPctEntrada (v6.5.2 — regra da 0170 na entrada)', () => {
+  it('textos reais da planilha viram o formato do contrato', () => {
+    expect(normalizarPctEntrada('padrão')).toBe('2%')
+    expect(normalizarPctEntrada('Padrao')).toBe('2%')
+    expect(normalizarPctEntrada('')).toBe('2%')
+    expect(normalizarPctEntrada(null)).toBe('2%')
+    expect(normalizarPctEntrada('1% ao mês')).toBe('1%')
+    expect(normalizarPctEntrada('1% (um por cento) ao mês')).toBe('1%')
+    expect(normalizarPctEntrada('10% sobre o valor integral da fatura')).toBe('10%')
+    expect(normalizarPctEntrada('10% valor integral da fatura')).toBe('10%')
+    expect(normalizarPctEntrada('5 % sobre o valor')).toBe('5%')
+  })
+
+  it('o resultado é lido pelo contrato estrito do boleto (não cai no default por formato)', () => {
+    expect(parsePctContrato(normalizarPctEntrada('1% ao mês'))).toBe(1)
+    expect(parsePctContrato(normalizarPctEntrada('10% sobre o valor integral da datura'))).toBe(10)
+  })
+
+  it('texto sem percentual no início fica como veio', () => {
+    expect(normalizarPctEntrada('a combinar')).toBe('a combinar')
+  })
+})
 
 describe('parsePctContrato — contrato estrito', () => {
   it('aceita as 4 strings do contrato', () => {

@@ -9,6 +9,8 @@ import { revalidatePath } from 'next/cache'
 import { getServerClient } from '@/lib/supabase/server'
 import { requireAreaAction } from '@/lib/auth/sessao'
 import type { ClienteCorpRaw } from '@/lib/faturamento/parse-clientes-corp'
+import { normalizarSituacaoCliente, normalizarContrato } from '@/lib/faturamento/situacao-cliente'
+import { normalizarPctEntrada } from '@/lib/faturamento/juros-multa'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */ // RPCs fora dos tipos gerados (padrão do projeto)
 
@@ -18,6 +20,26 @@ async function rpc(fn: string, args?: Record<string, unknown>) {
 }
 
 function revalidar() { revalidatePath('/financeiro/faturamento-corp') }
+
+// Normalização NA FRONTEIRA (v6.5.2, revisor): o navegador já normaliza (parser/selects), mas a
+// action não confia no payload — reaplica as MESMAS regras isomórficas. Assim situação desconhecida
+// vira NULL (fail-closed para o envio de e-mail), contrato nunca viola o CHECK da 0307 e juros/multa
+// digitados à mão ("1% ao mês") chegam ao boleto no formato do contrato, como no import.
+function normalizarCliente(d: ClienteCorpRaw): ClienteCorpRaw {
+  return {
+    ...d,
+    situacao:  normalizarSituacaoCliente(d.situacao),
+    contrato:  normalizarContrato(d.contrato),
+    pct_juros: normalizarPctEntrada(d.pct_juros),
+    pct_multa: normalizarPctEntrada(d.pct_multa),
+  }
+}
+function normalizarCampo(campo: string, valor: string): string {
+  if (campo === 'situacao') return normalizarSituacaoCliente(valor) ?? ''
+  if (campo === 'contrato') return normalizarContrato(valor) ?? ''
+  if (campo === 'pct_juros' || campo === 'pct_multa') return normalizarPctEntrada(valor)
+  return valor
+}
 
 /** Campos de negócio do cadastro (o que o form/import enviam). */
 export type ClienteCorpInput = ClienteCorpRaw
@@ -33,7 +55,7 @@ export interface ResultadoImportClientes {
 export async function importarClientesCorp(linhas: ClienteCorpInput[]): Promise<ResultadoImportClientes> {
   await requireAreaAction('financeiro/faturamento-corp')
   try {
-    const { data, error } = await rpc('importar_clientes_corp', { p_linhas: linhas })
+    const { data, error } = await rpc('importar_clientes_corp', { p_linhas: linhas.map(normalizarCliente) })
     if (error) return { ok: false, inseridos: 0, colisoesManual: [], duplicadasPlanilha: [], erro: error.message }
     revalidar()
     return {
@@ -50,7 +72,7 @@ export async function importarClientesCorp(linhas: ClienteCorpInput[]): Promise<
 export async function inserirClienteCorp(dados: ClienteCorpInput): Promise<{ ok: boolean; id?: number; motivo?: string }> {
   await requireAreaAction('financeiro/faturamento-corp')
   try {
-    const { data, error } = await rpc('inserir_cliente_corp', { p_dados: dados })
+    const { data, error } = await rpc('inserir_cliente_corp', { p_dados: normalizarCliente(dados) })
     if (error) return { ok: false, motivo: error.message }
     if (!data?.ok) return { ok: false, motivo: data?.motivo ?? 'erro' }
     revalidar()
@@ -60,13 +82,14 @@ export async function inserirClienteCorp(dados: ClienteCorpInput): Promise<{ ok:
   }
 }
 
-const CAMPOS_PERMITIDOS = ['empresa','situacao','faturar_em','vencimento','obs','pct_juros','pct_multa','destinatarios','forma_pgto','contato_whats']
+// 'contrato' (v6.5.2) exige a migration 0307 aplicada ANTES do deploy (a RPC recusa campo desconhecido).
+const CAMPOS_PERMITIDOS = ['empresa','situacao','faturar_em','vencimento','obs','pct_juros','pct_multa','destinatarios','forma_pgto','contato_whats','contrato']
 
 export async function atualizarClienteCorp(id: number, campo: string, valor: string): Promise<{ ok: boolean; motivo?: string }> {
   await requireAreaAction('financeiro/faturamento-corp')
   if (!CAMPOS_PERMITIDOS.includes(campo)) return { ok: false, motivo: 'campo_invalido' }
   try {
-    const { data, error } = await rpc('atualizar_cliente_corp', { p_id: id, p_campo: campo, p_valor: valor })
+    const { data, error } = await rpc('atualizar_cliente_corp', { p_id: id, p_campo: campo, p_valor: normalizarCampo(campo, valor) })
     if (error) return { ok: false, motivo: error.message }
     if (!data?.ok) return { ok: false, motivo: data?.motivo ?? 'erro' }
     revalidar()
