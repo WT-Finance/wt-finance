@@ -308,6 +308,17 @@ function colunasTotal(
   valores.av = colunaAv(esqueleto.linhas, l => total[chaveDeLinha(l) ?? ''] ?? 0, rbTotal)
 }
 
+/** "Sem centro" só entra num bloco (mês, ano inteiro, YTD) quando houve lançamento sem centro naquele recorte (pedido
+ *  do Yan no PR #311). Critério: alguma linha da ÁRVORE com valor nos meses [de, ate) — a memória não conta (o saldo
+ *  acumulado carrega valor para os meses seguintes sem lançamento novo). Esconder coluna zerada não muda soma alguma:
+ *  o Total continua somando todos os centros. */
+function temLancamento(lc: LinhasCentro, de: number, ate: number): boolean {
+  return lc.linhas.some(l => l.meses.slice(de, ate).some(x => Math.abs(x) > 0.005))
+}
+function centrosDoBloco(cs: readonly CentroId[], porCentro: Record<CentroId, LinhasCentro>, de: number, ate: number): CentroId[] {
+  return cs.filter(c => c !== 'sem_centro' || temLancamento(porCentro[c], de, ate))
+}
+
 export function visaoLadoALado(args: {
   ano: number
   porCentro: Record<CentroId, LinhasCentro>
@@ -324,12 +335,13 @@ export function visaoLadoALado(args: {
   // Só valor por mês × centro (a AV dobraria as colunas). Memória de SOMA = a do mês; de SALDO = a do fim do mês.
   for (let i = 0; i < fim; i++) {
     const ultimo = parcial && i === fim - 1
+    const csMes = centrosDoBloco(cs, porCentro, i, i + 1)
     grupos.push({
       rotulo: `${MESES[i]}${ultimo ? SUF_PARCIAL : ''}`,
       titulo: ultimo ? 'Mês em curso — realizado até hoje' : `Realizado de ${MESES[i].toLowerCase()}`,
-      span: cs.length,
+      span: csMes.length,
     })
-    for (const c of cs) {
+    for (const c of csMes) {
       const lc = porCentro[c]
       const id = `m${i + 1}:${c}`
       colunas.push({ id, rotulo: ROTULO_CENTRO[c], titulo: `${ROTULO_CENTRO[c]} em ${MESES[i].toLowerCase()}`, tipo: 'valor' })
@@ -365,26 +377,29 @@ export function visaoLadoALadoConsolidado(args: {
   const colunas: ColunaVisao[] = []
   const valores: VisaoTabela['valores'] = {}
   const grupos: GrupoCabecalho[] = []
+  const ytdDe = (a: AnoLado, c: CentroId) => colunaValor(a.porCentro[c].linhas, a.porCentro[c].memoria, janela, l => ytd(l, janela))
   anos.forEach((a, i) => {
     if (i < anos.length - 1) {
-      grupos.push({ rotulo: String(a.ano), titulo: `${a.ano} inteiro`, span: cs.length })
-      for (const c of cs) {
+      const csAno = centrosDoBloco(cs, a.porCentro, 0, a.fim)
+      grupos.push({ rotulo: String(a.ano), titulo: `${a.ano} inteiro`, span: csAno.length })
+      for (const c of csAno) {
         const lc = a.porCentro[c]
         const id = `a${a.ano}:${c}`
         colunas.push({ id, rotulo: ROTULO_CENTRO[c], titulo: `${ROTULO_CENTRO[c]} em ${a.ano} inteiro`, tipo: 'valor' })
         valores[id] = colunaValor(lc.linhas, lc.memoria, a.fim, l => ytd(l, a.fim))
       }
     }
+    const csYtd = centrosDoBloco(cs, a.porCentro, 0, janela)
     grupos.push({
       rotulo: `YTD ${anoCurto(a.ano)}`,
       titulo: `Realizado de jan a ${mesJ} de ${a.ano}`,
-      span: cs.length * 2,
+      span: csYtd.length * 2,
     })
-    for (const c of cs) {
+    for (const c of csYtd) {
       const lc = a.porCentro[c]
       const id = `y${a.ano}:${c}`
       colunas.push({ id, rotulo: ROTULO_CENTRO[c], titulo: `${ROTULO_CENTRO[c]}, jan a ${mesJ} de ${a.ano}`, tipo: 'valor' })
-      valores[id] = colunaValor(lc.linhas, lc.memoria, janela, l => ytd(l, janela))
+      valores[id] = ytdDe(a, c)
       const idAv = `av${a.ano}:${c}`
       colunas.push({
         id: idAv, rotulo: 'AV', rotuloExport: `AV ${ROTULO_CENTRO[c]}`, tipo: 'av',
@@ -394,18 +409,20 @@ export function visaoLadoALadoConsolidado(args: {
     }
     const prox = anos[i + 1]
     if (prox) {
-      grupos.push({ rotulo: `Δ% YTD ${anoCurto(a.ano)}·${anoCurto(prox.ano)}`, titulo: 'Variação do YTD, por centro', span: cs.length })
-      for (const c of cs) {
+      // Δ% de Sem centro aparece se QUALQUER um dos dois anos teve lançamento sem centro no recorte.
+      const csDelta = cs.filter(c => c !== 'sem_centro' || temLancamento(a.porCentro[c], 0, janela) || temLancamento(prox.porCentro[c], 0, janela))
+      grupos.push({ rotulo: `Δ% YTD ${anoCurto(a.ano)}·${anoCurto(prox.ano)}`, titulo: 'Variação do YTD, por centro', span: csDelta.length })
+      for (const c of csDelta) {
         const id = `d${a.ano}:${c}`
         colunas.push({ id, rotulo: ROTULO_CENTRO[c], titulo: `Variação do YTD de ${ROTULO_CENTRO[c]}`, tipo: 'delta' })
-        const atual = valores[`y${a.ano}:${c}`]
-        const lcP = prox.porCentro[c]
-        const seguinte = colunaValor(lcP.linhas, lcP.memoria, janela, l => ytd(l, janela))
+        const atual = ytdDe(a, c)
+        const seguinte = ytdDe(prox, c)
         valores[id] = Object.fromEntries(Object.keys(seguinte).map(k => [k, deltaYtd(atual[k] ?? null, seguinte[k])]))
       }
     }
   })
-  const ytdRef = cs.map(c => valores[`y${ref.ano}:${c}`])
+  // O Total soma TODOS os centros (inclusive o Sem centro escondido por estar zerado — soma igual).
+  const ytdRef = cs.map(c => ytdDe(ref, c))
   colunasTotal(colunas, valores, ref.porCentro.trips, ytdRef, `Total YTD ${anoCurto(ref.ano)}`, todosOsCentros(cs))
   return { grupos, colunas, linhas: ref.porCentro.trips.linhas, memoria: ref.porCentro.trips.memoria, valores }
 }

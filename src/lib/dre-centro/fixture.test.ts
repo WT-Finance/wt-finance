@@ -191,6 +191,58 @@ describe('visões', () => {
       .toBe(TITULO_TOTAL_LADO)
   })
 
+  // Pedido do Yan no PR #311: a coluna "Sem centro" só aparece no bloco em que houve lançamento sem centro.
+  describe('"Sem centro" só nos blocos com lançamento sem centro', () => {
+    const k = `b:${LINHA_RES.chave}`
+    // Sem centro com lançamento SÓ em outubro (mês 10); a memória fica como veio (o saldo acumulado não conta).
+    const soOutubro = (lc: (typeof ano.porCentro)['sem_centro']) => ({
+      ...lc, linhas: lc.linhas.map(l => ({ ...l, meses: l.meses.map((x, i) => (i === 9 ? x : 0)) })),
+    })
+    const zerado = (lc: (typeof ano.porCentro)['sem_centro']) => ({
+      ...lc, linhas: lc.linhas.map(l => ({ ...l, meses: l.meses.map(() => 0) })),
+    })
+    const comSem = (f: typeof soOutubro) => ({ ...ano.porCentro, sem_centro: f(ano.porCentro.sem_centro) })
+
+    it('Mensal: só o bloco de outubro tem a coluna; os outros têm os 4 centros; o Total não muda', () => {
+      const pc = comSem(soOutubro)
+      const v = visaoLadoALado({ ano: 2026, porCentro: pc, fim: FIM, parcial: true })
+      expect(v.grupos.map(g => g.span)).toEqual(Array.from({ length: FIM }, (_, i) => (i === 9 ? 5 : 4)))
+      expect(v.colunas.filter(c => c.id.endsWith(':sem_centro')).map(c => c.id)).toEqual(['m10:sem_centro'])
+      expect(v.grupos.reduce((s, g) => s + g.span, 0)).toBe(v.colunas.filter(c => !c.fixa).length)
+      // Total = Σ de TODAS as colunas de mês visíveis (as escondidas eram zero)
+      const somaVisivel = v.colunas.filter(c => !c.fixa).reduce((s, c) => s + (v.valores[c.id][k] ?? 0), 0)
+      expect(v.valores.total[k]).toBeCloseTo(somaVisivel, 6)
+    })
+
+    it('Consolidado: sem lançamento sem centro no ano, o bloco YTD fica com os 4 centros; com lançamento, volta', () => {
+      const semNada = visaoLadoALadoConsolidado({
+        mesJanela: FIM, anos: [{ ano: 2026, parcial: true, fim: FIM, porCentro: comSem(zerado) }],
+      })!
+      expect(semNada.grupos[0].span).toBe(4 * 2)
+      expect(semNada.colunas.some(c => c.id.includes('sem_centro'))).toBe(false)
+      const soma4 = ['csc', 'trips', 'weddings', 'corp'].reduce((s, c) => s + (semNada.valores[`y2026:${c}`][k] ?? 0), 0)
+      expect(semNada.valores.total[k]).toBeCloseTo(soma4, 6)
+
+      const comOut = visaoLadoALadoConsolidado({
+        mesJanela: FIM, anos: [{ ano: 2026, parcial: true, fim: FIM, porCentro: comSem(soOutubro) }],
+      })!
+      expect(comOut.grupos[0].span).toBe(5 * 2)
+      expect(comOut.colunas.some(c => c.id === 'y2026:sem_centro')).toBe(true)
+    })
+
+    it('Consolidado com dois anos: o Δ% de Sem centro aparece se qualquer um dos anos teve lançamento', () => {
+      const v = visaoLadoALadoConsolidado({
+        mesJanela: FIM,
+        anos: [
+          { ano: 2025, parcial: false, fim: 12, porCentro: comSem(zerado) },
+          { ano: 2026, parcial: true, fim: FIM, porCentro: comSem(soOutubro) },
+        ],
+      })!
+      expect(v.grupos.map(g => [g.rotulo, g.span])).toEqual([['2025', 4], ['YTD 25', 8], ['Δ% YTD 25·26', 5], ['YTD 26', 10]])
+      expect(v.grupos.reduce((s, g) => s + g.span, 0)).toBe(v.colunas.filter(c => !c.fixa).length)
+    })
+  })
+
   it('Todos › Consolidado com dois anos: ano inteiro, YTD, Δ% por centro e Total do YTD de referência', () => {
     const v = visaoLadoALadoConsolidado({
       mesJanela: FIM,

@@ -148,6 +148,12 @@ Decisões de produto do Yan ao ver o card, aplicadas no mesmo PR antes do merge:
    - Para comparar, Trips tem R$ 5,37 mi, Weddings R$ 5,00 mi, Corp R$ 3,57 mi e Sem centro R$ 57,9 mil.
 7. **Sem asterisco de "ano em curso"** ("YTD 26", "Total 2026", "Total YTD 26"), como a tabela da Empresa. O mês em curso
    segue marcado só por "Nov · parcial" no Mensal. Teste novo garante que nenhuma visão volta a ter rótulo com asterisco.
+8. **"Corp" virou "Corporativo".**
+9. **Coluna "Sem centro" só onde houve lançamento sem centro**, bloco a bloco: no Mensal, por mês; no Consolidado, por
+   ano inteiro e por YTD. No Δ%, ela aparece se qualquer um dos dois anos teve lançamento. O critério são as linhas da
+   árvore, não a memória, porque o saldo acumulado carrega valor sem lançamento novo. O Total continua somando todos os
+   centros, e a coluna escondida era zero, então a paridade com a Empresa se mantém. Teste com "Sem centro" só em
+   outubro e zerado prova os spans e o Total.
 
 Gate desta rodada: dois testes que vão ao banco de produção falharam UMA vez e passaram na repetição. Foram a deriva
 sintética do `schema-baseline` e o contrato de `get_marketing_gastos_resumo`, este com `57014 statement timeout`
