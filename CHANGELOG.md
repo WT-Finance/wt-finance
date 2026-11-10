@@ -6,6 +6,35 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [6.5.2] — 2026-11-10
+
+PATCH · **Faturamento Corporativo: Cadastro de clientes alinhado à planilha oficial.** Out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v6-5-2_Cadastro_Clientes.md`. Migration **0307** (aditiva). Sem ADR.
+Numerada depois da v6.5.1 (PR #311, em aberto; as migrations 0304–0306 dela já estão aplicadas e seguem
+copiadas idênticas nesta branch para o `db push`).
+
+### Adicionado
+
+- **Situação "Eventual"** no Cadastro de clientes (cliente sem contrato que fatura de vez em quando):
+  reconhecida no import, com selo, filtro e opção de edição; o envio do e-mail da fatura trata Eventual
+  como Ativo (decisão do Yan). Regra única em `src/lib/faturamento/situacao-cliente.ts`.
+- **Coluna Contrato** (Sim/Não) no Cadastro — selo ✓/✗ editável; `app.cliente_corporativo.contrato`
+  (`'sim' | 'nao' | NULL`, CHECK) pela migration 0307, gravada pelo import e pela criação/edição manual.
+- **Tela cheia** na tabela do Cadastro (botão no canto superior direito; mesmo desenho do Demonstrativo).
+
+### Corrigido
+
+- **Import do Cadastro acha a aba pelo cabeçalho** (`EMPRESA`), não pela posição — a planilha oficial abre
+  numa aba auxiliar ("calculo reverso") e o import era recusado.
+- **Juros/multa normalizados na entrada do import** (`normalizarPctEntrada`): "padrão" → `2%`,
+  "1% ao mês" → `1%`, "10% sobre o valor integral…" → `10%` (a regra da 0170, agora para todo import).
+  Antes, reimportar a planilha crua rebaixava em silêncio ~28 clientes de juros 1% e ~27 de multa 5/10%
+  para 2%/2% nos boletos.
+- **Linha de total do Monde ignorada** na planilha do Faturamento (sem Pessoa e sem Fatura Cliente Nº):
+  entrava como fatura "não identificada" e dobrava o valor do resumo.
+
+---
+
 ## [6.5.0] — 2026-10-26
 
 MINOR · **Financeiro · Geral, segunda versão.** Out-briefing

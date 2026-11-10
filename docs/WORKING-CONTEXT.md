@@ -9,7 +9,24 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-11-05 (pós-merge da v6.5.0; destrutiva 0303 aplicada).
+Última atualização: 2026-11-10 (v6.5.2 em PR; 0307 aplicada).
+
+---
+
+## Em PR — v6.5.2 "Faturamento Corporativo: Cadastro de clientes alinhado à planilha oficial"
+
+Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v6-5-2_Cadastro_Clientes.md`. Migration **0307 APLICADA**
+(10/11, aditiva; banco na **0307**, livre **0308**). Numerada DEPOIS da v6.5.1 (PR #311, em aberto): quem mergear por
+último rebaseia e roda `npm run db:baseline` de novo (o `schema-v6.json` das duas conflita), e o CHANGELOG/diretoria/
+`package.json` também.
+
+- Situação **Eventual** (recebe e-mail de fatura como Ativo), coluna **Contrato** ✓/✗, **tela cheia** no Cadastro.
+- Import do Cadastro acha a aba pelo cabeçalho e normaliza juros/multa ("1% ao mês" → `1%`) — a planilha oficial
+  importa direto, sem preparação. Linha de total do Monde ignorada no Faturamento.
+- 🔴 **Yan, depois do merge/deploy:** reimportar `Faturamento Clientes - Corporativo.xlsx` (OneDrive) em Faturamento
+  Corp → Cadastro → Importar — só isso grava os 28 Eventuais e o Contrato dos 249 (a 0307 não escreve dado). A EXCOM
+  passa à linha da planilha (vencimento 10/20/30, 2%/2%, e-mails da controladoria), como você decidiu.
+- 🔴 Decidir: o filtro do Cadastro abre em "Ativo" — os Eventuais só aparecem trocando para "Eventual"/"Toda".
 
 ---
 
