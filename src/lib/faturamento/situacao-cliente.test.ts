@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizarSituacaoCliente, situacaoEnviavel, normalizarContrato } from './situacao-cliente'
+import { normalizarSituacaoCliente, situacaoEnviavel, normalizarContrato, diasFaturamento, faturaNoDia } from './situacao-cliente'
 
 describe('normalizarSituacaoCliente (v6.5.2)', () => {
   it('reconhece os três estados da planilha, em qualquer caixa/acento', () => {
@@ -41,6 +41,24 @@ describe('normalizarContrato (v6.5.2)', () => {
     expect(normalizarContrato(null)).toBeNull()
     expect(normalizarContrato('')).toBeNull()
     expect(normalizarContrato('talvez')).toBeNull()
+  })
+})
+
+describe('diasFaturamento / faturaNoDia (v6.5.2 — filtro "Faturar em")', () => {
+  it('grafias diferentes da mesma lista dão os mesmos dias', () => {
+    expect(diasFaturamento('01 / 10 / 20')).toEqual(['01', '10', '20'])
+    expect(diasFaturamento('01/ 10 / 20')).toEqual(['01', '10', '20'])
+    expect(diasFaturamento('01 / 10 ou 20')).toEqual(['01', '10', '20'])
+    expect(diasFaturamento('1 / 15')).toEqual(['01', '15'])
+  })
+
+  it('vazio → nenhum dia; filtro por dia casa só quem cita o dia', () => {
+    expect(diasFaturamento(null)).toEqual([])
+    expect(diasFaturamento('')).toEqual([])
+    expect(faturaNoDia('01 / 10 / 20', '10')).toBe(true)
+    expect(faturaNoDia('01 / 15', '10')).toBe(false)
+    expect(faturaNoDia('10', '01')).toBe(false)
+    expect(faturaNoDia(null, '01')).toBe(false)
   })
 })
 

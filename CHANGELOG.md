@@ -23,6 +23,9 @@ copiadas idênticas nesta branch para o `db push`).
 - **Tela cheia** na tabela do Cadastro (botão no canto superior direito; mesmo desenho do Demonstrativo).
 - Filtro de situação do Cadastro: "Toda" vira **"Todos"** e passa a ser o padrão ao abrir (antes abria em
   "Ativo" e escondia os Eventuais) — decisão do Yan.
+- **Filtro "Faturar em" por dia** no Cadastro: escolher "Dia 10" mostra quem fatura no dia 10, qualquer que
+  seja a grafia ("01 / 10 / 20", "01/ 10 / 20", "01 / 10 ou 20"); as opções nascem dos próprios dados
+  (`diasFaturamento`/`faturaNoDia` em `situacao-cliente.ts`).
 
 ### Corrigido
 

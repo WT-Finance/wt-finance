@@ -32,6 +32,8 @@ entrada, linha de total). EXCOM: vale a linha da planilha.
 | Contrato `sim`/`nao` no import, criação e edição; selo ✓/✗ editável | `parse-clientes-corp.ts`, `cadastro-actions.ts`, `cadastro-clientes.tsx` |
 | Tela cheia (Fullscreen API sobre o bloco, molde do Demonstrativo); confirmação de apagar sai da tela cheia antes | `cadastro-clientes.tsx` |
 | Import acha a aba pelo cabeçalho EMPRESA | `parse-clientes-corp.ts` |
+| Filtro "Faturar em" por dia (pedido do Yan): Dia 01/10/15/20/30 nos dados reais; grafias diferentes casam | `situacao-cliente.ts` (+ teste), `cadastro-clientes.tsx` |
+| Filtro de situação: "Toda" → "Todos", padrão ao abrir (decisão do Yan) | `cadastro-clientes.tsx` |
 | `normalizarPctEntrada` (regra da 0170) no import E na criação/edição manual | `juros-multa.ts`, `cadastro-actions.ts` |
 | Normalização reaplicada **no servidor** (situação, contrato, juros/multa) | `cadastro-actions.ts` |
 | Linha de total do Monde ignorada (sem Pessoa, sem Fatura Cliente Nº e sem datas) | `parse-faturamento.ts` (+ teste novo) |

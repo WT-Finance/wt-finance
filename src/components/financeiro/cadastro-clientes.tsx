@@ -14,7 +14,7 @@ import ConfirmModal from '@/components/shared/confirm-modal'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { Card } from '@/components/ui/card'
 import { parseClientesCorpFile } from '@/lib/faturamento/parse-clientes-corp'
-import { SITUACOES_CLIENTE, CONTRATO_OPCOES, type SituacaoCliente } from '@/lib/faturamento/situacao-cliente'
+import { SITUACOES_CLIENTE, CONTRATO_OPCOES, diasFaturamento, faturaNoDia, type SituacaoCliente } from '@/lib/faturamento/situacao-cliente'
 import {
   inserirClienteCorp, atualizarClienteCorp, excluirClienteCorp, apagarClientesCorp,
   importarClientesCorp, type ResultadoImportClientes,
@@ -134,6 +134,7 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
   const [itens, setItens]             = useState<ClienteCorp[]>(inicial)
   const [situacaoFiltro, setSituacao] = useState<SituacaoFiltro>('todos') // abre em Todos (v6.5.2, Yan): Eventuais visíveis sem trocar o filtro
   const [fEmpresa, setFEmpresa]       = useState('')
+  const [fDia, setFDia]               = useState('') // filtro "Faturar em" POR DIA ('' = todos) — v6.5.2
   const [selecionados, setSelecionados] = useState<Set<number>>(new Set())
   const [confirmBulk, setConfirmBulk] = useState(false)
   const [removendo, startRemover]     = useTransition()
@@ -157,8 +158,15 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
 
   const filtrados = useMemo(() => itens
     .filter(c => situacaoFiltro === 'todos' || (c.situacao ?? '') === situacaoFiltro)
-    .filter(c => !fEmpresa || c.empresa.toLowerCase().includes(fEmpresa.toLowerCase())),
-  [itens, situacaoFiltro, fEmpresa])
+    .filter(c => !fEmpresa || c.empresa.toLowerCase().includes(fEmpresa.toLowerCase()))
+    .filter(c => !fDia || faturaNoDia(c.faturar_em, fDia)),
+  [itens, situacaoFiltro, fEmpresa, fDia])
+
+  // Dias que aparecem em "Faturar em" no cadastro inteiro (não só nos filtrados), em ordem —
+  // as opções do filtro nascem dos dados, então um dia novo na planilha aparece sozinho.
+  const diasDisponiveis = useMemo(
+    () => [...new Set(itens.flatMap(c => diasFaturamento(c.faturar_em)))].sort(),
+    [itens])
 
   const totais = useMemo(() => ({
     total: itens.length,
@@ -360,7 +368,14 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
                   {SITUACOES_CLIENTE.map(s => <option key={s.valor} value={s.valor}>{s.rotulo}</option>)}
                 </select>
               </th>
-              <th colSpan={10} className="py-1.5 px-2"></th>
+              <th className="py-1.5 px-2"></th>
+              <th className="py-1.5 px-2">
+                <select value={fDia} onChange={e => setFDia(e.target.value)} className={FILTRO_INPUT} aria-label="Filtrar por dia de faturamento" title="Clientes que faturam neste dia">
+                  <option value="">Todos</option>
+                  {diasDisponiveis.map(d => <option key={d} value={d}>Dia {d}</option>)}
+                </select>
+              </th>
+              <th colSpan={8} className="py-1.5 px-2"></th>
             </tr>
           </thead>
           <tbody>

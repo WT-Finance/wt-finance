@@ -51,6 +51,22 @@ export function normalizarContrato(v: string | null | undefined): ContratoClient
   return null
 }
 
+// ── Dias de faturamento (v6.5.2) ──────────────────────────────────────────────────────────
+// "Faturar em" é texto livre com a lista de dias do mês ("01 / 10 / 20", "01/ 10 / 20",
+// "01 / 10 ou 20", "10"). O filtro do Cadastro é POR DIA: extrai os números e normaliza para dois
+// dígitos, para grafias diferentes da mesma lista caírem no mesmo dia.
+
+/** Dias do mês citados em "Faturar em", normalizados ("1" → "01"), sem repetição, na ordem. */
+export function diasFaturamento(v: string | null | undefined): string[] {
+  const dias = (v ?? '').match(/\d{1,2}/g) ?? []
+  return [...new Set(dias.map(d => d.padStart(2, '0')))]
+}
+
+/** O cliente fatura no dia `dia` ("01".."31")? */
+export function faturaNoDia(v: string | null | undefined, dia: string): boolean {
+  return diasFaturamento(v).includes(dia)
+}
+
 /** O cliente pode receber a fatura por e-mail pelo caminho do Cadastro? (ativo OU eventual).
  *  Lê o valor GRAVADO no banco (já canônico); tolera caixa/espaço por defesa. */
 export function situacaoEnviavel(s: string | null | undefined): boolean {
