@@ -26,7 +26,7 @@ Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v6-5-2_Cadastro_Clientes.m
 - 🔴 **Yan, depois do merge/deploy:** reimportar `Faturamento Clientes - Corporativo.xlsx` (OneDrive) em Faturamento
   Corp → Cadastro → Importar — só isso grava os 28 Eventuais e o Contrato dos 249 (a 0307 não escreve dado). A EXCOM
   passa à linha da planilha (vencimento 10/20/30, 2%/2%, e-mails da controladoria), como você decidiu.
-- 🔴 Decidir: o filtro do Cadastro abre em "Ativo" — os Eventuais só aparecem trocando para "Eventual"/"Toda".
+- Filtro de situação do Cadastro abre em **"Todos"** (era "Toda", abrindo em "Ativo") — decidido pelo Yan.
 
 ---
 

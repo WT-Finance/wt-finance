@@ -77,7 +77,7 @@ Prova com a planilha oficial real pelo parser novo: 249 clientes, 101 ativos / 2
 - MÉDIO `normalizarPctEntrada` só no import → também em criação/edição (servidor).
 - MÉDIO `includes('ativ')` fail-open → match exato + testes "desativado"/"não ativo".
 - MÉDIO servidor confiava no navegador → normalização reaplicada nas actions.
-- BAIXOS: filtro abre em "Ativo" (decisão de produto → §7); `normalizarContrato` ganhou teste próprio; mensagem
+- BAIXOS: filtro abria em "Ativo" → decidido pelo Yan: rótulo "Toda" vira "Todos" e é o padrão ao abrir; `normalizarContrato` ganhou teste próprio; mensagem
   "inativo" virou "inativo ou sem situação". Não endereçados (pré-existentes, fora do escopo): falha de salvar na
   edição inline sem aviso; `<span onClick>` sem teclado; `page.tsx` engole falha de `listar_clientes_corp`.
 
@@ -99,7 +99,6 @@ trocar dados reais de cliente nos testes por fictícios. Revisores: 0. 🔴 Cust
 2. **Depois do deploy:** Faturamento Corp → Cadastro → **Importar** a planilha oficial do OneDrive, direto. Só isso grava
    os 28 Eventuais e o Contrato dos 249. A EXCOM passa à linha da planilha (vencimento 10/20/30, 2%/2%, controladoria@).
 3. Conferir no preview: selo Eventual, coluna Contrato ✓/✗ (editar), tela cheia (entrar/sair/Esc), apagar em tela cheia.
-4. **Decidir:** o filtro de situação do Cadastro abre em "Ativo"; os Eventuais ficam ocultos até trocar o filtro.
 
 ## 8. Arquivos
 

@@ -37,7 +37,7 @@ export interface ClienteCorp {
 }
 
 type CampoEditavel = 'empresa' | 'situacao' | 'contrato' | 'faturar_em' | 'vencimento' | 'obs' | 'pct_juros' | 'pct_multa' | 'destinatarios' | 'forma_pgto' | 'contato_whats'
-type SituacaoFiltro = 'todas' | SituacaoCliente
+type SituacaoFiltro = 'todos' | SituacaoCliente
 
 const FILTRO_INPUT = 'w-full text-2xs border border-zinc-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:border-[var(--setor-corporativo)] placeholder:text-zinc-300'
 const EDIT_BORDER  = 'border border-[var(--setor-corporativo)]'
@@ -132,7 +132,7 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
   const inputFile = useRef<HTMLInputElement>(null)
 
   const [itens, setItens]             = useState<ClienteCorp[]>(inicial)
-  const [situacaoFiltro, setSituacao] = useState<SituacaoFiltro>('ativo')
+  const [situacaoFiltro, setSituacao] = useState<SituacaoFiltro>('todos') // abre em Todos (v6.5.2, Yan): Eventuais visíveis sem trocar o filtro
   const [fEmpresa, setFEmpresa]       = useState('')
   const [selecionados, setSelecionados] = useState<Set<number>>(new Set())
   const [confirmBulk, setConfirmBulk] = useState(false)
@@ -156,7 +156,7 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
   if (inicial !== prevInicial) { setPrevInicial(inicial); setItens(inicial); setSelecionados(new Set()) }
 
   const filtrados = useMemo(() => itens
-    .filter(c => situacaoFiltro === 'todas' || (c.situacao ?? '') === situacaoFiltro)
+    .filter(c => situacaoFiltro === 'todos' || (c.situacao ?? '') === situacaoFiltro)
     .filter(c => !fEmpresa || c.empresa.toLowerCase().includes(fEmpresa.toLowerCase())),
   [itens, situacaoFiltro, fEmpresa])
 
@@ -356,7 +356,7 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
               <th className="py-1.5 px-2"><input type="text" placeholder="Empresa…" value={fEmpresa} onChange={e => setFEmpresa(e.target.value)} className={FILTRO_INPUT} aria-label="Filtrar por empresa" /></th>
               <th className="py-1.5 px-2">
                 <select value={situacaoFiltro} onChange={e => setSituacao(e.target.value as SituacaoFiltro)} className={FILTRO_INPUT} aria-label="Filtrar por situação">
-                  <option value="todas">Toda</option>
+                  <option value="todos">Todos</option>
                   {SITUACOES_CLIENTE.map(s => <option key={s.valor} value={s.valor}>{s.rotulo}</option>)}
                 </select>
               </th>

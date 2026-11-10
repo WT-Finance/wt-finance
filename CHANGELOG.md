@@ -21,6 +21,8 @@ copiadas idênticas nesta branch para o `db push`).
 - **Coluna Contrato** (Sim/Não) no Cadastro — selo ✓/✗ editável; `app.cliente_corporativo.contrato`
   (`'sim' | 'nao' | NULL`, CHECK) pela migration 0307, gravada pelo import e pela criação/edição manual.
 - **Tela cheia** na tabela do Cadastro (botão no canto superior direito; mesmo desenho do Demonstrativo).
+- Filtro de situação do Cadastro: "Toda" vira **"Todos"** e passa a ser o padrão ao abrir (antes abria em
+  "Ativo" e escondia os Eventuais) — decisão do Yan.
 
 ### Corrigido
 
