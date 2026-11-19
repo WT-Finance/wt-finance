@@ -3,7 +3,7 @@
 **Data:** 19/11/2026 · **Natureza:** investigação read-only (só `GET` na API, sessão read-only no banco) ·
 **Oráculo:** as bases manuais recarregadas **hoje** (19/11, 10:25–10:49 de Brasília; Contas a receber em 16/11;
 Pessoas em 10/11) · **Fontes:** OpenAPI oficial (`web.monde.com.br/api/v3/documentation/file?locale=pt-BR`,
-baixado hoje, 2,25 MB), manual do TTARS (revisto em 24/10) e ~1.000 chamadas à API com a chave de produção
+baixado hoje, 2,25 MB), manual do TTARS (revisto em 24/10) e ~550 chamadas à API com a chave de produção
 (`MONDE_V3_API_KEY`), a 1 chamada/1,3 s, zero 429.
 
 > Amostras brutas (com nomes e documentos) ficaram fora do repositório, no diretório temporário do job.
@@ -13,9 +13,10 @@ baixado hoje, 2,25 MB), manual do TTARS (revisto em 24/10) e ~1.000 chamadas à 
 
 ## 1. Resposta curta
 
-1. **A API evoluiu muito.** A última verificação (v6.2.0, 05/10) conhecia ~19 recursos e uma API que "não filtra
-   por data nem diz o que mudou". Hoje o OpenAPI oficial tem **139 rotas** e um changelog com **~40 entregas
-   desde 05/10** (quase diárias). As que importam para o Janus:
+1. **A API evoluiu muito.** A última verificação (v6.2.0, 05/10) partia de um manual com 19 recursos testados e
+   de uma API que "não filtra por data nem diz o que mudou". Hoje o OpenAPI oficial tem **46 recursos de topo
+   (139 rotas, contando ações e escrita)** e um changelog com **~40 entregas desde 05/10** (quase diárias). As que
+   importam para o Janus:
    - `/sales` agora tem **`updated_since`** (pega edição de produto, passageiro, pagamento e conta vinculada, e
      venda retrodatada) e **`date_field/date_from/date_to`**. **Provado ao vivo** (§3).
    - **`/reports/sales_by_products`** (04/11): é o relatório "Vendas por produto" — a própria base de Vendas —
@@ -25,7 +26,8 @@ baixado hoje, 2,25 MB), manual do TTARS (revisto em 24/10) e ~1.000 chamadas à 
      `/category_groups`, `/cost_centers`, `/refunds`, `/nfs`, `/logs`.
    - **Webhooks** (27–28/10) — aviso ativo de mudança, alternativa ao polling. Sem permissão na nossa chave.
    - **Escrita** (POST/PATCH/DELETE em vendas, contas, pessoas, liquidação…). Ver risco no §6.
-   - Limite oficial: **10 requisições a cada 3 s por IP** (era 60); não há cota diária. Tudo segue marcado **Beta**.
+   - Limite oficial: **10 requisições a cada 3 s por IP** (vale desde 13/08 — não é novidade); não há cota
+     diária. Tudo segue marcado **Beta**.
 
 2. **Substituir as bases manuais: tecnicamente SIM para 5 das 7, com paridade medida ao centavo contra o
    arquivo de hoje; NÃO para o Demonstrativo; Vendas depende de uma permissão na chave.** Mas nenhuma troca é
@@ -36,7 +38,7 @@ baixado hoje, 2,25 MB), manual do TTARS (revisto em 24/10) e ~1.000 chamadas à 
 |---|---|---|---|
 | **Vendas por produto** | `/reports/sales_by_products` | **não verificada — 403** | Provável (a doc diz "mesma consulta do relatório"); **bloqueada por permissão** |
 | **Lançamentos por Movimentação** | `/bills` + `/bills/{id}` + `/account_movements` | 950/950 títulos ao centavo; categorias 18/18 | **Sim** (regras no §4.2) |
-| **Lançamentos em aberto** | `/bills?status=open,overdue` + detalhe | 12.438/12.456 ao centavo; os 18 restantes editados no Monde depois da exportação | **Sim** |
+| **Lançamentos em aberto** | `/bills?status=open,overdue` + detalhe | 12.438/12.456 ao centavo; dos 18 restantes, os 2 conferidos foram editados no Monde depois da exportação | **Sim** |
 | **Contas a receber** | `/bills?transaction_kind=credit` + detalhe | 1.297/1.297 presentes, 1.296 no valor, 1.297 na liquidação (set/2026) | **Sim** |
 | **Lançamentos por Operação** (RPA) | `/bills/{id}.operation` + operação da venda | 10/10 vínculos e valores (amostra) | **Sim, provável** — aposentaria a RPA |
 | **Pessoas** | `/people` (+ `/cities/{id}`) | 17/17 colunas com campo correspondente | **Sim** — o "5 de 17" de agosto caducou |
@@ -74,8 +76,8 @@ A pauta (`origin/docs/pauta-provedor-monde`, 06/08) foi escrita para a API antig
   não conhece** (ver §5).
 - **06/11 — `payments.agency.to_invoice` muda de forma** no `GET /sales/{id}` (mudança de contrato anunciada).
   O espelho não lê esse campo hoje.
-- Bem antes (sem data no trecho lido): limite caiu de **60 para 10 requisições a cada 3 s** por IP; `registered_at`
-  virou `created_at`.
+- Anterior à nossa sonda (13/08), registrado só para não ser confundido com novidade: o limite caiu de **60 para
+  10 requisições a cada 3 s** por IP e `registered_at` virou `created_at`.
 
 ---
 
@@ -103,9 +105,11 @@ filtrado). Por isso cada filtro foi provado com chamada discriminante.
 - **Positiva:** 40 vendas **dentro** de `updated_since=12/11` cujo `raw` no espelho é anterior a 12/11:
   30 diferem — **15 só em `financial`**, **14 em produto + `totals.revenue`**, 1 só em `operations[]`.
   Ou seja, o filtro acusa mudança abaixo do cabeçalho.
-- Achado lateral: essas 14 vendas com receita alterada **ainda não estavam relidas** no espelho. Não é perda: o
-  espelho as leu hoje às 05:30 e a lista as viu às 06:35; a edição veio depois. É o atraso de até ~1 dia **por
-  desenho** da revisita diária. Com `updated_since`, entraria no tick seguinte (15 min) e custaria menos chamadas.
+- Achado lateral: as vendas com diferença **ainda não estavam relidas** no espelho. Não é perda: nas **40/40**, o
+  cabeçalho guardado (`venda_cabecalho.totais`) tem a mesma receita do `raw`, e a última passada da lista por elas
+  foi hoje às **03:35 de Brasília** (`visto_em`, 06:35 UTC) — a edição no Monde veio depois. É o atraso de até
+  ~1 dia **por desenho** (a revisita diária de vendas antigas). Com `updated_since`, entraria no tick seguinte
+  (15 min) e com menos chamadas.
 
 ### 3.3 O que não mudou no detalhe da venda
 
@@ -142,6 +146,15 @@ Dia de teste: **15/10/2026** (banco: 2.158 linhas, 1.190 títulos, 32 contas).
 - **Regra 2 — sinal pela natureza da categoria.** A API dá o valor da categoria sempre positivo; o arquivo nega
   a categoria de despesa (`/categories.kind = expense`). Ex.: pagamento de venda com "Entrada de clientes"
   +940,99 e "Taxa do Cartão" +32,84 na API → no arquivo, +940,99 e −32,84 (líquido 908,15 nos dois).
+  ⚠️ A amostra é estreita: 12 dos 18 são o mesmo padrão (pagamento de venda com duas categorias) e 5 são despesas
+  simples. **Conta de débito com categoria de receita** (estorno, devolução) **não foi testada** — a regra pode
+  precisar do sentido da conta além do tipo da categoria.
+- **Colunas comparadas:** valor e categoria. `Conta`, `Data de movimentação`, `Pessoa` e `Grupo de Categoria`
+  **não** foram comparados nesta sonda (estão no detalhe: `account`, `movements`, `person`, grupo via
+  `/categories/{id}`).
+- **Movimentos futuros:** o arquivo de hoje tem só 3 linhas datadas depois de hoje (2 títulos, 1 conta,
+  R$ 11.149,43). Não foi verificado como a API as representa (`/account_movements` filtra por data e aceitaria
+  período futuro).
 - **Regra 3 — fatura de cartão expande nas compras.** 240 títulos só no banco são compras de cartão
   corporativo (contas de cartão por portador) liquidadas em setembro e "movimentadas" em 15/10, dia em que a
   fatura foi paga; do lado da API são 28 faturas `credit_card_invoice`. No detalhe da fatura,
@@ -154,10 +167,12 @@ Dia de teste: **15/10/2026** (banco: 2.158 linhas, 1.190 títulos, 32 contas).
 API: 12.642 contas em aberto/vencidas (253 páginas, 5,6 min). Banco: 12.483 títulos.
 
 - **12.456 nos dois lados; 12.438 com valor idêntico ao centavo.**
-- Os **18** com valor diferente: o `/logs` mostra **edição no Monde hoje entre 10:58 e 11:02**, depois da
-  exportação (10:32) — conferido em 2.
-- **186** só na API: **166 faturas de cartão** (o relatório mostra as compras, não a fatura — Regra 3) e **20**
-  contas **criadas hoje entre 10:47 e 11:01**, depois da exportação.
+- Os **18** com valor diferente são contas com vencimento em 30/11; nas **2 conferidas**, o `/logs` mostra
+  **edição no Monde hoje às 10:58 e 11:02**, depois da exportação (10:32). As outras 16 não foram conferidas uma a
+  uma (mesmo padrão de número e vencimento).
+- **186** só na API: **166 faturas de cartão** e **20** contas **criadas hoje entre 10:47 e 11:01**, depois da
+  exportação. A regra do cartão está provada dos dois lados: o arquivo traz **1.677 compras de cartão**
+  individuais (todas também na API) e **nenhuma fatura** — fatura excluída, compras presentes.
 - **27** só no banco (Σ R$ 15.129,26): liquidadas/excluídas entre a exportação e a leitura (não conferido
   uma a uma).
 
@@ -167,9 +182,10 @@ Vencimento em set/2026 (arquivo de 16/11). API `transaction_kind=credit`, os 4 s
 
 - **1.297/1.297** títulos do banco presentes; **1.296** com o mesmo valor; **1.297** com a mesma liquidação.
 - As **213** só na API são **todas canceladas** — o relatório não traz cancelada (regra: `canceled = false`).
-- **"Conferido" é o campo personalizado de conta nº 25**, com exatamente os 4 valores do domínio fechado da base
-  (Sim, Pendente, Enviado para o banco, Inadimplente). Vem **só no detalhe** — e muda com o tempo (é a marcação
-  de inadimplência), então exige reler o detalhe ou um sinal de mudança (§5).
+- **"Conferido" é, pela definição, o campo personalizado de conta nº 25** (`/custom_fields?resource=bills`: nome
+  "Conferido", escolhas Sim, Pendente, Enviado para o banco, Inadimplente — o domínio fechado da base). O **valor
+  por título não foi comparado** com o arquivo. Vem **só no detalhe** e muda com o tempo (é a marcação de
+  inadimplência), então exige reler o detalhe ou um sinal de mudança (§5).
 - Pessoa e Operação Própria também só no detalhe (`person{id}`, `operation{id}`).
 
 ### 4.5 Lançamentos por Operação (hoje via RPA) — vínculo reconstruído 10/10
@@ -275,6 +291,10 @@ Desenho que os números sugerem (decisão técnica de uma versão futura, não d
 - Paridade da base de **Vendas** (403 no relatório).
 - Catálogo exato de eventos de **webhook** (403 em `/webhook_events`; o OpenAPI só dá exemplos).
 - Resíduo de R$ 7.748,71 nas faturas de cartão de 15/10 (§4.2) e os 27 títulos de Aberto só no banco.
+- Movimentação: colunas `Conta`, `Data de movimentação`, `Pessoa` e `Grupo de Categoria`; regra de sinal em conta
+  de débito com categoria de receita; as 3 linhas de movimento futuro.
+- Aberto: 16 das 18 diferenças de valor (só 2 conferidas no `/logs`).
+- Contas a receber: o valor de "Conferido" título a título (a ligação ao campo nº 25 é pela definição).
 - Paridade de **soma por operação** e de conteúdo de **Pessoas**; ordem e custo do feed global de `/logs`.
 - Se o ritmo pode subir de 1/1,3 s para perto do limite oficial sem 429 (em set/2026, 2–4/s levaram 429).
 - Escrita: deliberadamente não testada.
