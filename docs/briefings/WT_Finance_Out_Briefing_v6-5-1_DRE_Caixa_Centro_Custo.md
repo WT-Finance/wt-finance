@@ -194,6 +194,10 @@ Decisões de produto do Yan ao ver o card, aplicadas no mesmo PR antes do merge:
       da área rolável — o `ListDrawer` ganhou o slot opcional `rodape` (o sticky dentro da rolagem deixava as linhas
       vazarem por baixo por causa do padding do viewport; os outros 20 usos do `ListDrawer` não mudam); botão "Rateio"
       em âmbar (`--warning-bg`/`--warning`/`--warning-deep`, ≈ 5:1).
+    - **Botões "Limpar" e "Preencher vazios"; "Salvar rateio" virou "Aplicar"** (pedido do Yan). Os dois só mexem no
+      formulário (nada vai ao banco antes de Aplicar). "Preencher vazios" dá 33,33% / 33,33% / 33,34% (o último leva o
+      resto) às CATEGORIAS vazias dos grupos sem % próprio — escolha do agente, a confirmar: a linha do grupo não é
+      preenchida, porque travaria as categorias e passaria por cima das já definidas.
 
 Gate desta rodada: dois testes que vão ao banco de produção falharam UMA vez e passaram na repetição. Foram a deriva
 sintética do `schema-baseline` e o contrato de `get_marketing_gastos_resumo`, este com `57014 statement timeout`

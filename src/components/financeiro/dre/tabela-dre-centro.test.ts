@@ -266,8 +266,13 @@ describe('RateioCscDrawer', () => {
     }
     expect(html).toMatch(/<input[^>]*aria-label="\(−\) Despesas Administrativas › Aluguel — % Trips"[^>]*\/><span aria-hidden="true"[^>]*>%<\/span>/)
     // o rodapé (Cancelar/Salvar) vai no slot próprio do ListDrawer, fora da área rolável
-    expect(html).toMatch(/data-rodape=""[^]*Salvar rateio/)
-    expect(html.split('data-rodape')[0]).not.toContain('Salvar rateio')
+    expect(html).toMatch(/data-rodape=""[^]*>Aplicar</)
+    expect(html.split('data-rodape')[0]).not.toContain('>Aplicar<')
+    expect(html).not.toContain('Salvar rateio') // o botão virou "Aplicar" (pedido do Yan)
+    // Limpar e Preencher vazios no rodapé, antes de Cancelar/Aplicar
+    const rodape = html.split('data-rodape')[1]
+    for (const b of ['Limpar', 'Preencher vazios', 'Cancelar', 'Aplicar']) expect(rodape).toMatch(new RegExp(`<button[^>]*>${b}</button>`))
+    expect(rodape.indexOf('>Preencher vazios<')).toBeLessThan(rodape.indexOf('>Aplicar<'))
   })
 
   it('categorias de mesmo nome em grupos diferentes: rótulos acessíveis e ids de erro distintos (revisor, MÉDIO)', () => {
@@ -287,6 +292,6 @@ describe('RateioCscDrawer', () => {
     expect(orfao).toContain('não está mais na DRE')
     const falha = draw(null)
     expect(falha).toContain('Não foi possível ler o rateio salvo')
-    expect(falha).toMatch(/<button[^>]*disabled=""[^>]*>Salvar rateio<\/button>/)
+    expect(falha).toMatch(/<button[^>]*disabled=""[^>]*>Aplicar<\/button>/)
   })
 })

@@ -6,7 +6,7 @@ import Button from '@/components/ui/button'
 import { Input } from '@/components/ui/field'
 import {
   CENTROS_RATEIO, PCTS_VAZIO, ROTULO_RATEIO, categoriaTravada, chaveCategoria, chaveGrupo, estadoInicial,
-  lerPct, montarItens,
+  lerPct, montarItens, preencherVazios,
   type CentroRateio, type EstadoRateio, type GrupoRateio, type ItemRateio, type Pcts, type RateioCsc,
 } from '@/lib/dre-centro/rateio'
 
@@ -136,12 +136,31 @@ export default function RateioCscDrawer({ grupos, salvo, onSalvar, onClose }: Ra
       subtitulo={SUBTITULO}
       onClose={onClose}
       rodape={(
-        <div className="flex items-center justify-end gap-2">
-          {erroGeral && <p role="alert" className="mr-auto text-sm text-danger">{erroGeral}</p>}
-          <Button variant="contorno" size="sm" onClick={onClose} disabled={salvando}>Cancelar</Button>
-          <Button variant="solido" size="sm" onClick={salvar} disabled={salvando || salvo == null}>
-            {salvando ? 'Salvando…' : 'Salvar rateio'}
-          </Button>
+        <div className="flex flex-col gap-2">
+          {erroGeral && <p role="alert" className="text-sm text-danger">{erroGeral}</p>}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Limpar e Preencher vazios só mexem no formulário; nada vai ao banco antes de "Aplicar". */}
+            <Button
+              variant="contorno" size="sm" disabled={salvando}
+              onClick={() => { setEstado({}); setErros({}); setErroGeral(null) }}
+              title="Esvaziar todos os campos (nada é gravado até Aplicar)"
+            >
+              Limpar
+            </Button>
+            <Button
+              variant="contorno" size="sm" disabled={salvando}
+              onClick={() => { setEstado(prev => preencherVazios(prev, grupos)); setErroGeral(null) }}
+              title="Categorias vazias (de grupos sem % próprio) recebem 33,33% / 33,33% / 33,34%"
+            >
+              Preencher vazios
+            </Button>
+            <span className="ml-auto flex gap-2">
+              <Button variant="contorno" size="sm" onClick={onClose} disabled={salvando}>Cancelar</Button>
+              <Button variant="solido" size="sm" onClick={salvar} disabled={salvando || salvo == null}>
+                {salvando ? 'Aplicando…' : 'Aplicar'}
+              </Button>
+            </span>
+          </div>
         </div>
       )}
     >

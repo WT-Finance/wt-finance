@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import type { DreLinha } from '@/lib/dre/schemas'
 import {
-  categoriaTravada, chaveCategoria, chaveGrupo, estadoInicial, gruposDaArvore, lerPct, montarItens,
-  rateioCscSchema, temRateio, validarLinha,
+  PCTS_IGUAIS, categoriaTravada, chaveCategoria, chaveGrupo, estadoInicial, gruposDaArvore, lerPct, montarItens,
+  preencherVazios, rateioCscSchema, temRateio, validarLinha,
 } from './rateio'
 
 const linha = (p: Partial<DreLinha> & Pick<DreLinha, 't' | 'rotulo'>): DreLinha =>
@@ -50,6 +50,27 @@ describe('lerPct / validarLinha', () => {
     expect(validarLinha({ trips: '50', weddings: '30', corp: '10' })).toMatchObject({ tipo: 'erro', msg: expect.stringContaining('90%') })
     expect(validarLinha({ trips: '150', weddings: '', corp: '' })).toMatchObject({ tipo: 'erro' })
     expect(validarLinha({ trips: 'x', weddings: '', corp: '' })).toMatchObject({ tipo: 'erro' })
+  })
+})
+
+describe('preencherVazios', () => {
+  it('categorias vazias de grupo sem % recebem 33,33/33,33/33,34 (soma 100); grupo travado e linhas digitadas ficam', () => {
+    const antes = {
+      [chaveGrupo('RH')]: { trips: '100', weddings: '', corp: '' },        // RH travado: Salários não é tocada
+      [chaveCategoria(10)]: { trips: '50', weddings: '50', corp: '' },     // já definida: fica
+      [chaveCategoria(11)]: { trips: '7', weddings: '', corp: '' },        // rascunho inválido: fica
+    }
+    const depois = preencherVazios(antes, GRUPOS)
+    expect(depois[chaveCategoria(10)]).toEqual(antes[chaveCategoria(10)])
+    expect(depois[chaveCategoria(11)]).toEqual(antes[chaveCategoria(11)])
+    expect(depois[chaveCategoria(20)]).toBeUndefined()
+    expect(depois[chaveGrupo('ADM')]).toBeUndefined() // a linha do grupo nunca é preenchida
+    const tudoVazio = preencherVazios({}, GRUPOS)
+    expect(tudoVazio[chaveCategoria(10)]).toEqual(PCTS_IGUAIS)
+    expect(tudoVazio[chaveCategoria(20)]).toEqual(PCTS_IGUAIS)
+    expect(validarLinha(PCTS_IGUAIS)).toEqual({ tipo: 'ok', pcts: { trips: 33.33, weddings: 33.33, corp: 33.34 } })
+    // e o resultado salva sem erro
+    expect(montarItens(tudoVazio, GRUPOS).erros).toEqual({})
   })
 })
 

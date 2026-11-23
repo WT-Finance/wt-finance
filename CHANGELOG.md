@@ -36,8 +36,9 @@ classificação: CHECKs de base). ADR-0184.
   a tabela (pedidos do Yan na revisão do PR).
 - Módulo puro `src/lib/dre-centro/` (atribuição §3.4, visões, notas, exportação) com testes contra o protótipo.
 - **Rateio do CSC** (0308, pedido do Yan no PR): botão "Rateio" depois de "Todos" abre um drawer com % para Trips,
-  Weddings e Corporativo por grupo de categoria ou por categoria (grupo trava as categorias; soma 100); chave "Com
-  rateio" mostra a DRE com o CSC repartido (abre desligada). Tabela `financeiro.dre_rateio_csc`; o corpo de
+  Weddings e Corporativo por grupo de categoria ou por categoria (grupo trava as categorias; soma 100; "Limpar",
+  "Preencher vazios" com 33,33/33,33/33,34 e "Aplicar"); chave "Com rateio" mostra a DRE com o CSC repartido (abre
+  desligada). Tabela `financeiro.dre_rateio_csc`; o corpo de
   `get_dre_caixa_centro` virou o núcleo interno `financeiro.dre_caixa_centro_nucleo` (rateio aplicado só na partição da
   linha do fato por centro); RPCs novas `get_dre_caixa_centro_rateio`, `get_dre_rateio_csc` e `salvar_dre_rateio_csc`.
   A 0307 da v6.5.2 (arquivo idêntico) entra para o histórico local casar com o remoto.

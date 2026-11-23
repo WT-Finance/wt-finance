@@ -146,5 +146,23 @@ export function montarItens(estado: EstadoRateio, grupos: readonly GrupoRateio[]
   return { itens, erros }
 }
 
+/** Distribuição igual entre os três centros com 2 casas — o último leva o resto (33,33 + 33,33 + 33,34 = 100). */
+export const PCTS_IGUAIS: Pcts = { trips: '33,33', weddings: '33,33', corp: '33,34' }
+
+/** "Preencher vazios" (pedido do Yan): as CATEGORIAS vazias dos grupos sem % próprio recebem a distribuição igual.
+ *  A linha do grupo não é preenchida — isso travaria as categorias e passaria por cima das já definidas. Linha com
+ *  qualquer coisa digitada (válida ou não) e grupos preenchidos ficam como estão. */
+export function preencherVazios(estado: EstadoRateio, grupos: readonly GrupoRateio[]): EstadoRateio {
+  const out: EstadoRateio = { ...estado }
+  for (const g of grupos) {
+    if (categoriaTravada(estado, g.chave)) continue
+    for (const c of g.categorias) {
+      const k = chaveCategoria(c.categoria_id)
+      if (validarLinha(out[k]).tipo === 'vazia') out[k] = { ...PCTS_IGUAIS }
+    }
+  }
+  return out
+}
+
 /** Há rateio salvo? (a chave "Com rateio" só aparece quando há). */
 export const temRateio = (r: RateioCsc | null) => (r?.itens.length ?? 0) > 0
