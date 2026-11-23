@@ -474,8 +474,10 @@ export type Database = {
         Args: { p_ajuste?: boolean; p_ano: number }
         Returns: Json
       }
+      get_dre_caixa_centro_rateio: { Args: { p_ano: number }; Returns: Json }
       get_dre_competencia_mensal: { Args: { p_ano: number }; Returns: Json }
       get_dre_mensal: { Args: { p_ano: number }; Returns: Json }
+      get_dre_rateio_csc: { Args: never; Returns: Json }
       get_executiva_kpis: {
         Args: {
           p_ant_from?: string
@@ -1054,6 +1056,7 @@ export type Database = {
       }
       resultado_boletos: { Args: { p_refs: string[] }; Returns: Json }
       resultado_notas: { Args: { p_refs: string[] }; Returns: Json }
+      salvar_dre_rateio_csc: { Args: { p_itens: Json }; Returns: Json }
       solic_anexar: { Args: { p_anexos: Json; p_id: number }; Returns: Json }
       solic_anexo_excluir: { Args: { p_anexo_id: number }; Returns: Json }
       solic_anexo_path: { Args: { p_anexo_id: number }; Returns: Json }

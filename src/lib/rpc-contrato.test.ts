@@ -47,6 +47,7 @@ import { hojeSP } from './fmt'
 import { dreCaixaCentroSchema, paraDreCentroAno } from './dre-centro/schemas'
 import { montarAnoCentro } from './dre-centro/montar'
 import { LINHA_RES } from './dre-centro/visoes'
+import { rateioCscSchema } from './dre-centro/rateio'
 import { tokenMaquina, credencialConfigurada } from './auth/credencial-maquina'
 
 // CONTRATO das RPCs críticas (números que a diretoria vê). Bate via REST com a
@@ -3792,6 +3793,70 @@ describe.skipIf(!ON)('contrato RPC — DRE de caixa por centro (v6.5.1)', () => 
     try { codigo = String((JSON.parse(texto) as { code?: unknown }).code) } catch { /* corpo não-JSON: cai no expect abaixo */ }
     expect(codigo, `HTTP ${res.status}, código ${codigo}`).toBe('42501')
   })
+
+  // ── 0308 — rateio do CSC (pedido do Yan no PR #311) ──────────────────────────────────────────
+  // O rateio só REDISTRIBUI o CSC entre as operações: com qualquer conjunto salvo, Σ centros por linha é o
+  // mesmo com e sem rateio, e o Resultado de caixa continua ≡ REX da Empresa.
+  it('get_dre_caixa_centro_rateio: shape + Σ centros ≡ sem rateio linha a linha + Resultado de caixa ≡ REX', async () => {
+    const [cr, cs, emp] = await Promise.all([
+      rpc('get_dre_caixa_centro_rateio', { p_ano: anoSP() }),
+      rpc('get_dre_caixa_centro', { p_ano: anoSP() }),
+      rpc('get_dre_mensal', { p_ano: anoSP() }),
+    ])
+    const r = dreCaixaCentroSchema.safeParse(cr)
+    const s = dreCaixaCentroSchema.safeParse(cs)
+    const e = dreMensalSchema.safeParse(emp)
+    expect(r.success, r.success ? '' : JSON.stringify(r.error.issues.slice(0, 3))).toBe(true)
+    expect(s.success && e.success).toBe(true)
+    if (!r.success || !s.success || !e.success) return
+    expect((cr as { rateio?: unknown }).rateio).toBe(true)
+    expect((cs as { rateio?: unknown }).rateio).toBe(false)
+    const fim = e.data.mes_corrente ?? 12
+    const comR = Object.values(r.data.arvores)
+    const semR = Object.values(s.data.arvores)
+    for (const [i, l] of semR[0].entries()) {
+      expect(chave(comR[0][i])).toBe(chave(l)) // mesmo esqueleto, mesma ordem
+      for (let m = 0; m < fim; m++) {
+        const a = comR.reduce((x, arv) => x + arv[i].meses[m], 0)
+        const b = semR.reduce((x, arv) => x + arv[i].meses[m], 0)
+        expect(Math.abs(a - b), `${chave(l)} mês ${m + 1}`).toBeLessThan(0.005)
+      }
+    }
+    const ano = montarAnoCentro(paraDreCentroAno(r.data))
+    const rex = e.data.linhas.find(l => l.chave === 'REX')
+    for (let m = 0; m < fim; m++) {
+      const soma = Object.values(ano.porCentro).reduce(
+        (a, lc) => a + (lc.linhas.find(l => l.chave === LINHA_RES.chave)?.meses[m] ?? NaN), 0)
+      expect(Math.abs(soma - (rex?.meses[m] ?? NaN)), `mês ${m + 1}`).toBeLessThan(0.005)
+    }
+  })
+
+  it('get_dre_rateio_csc: shape do contrato do drawer', async () => {
+    const p = rateioCscSchema.safeParse(await rpc('get_dre_rateio_csc', {}))
+    expect(p.success, p.success ? '' : JSON.stringify(p.error.issues.slice(0, 3))).toBe(true)
+    if (!p.success) return
+    for (const it of p.data.itens) {
+      expect((it.categoria_id == null) !== (it.bloco_chave == null)).toBe(true)
+      expect(Math.abs(it.pct_trips + it.pct_weddings + it.pct_corp - 100)).toBeLessThan(1e-9)
+    }
+  })
+
+  it.each([
+    ['get_dre_caixa_centro_rateio', { p_ano: 2026 }],
+    ['get_dre_rateio_csc', {}],
+    ['salvar_dre_rateio_csc', { p_itens: [] }],
+  ])('%s: anon → erro de permissão 42501 (HTTP 401/403), sem escrever nada', async (fn, corpo) => {
+    const res = await fetch(`${HOST}/rest/v1/rpc/${fn}`, {
+      method: 'POST',
+      headers: { apikey: ANON as string, Authorization: `Bearer ${ANON as string}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(corpo),
+    })
+    const texto = await res.text()
+    expect([401, 403], `anon recebeu HTTP ${res.status}`).toContain(res.status)
+    let codigo = ''
+    try { codigo = String((JSON.parse(texto) as { code?: unknown }).code) } catch { /* corpo não-JSON: cai no expect abaixo */ }
+    expect(codigo, `HTTP ${res.status}, código ${codigo}`).toBe('42501')
+  })
 })
 
 // ── v6.5.1/M5 — NEGAÇÃO: usuário ATIVO sem a área `financeiro/dre` ───────────────────────────────
@@ -3819,16 +3884,24 @@ describe.skipIf(!ON || !DB_URL)('contrato RBAC — DRE de caixa por centro: usu�
       expect(r.rows.length, 'não há usuário ativo fora de financeiro/dre — a negação ficaria sem prova').toBeGreaterThan(0)
       for (const u of r.rows as Array<{ uid: string }>) {
         await c.query(`SELECT set_config('request.jwt.claims', $1, false)`, [JSON.stringify({ sub: u.uid, role: 'authenticated' })])
-        let code = ''
-        let msg = ''
-        try {
-          await c.query('SELECT public.get_dre_caixa_centro($1::int) AS r', [Number(hojeSP().slice(0, 4))])
-        } catch (e) {
-          code = String((e as { code?: string }).code)
-          msg = String((e as { message?: string }).message)
+        // 0308: as três do rateio também negam. A de salvar NÃO escreve: a sessão é READ ONLY e o guard vem antes.
+        for (const [sql, params] of [
+          ['SELECT public.get_dre_caixa_centro($1::int) AS r', [Number(hojeSP().slice(0, 4))]],
+          ['SELECT public.get_dre_caixa_centro_rateio($1::int) AS r', [Number(hojeSP().slice(0, 4))]],
+          ['SELECT public.get_dre_rateio_csc() AS r', []],
+          [`SELECT public.salvar_dre_rateio_csc('[]'::jsonb) AS r`, []],
+        ] as const) {
+          let code = ''
+          let msg = ''
+          try {
+            await c.query(sql, [...params])
+          } catch (e) {
+            code = String((e as { code?: string }).code)
+            msg = String((e as { message?: string }).message)
+          }
+          expect(code, `role sem financeiro/dre (${sql}): ${msg}`).toBe('42501')
+          expect(msg).toMatch(/PERMISSAO_NEGADA/)
         }
-        expect(code, `role sem financeiro/dre: ${msg}`).toBe('42501')
-        expect(msg).toMatch(/PERMISSAO_NEGADA/)
       }
     } finally {
       await c.end()
