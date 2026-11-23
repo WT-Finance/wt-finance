@@ -23,6 +23,8 @@ import {
   type ColunaVisao, type VisaoTabela,
 } from '@/lib/dre-centro/visoes'
 import type { AnoDadosCentro } from '@/lib/dre-centro/montar'
+import { gruposDaArvore, temRateio, type ItemRateio, type RateioCsc } from '@/lib/dre-centro/rateio'
+import RateioCscDrawer from './rateio-csc-drawer'
 import { abaDaVisao, nomeArquivoCentro } from '@/lib/dre-centro/exportar'
 
 // ── DRE de caixa por centro de custo (v6.5.1) — componente IRMÃO da `TabelaDre` ─────────────
@@ -247,16 +249,33 @@ export interface TabelaDreCentroProps {
   seletorInicial?: Opcao | readonly CentroSelecionavel[]
   /** Visão em que Todos (ou vários centros) abre (default: Consolidado — pedido do Yan no PR #311). Um centro abre em Mensal. */
   visaoLadoInicial?: VisaoCentro
-  leitura: { ok: true; anos: AnoDadosCentro[] } | { ok: false; motivo: 'vazio' | 'erro' }
+  leitura: LeituraCentro
+  /** A mesma leitura COM o rateio do CSC (0308). Ausente = sem rateio na tela (só o drawer some junto). */
+  leituraRateio?: LeituraCentro
+  /** Os percentuais salvos; null = a leitura falhou (o drawer avisa e não salva por cima). */
+  rateio?: RateioCsc | null
+  /** Server Action de salvar (vem da página). Ausente = sem o botão Rateio. */
+  salvarRateio?: (itens: ItemRateio[]) => Promise<{ ok: boolean; erro?: string }>
   anosDisponiveis: number[]
   mesJanela: number
 }
 
+type LeituraCentro = { ok: true; anos: AnoDadosCentro[] } | { ok: false; motivo: 'vazio' | 'erro' }
+
 const TITULO = 'Demonstrativo de Resultado por Centro de Custo'
 
 export default function TabelaDreCentro({
-  seletorInicial = SELETOR_INICIAL, visaoLadoInicial = 'consolidado', leitura, anosDisponiveis, mesJanela,
+  seletorInicial = SELETOR_INICIAL, visaoLadoInicial = 'consolidado', leitura: leituraSem, leituraRateio, rateio = null,
+  salvarRateio, anosDisponiveis, mesJanela,
 }: TabelaDreCentroProps) {
+  // Rateio do CSC (0308, decisão do Yan: chave liga/desliga; abre DESLIGADA — a DRE fica como antes até alguém
+  // ligar). Só liga com rateio salvo E a leitura com rateio sã: senão ligar trocaria o card pelo erro e
+  // esconderia a própria chave.
+  const [comRateio, setComRateio] = useState(false)
+  const [drawerAberto, setDrawerAberto] = useState(false)
+  const rateioDisponivel = temRateio(rateio) && leituraRateio?.ok === true
+  const comRateioEfetivo = comRateio && rateioDisponivel
+  const leitura: LeituraCentro = comRateioEfetivo && leituraRateio ? leituraRateio : leituraSem
   const anos = leitura.ok ? leitura.anos : []
   // Seleção CUMULATIVA dos centros (pedido do Yan no PR #311): as quatro marcadas = Todos (inclusive Sem centro).
   const [selecao, setSelecao] = useState<ReadonlySet<CentroSelecionavel>>(() => selecaoInicial(seletorInicial))
@@ -393,7 +412,43 @@ export default function TabelaDreCentro({
             selecao={selecao}
             onAlternar={c => setSelecao(prev => alternarCentro(prev, c))}
             onTodos={() => setSelecao(new Set(CENTROS_SELECIONAVEIS))}
+            depois={salvarRateio && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setDrawerAberto(true)}
+                  aria-haspopup="dialog"
+                  title="Definir os percentuais do rateio do CSC entre Trips, Weddings e Corporativo"
+                  className={['foco-neutro', PILL_FILTRO, PILL_FILTRO_INATIVO].join(' ')}
+                >
+                  Rateio
+                </button>
+                {temRateio(rateio) && (
+                  <button
+                    type="button"
+                    onClick={() => setComRateio(v => !v)}
+                    disabled={!rateioDisponivel}
+                    aria-pressed={comRateioEfetivo}
+                    title={rateioDisponivel
+                      ? (comRateioEfetivo ? 'Mostrando a DRE com o CSC rateado — clique para ver sem rateio' : 'Mostrar a DRE com o CSC rateado')
+                      : 'Não foi possível carregar a DRE com rateio — recarregue a página'}
+                    className={['foco-neutro', PILL_FILTRO, comRateioEfetivo ? '' : PILL_FILTRO_INATIVO, 'disabled:opacity-50 disabled:cursor-not-allowed'].join(' ')}
+                    style={comRateioEfetivo ? PILL_FILTRO_ATIVO_STYLE : undefined}
+                  >
+                    Com rateio
+                  </button>
+                )}
+              </>
+            )}
           />
+          {drawerAberto && salvarRateio && (
+            <RateioCscDrawer
+              grupos={gruposDaArvore(ano.porCentro.trips.linhas)}
+              salvo={rateio}
+              onSalvar={salvarRateio}
+              onClose={() => setDrawerAberto(false)}
+            />
+          )}
           <div className="flex flex-wrap items-center gap-2">
             {pillVisao('mensal', 'Mensal', lado ? 'Mês a mês do ano selecionado, com os centros dentro de cada mês' : 'Visão mês a mês do ano selecionado')}
             {pillVisao('consolidado', 'Consolidado', lado ? 'Ano a ano, com os centros dentro de cada ano — só os anos com centro de custo' : 'Visão ano a ano — só os anos com centro de custo')}

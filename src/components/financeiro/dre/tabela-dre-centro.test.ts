@@ -16,9 +16,19 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/financeiro/dre',
   useSearchParams: () => new URLSearchParams(''),
 }))
+// O ListDrawer abre por portal no document.body — inexistente no render estático. Só ele é trocado por um
+// invólucro com o título; o conteúdo do drawer é o real.
+vi.mock('@/components/shared/list-drawer', async () => {
+  const { createElement: h } = await import('react')
+  return {
+    default: ({ titulo, children }: { titulo: string; children: unknown }) =>
+      h('div', { 'data-drawer': titulo }, children as never),
+  }
+})
 
 const { default: TabelaDreCentro } = await import('./tabela-dre-centro')
 const { default: SeletorCentro } = await import('./seletor-centro')
+const { default: RateioCscDrawer } = await import('./rateio-csc-drawer')
 
 const ano = montarAnoCentro(fixtureDreCentro(EMPRESA, BLOCOS))
 const BASE: TabelaDreCentroProps = {
@@ -188,5 +198,70 @@ describe('seleção cumulativa (módulo puro)', () => {
     expect(selecaoInicial('sem_centro').size).toBe(4)
     expect(selecaoInicial([]).size).toBe(4)
     expect([...selecaoInicial(['csc', 'trips'])].sort()).toEqual(['csc', 'trips'])
+  })
+})
+
+// ── Rateio do CSC (0308, decisões do Yan no PR #311) ─────────────────────────
+describe('Rateio do CSC no card', () => {
+  const salvar = async () => ({ ok: true })
+  const salvo = { itens: [{ categoria_id: null, bloco_chave: 'RH', pct_trips: 50, pct_weddings: 30, pct_corp: 20 }], atualizado_em: null }
+  const pill = (html: string, rotulo: string) => html.match(new RegExp(`<button[^>]*>${rotulo}</button>`))?.[0] ?? ''
+
+  it('sem a action de salvar não há botão Rateio; com ela há, depois de "Todos"', () => {
+    expect(render(BASE)).not.toContain('>Rateio<')
+    const html = render({ ...BASE, salvarRateio: salvar, rateio: { itens: [], atualizado_em: null } })
+    expect(html.indexOf('>Rateio<')).toBeGreaterThan(html.indexOf('>Todos<'))
+    // sem rateio salvo, a chave "Com rateio" nem aparece
+    expect(html).not.toContain('>Com rateio<')
+  })
+
+  it('com rateio salvo, a chave "Com rateio" aparece DESLIGADA (a DRE abre como antes)', () => {
+    const html = render({ ...BASE, salvarRateio: salvar, rateio: salvo, leituraRateio: { ok: true, anos: [ano] } })
+    expect(pill(html, 'Com rateio')).toContain('aria-pressed="false"')
+    expect(pill(html, 'Com rateio')).not.toContain('disabled=""')
+  })
+
+  it('leitura com rateio que falhou: a chave fica desabilitada (ligar esconderia a própria chave atrás do erro)', () => {
+    const html = render({ ...BASE, salvarRateio: salvar, rateio: salvo, leituraRateio: { ok: false, motivo: 'erro' } })
+    expect(pill(html, 'Com rateio')).toContain('disabled=""')
+  })
+})
+
+describe('RateioCscDrawer', () => {
+  const grupos = [
+    { chave: 'ADM', rotulo: '(−) Despesas Administrativas', categorias: [{ categoria_id: 10, rotulo: 'Aluguel' }] },
+    { chave: 'RH', rotulo: '(−) Despesas Operacionais RH', categorias: [{ categoria_id: 20, rotulo: 'Salários' }] },
+  ]
+  const draw = (salvo: Parameters<typeof RateioCscDrawer>[0]['salvo']) => renderToStaticMarkup(createElement(RateioCscDrawer, {
+    grupos, salvo, onSalvar: async () => ({ ok: true }), onClose: () => {},
+  }))
+  const input = (html: string, rotulo: string, centro: string) =>
+    html.match(new RegExp(`<input[^>]*aria-label="${rotulo} — % ${centro}"[^>]*>`))?.[0] ?? ''
+
+  it('grupo preenchido trava as categorias dele, que mostram o % do grupo; grupo vazio deixa a categoria livre', () => {
+    const html = draw({
+      itens: [
+        { categoria_id: null, bloco_chave: 'RH', pct_trips: 50, pct_weddings: 30, pct_corp: 20 },
+        { categoria_id: 10, bloco_chave: null, pct_trips: 100, pct_weddings: 0, pct_corp: 0 },
+      ],
+      atualizado_em: null,
+    })
+    expect(html).toContain('data-drawer="Rateio do CSC"')
+    const salarios = input(html, 'Salários', 'Trips')
+    expect(salarios).toContain('disabled=""')
+    expect(salarios).toContain('value="50"')
+    expect(html).toContain('(pelo grupo)')
+    const aluguel = input(html, 'Aluguel', 'Trips')
+    expect(aluguel).not.toContain('disabled=""')
+    expect(aluguel).toContain('value="100"')
+    for (const c of ['Trips', 'Weddings', 'Corporativo']) expect(html).toContain(`${c} %`)
+  })
+
+  it('percentual órfão (grupo que saiu da DRE) é avisado; leitura falha bloqueia o Salvar', () => {
+    const orfao = draw({ itens: [{ categoria_id: null, bloco_chave: 'SUMIU', pct_trips: 100, pct_weddings: 0, pct_corp: 0, ativo: false }], atualizado_em: null })
+    expect(orfao).toContain('não está mais na DRE')
+    const falha = draw(null)
+    expect(falha).toContain('Não foi possível ler o rateio salvo')
+    expect(falha).toMatch(/<button[^>]*disabled=""[^>]*>Salvar rateio<\/button>/)
   })
 })

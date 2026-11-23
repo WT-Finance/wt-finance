@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
 import { CENTROS_SELECIONAVEIS, ROTULO_CENTRO, ROTULO_SELETOR, type CentroSelecionavel } from '@/lib/dre-centro/centros'
 
@@ -20,11 +20,13 @@ const PILL_MARCADA_TODOS_STYLE: CSSProperties = {
 }
 
 export default function SeletorCentro({
-  selecao, onAlternar, onTodos,
+  selecao, onAlternar, onTodos, depois,
 }: {
   selecao: ReadonlySet<CentroSelecionavel>
   onAlternar: (c: CentroSelecionavel) => void
   onTodos: () => void
+  /** O que vem depois de "Todos", separado por "|" (o botão Rateio e a chave Com rateio, v6.5.1/0308). */
+  depois?: ReactNode
 }) {
   const todos = CENTROS_SELECIONAVEIS.every(c => selecao.has(c))
   return (
@@ -57,6 +59,12 @@ export default function SeletorCentro({
       >
         {ROTULO_SELETOR.lado}
       </button>
+      {depois && (
+        <>
+          <span className="mx-1 h-4 w-px bg-wt-border-strong" aria-hidden />
+          {depois}
+        </>
+      )}
     </div>
   )
 }
