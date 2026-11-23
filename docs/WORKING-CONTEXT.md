@@ -98,12 +98,18 @@ Worktree `.claude/worktrees/v6-5-1-dre-caixa-centro-custo`. Briefing `docs/brief
   cinza mais escuro); notas sob a tabela retiradas (o valor da taxa pendente não
   aparece mais na tela); linhas de antecipação no âmbar do previsto; pills Realizado/Realizado + Previsto retiradas.
   Out-briefing §4.1.
+- **Rateio do CSC (23/11), no #311 — 0308 APLICADA** (aditiva, backup-gate verde; banco na **0308**, livre **0309**; a
+  0307 é da v6.5.2 e entrou aqui como arquivo idêntico). Botão "Rateio" depois de "Todos" abre o drawer de % (grupo ou
+  categoria, grupo trava as categorias, soma 100) para Trips/Weddings/Corporativo; chave "Com rateio" mostra a DRE com o
+  CSC repartido (abre desligada). Só o valor do CSC é repartido; Sem centro fica de fora; quem vê a DRE edita; um
+  conjunto para todos os períodos. Conta no banco (núcleo `financeiro.dre_caixa_centro_nucleo`). Out-briefing §4.1 item 11.
 
 > 🔴 **Yan:**
 >
 > 1. Conferir no preview do #311 o card "DRE por centro de custo" (conferência visual não feita pelo agente — login).
 >    Até a 1ª carga ele mostra "a base de centro de custo ainda não foi carregada".
-> 2. Mergear o **#311**. Nada de banco a aplicar depois (0304/0305/0306 já estão no ar).
+> 2. Mergear o **#311**. Nada de banco a aplicar depois (0304/0305/0306/0308 já estão no ar). Se o #312 for mergeado
+>    antes, o #311 precisa de rebase sobre a main (CHANGELOGs e versão; a 0307 é o mesmo arquivo nos dois).
 > 3. Depois do deploy: 1ª carga real em Admin › Ingestão › Upload › "Lançamentos por Centro de Custo", **no mesmo dia**
 >    da carga de movimentação; conferências do briefing §10.
 > 4. Lançar no Monde as taxas de antecipação pendentes (a nota do card mostra o valor) e mostrar à diretoria.

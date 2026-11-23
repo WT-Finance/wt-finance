@@ -16,7 +16,8 @@ export type CentroRateio = (typeof CENTROS_RATEIO)[number]
 export const ROTULO_RATEIO: Record<CentroRateio, string> = { trips: 'Trips', weddings: 'Weddings', corp: 'Corporativo' }
 
 // ── Contrato de get_dre_rateio_csc ──────────────────────────────────────────
-const num = z.union([z.number(), z.string()]).transform(Number)
+// numeric do Postgres pode vir como string: converte e RECUSA o que não for número finito (revisor, BAIXO).
+const num = z.union([z.number(), z.string()]).transform(Number).pipe(z.number().finite())
 export const rateioCscSchema = z.object({
   itens: z.array(z.object({
     categoria_id: z.number().nullable(),
@@ -24,6 +25,8 @@ export const rateioCscSchema = z.object({
     pct_trips: num,
     pct_weddings: num,
     pct_corp: num,
+    /** O alvo ainda existe no mapa vivo da DRE (0308). false = órfão: não vale e sai no próximo salvamento. */
+    ativo: z.boolean().optional(),
   }).passthrough()),
   atualizado_em: z.string().nullable(),
 }).passthrough()
@@ -120,8 +123,10 @@ export interface ResultadoMontagem {
   erros: Record<string, string>
 }
 
-/** A lista que vai para o banco. Grupos preenchidos e categorias preenchidas (as de grupo travado também vão:
- *  ficam guardadas e voltam a valer se o grupo for limpo — o banco faz o grupo vencer enquanto ele existir). */
+/** A lista que vai para o banco: grupos preenchidos e categorias preenchidas. A categoria de grupo travado com
+ *  rascunho VÁLIDO também vai (fica guardada e volta a valer se o grupo for limpo — o banco faz o grupo vencer); com
+ *  rascunho inválido ela é descartada (não bloqueia o salvamento). Só entra o que está na árvore da tela: um item
+ *  salvo cuja categoria não aparece nela (ex.: a taxa de antecipação, fora da árvore com ajuste) sai ao salvar. */
 export function montarItens(estado: EstadoRateio, grupos: readonly GrupoRateio[]): ResultadoMontagem {
   const itens: ItemRateio[] = []
   const erros: Record<string, string> = {}

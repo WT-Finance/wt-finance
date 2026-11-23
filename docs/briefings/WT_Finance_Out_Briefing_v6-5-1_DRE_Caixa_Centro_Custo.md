@@ -3,8 +3,8 @@
 **Branch:** `feat/v6-5-1-dre-caixa-centro-custo` · **Briefing:** `docs/briefings/briefing-v6-5-1-dre-caixa-centro-custo.md` ·
 **Medição (GATE 0):** `docs/auditoria/v6-5-1-m0-dre-centro-custo.md` · **Contrato da base:**
 `docs/specs/v6-5-1-m2-base-centro-custo.md` · **ADR:** `docs/adr/0184-dre-caixa-por-centro-de-custo.md` ·
-**Migrations:** 0304 (aditiva, 06/11), 0305 (destrutiva por classificação, Yan em TTY, 09/11), 0306 (aditiva, 09/11) —
-todas APLICADAS. Banco na **0306**, livre **0307**. ADR livre **0185**.
+**Migrations:** 0304 (aditiva, 06/11), 0305 (destrutiva por classificação, Yan em TTY, 09/11), 0306 (aditiva, 09/11) e 0308 (aditiva, rateio do CSC, 23/11) —
+todas APLICADAS; a 0307 é da v6.5.2 (arquivo idêntico incluído aqui). Banco na **0308**, livre **0309**. ADR livre **0185**.
 
 **Classificação:** PATCH por decisão do Yan (D7). Pelo critério das v6.3.0 e v6.4.0 (base nova no contrato de ingestão +
 migration destrutiva) seria MINOR — divergência registrada.
@@ -154,6 +154,41 @@ Decisões de produto do Yan ao ver o card, aplicadas no mesmo PR antes do merge:
    árvore, não a memória, porque o saldo acumulado carrega valor sem lançamento novo. O Total continua somando todos os
    centros, e a coluna escondida era zero, então a paridade com a Empresa se mantém. Teste com "Sem centro" só em
    outubro e zerado prova os spans e o Total.
+10. **Sem o rótulo "Centro de custo ?"** ao lado das pills (o nome segue no `aria-label` do grupo).
+11. **Rateio do CSC (0308)** — fora do briefing (§11 o deixava para depois), entrou a pedido do Yan, que decidiu (23/11):
+    só o valor do CSC é repartido entre Trips, Weddings e Corporativo (Sem centro ignorado); % por grupo ou por
+    categoria, grupo trava as categorias; chave "Com rateio" liga/desliga (abre desligada — escolha do agente, a
+    confirmar); salvo no banco para todos; um conjunto para todos os períodos; quem vê a DRE edita; entregue DENTRO
+    deste PR (a 0307 da v6.5.2 entrou como arquivo idêntico para o histórico local casar com o remoto).
+    - **Banco:** tabela `financeiro.dre_rateio_csc`; o corpo de `get_dre_caixa_centro` virou o núcleo interno
+      `financeiro.dre_caixa_centro_nucleo` (corpo vivo da 0306 — md5 conferido 79c355b2… — mais o rateio aplicado só em
+      `_cc_parte`); RPCs `get_dre_caixa_centro_rateio`, `get_dre_rateio_csc` (com `ativo` por alvo) e
+      `salvar_dre_rateio_csc` (substitui o conjunto, validação nomeada, lock contra salvamento concorrente).
+    - **Ensaio em transação revertida contra produção:** JSON de `get_dre_caixa_centro` idêntico ao de antes (com e sem
+      ajuste, fora a chave nova `rateio`); rateio vazio ≡ sem rateio; com RH 50/30/20 + uma categoria 100% Trips
+      (R$ 1,94 mi movidos), Σ centros igual em toda linha, CSC zerado nas rateadas, % exato nas três, Sem centro e as
+      demais categorias intactos; 5 validações recusam com a mensagem certa; grupo órfão vem `ativo: false`.
+    - **Aplicada em 23/11** (backup-gate verde, 93/93). REST: 200 nas três leituras; ~1,3–1,5 s quente (a 1ª chamada
+      depois da migration levou 5,9 s, plano frio). Contratos novos: shape, Σ centros com ≡ sem rateio linha a linha,
+      Resultado de caixa ≡ REX com rateio, anon e usuário sem a área → 42501 nas três (a de salvar sem escrever:
+      sessão READ ONLY e guard antes). `derivar-allowlist verificador` pede exatamente as duas leituras novas.
+    - **revisor-db:** aprovou com ressalvas, sem CRÍTICO/ALTO. Corrigidos: MÉDIO (grupo sem FK deriva em silêncio →
+      `ativo` + aviso no drawer), MÉDIO (contratos das RPCs novas), BAIXO (redeclarar REVOKE/GRANT do wrapper).
+      Registrados: categoria movida de bloco herda o % do bloco novo sem aviso; categorias guardadas sob grupo
+      preenchido ficam gravadas e voltam a valer se o grupo for limpo; sem histórico de quem mudou cada % (só a
+      última gravação); a regex `ALTER TABLE…DROP` do classificador atravessa statements — manter sem DROP top-level
+      depois do `ALTER TABLE` da 0308.
+    - **Front:** botão "Rateio" depois de "Todos" (drawer com grupos e categorias, até 2 casas decimais — com 3+ a
+      coerção canônica leria a vírgula como milhar); chave "Com rateio" só com rateio salvo e desabilitada se a
+      leitura com rateio falhar; o drawer não salva por cima de uma leitura que falhou.
+    - **revisor (front):** aprovou com ressalvas, sem CRÍTICO/ALTO. Corrigidos: MÉDIO (drawer invisível em tela cheia —
+      o portal vai ao body, fora do card; agora sai da tela cheia ao abrir), MÉDIO (exceção da action dentro da
+      transition derrubaria a página — o drawer captura e mostra a mensagem), MÉDIO (ids/rótulos acessíveis repetidos
+      entre categorias de mesmo nome — agora pela chave do alvo e com o grupo no rótulo); BAIXOs: chave "Com rateio"
+      volta a nascer desligada depois de apagar o rateio, `ativo` no schema (sem cast), número não finito recusado no
+      schema, comentário de `montarItens`, `scope`/legenda na tabela, log do erro não traduzido. Registrado: item salvo
+      cuja categoria não está na árvore da tela (ex.: taxa de antecipação, fora da árvore com ajuste) sai no próximo
+      salvamento sem aviso — inalcançável pela UI hoje.
 
 Gate desta rodada: dois testes que vão ao banco de produção falharam UMA vez e passaram na repetição. Foram a deriva
 sintética do `schema-baseline` e o contrato de `get_marketing_gastos_resumo`, este com `57014 statement timeout`
@@ -203,7 +238,7 @@ sintética do `schema-baseline` e o contrato de `get_marketing_gastos_resumo`, e
 ## 8. Arquivos
 
 - **Banco:** `supabase/migrations/0304_centro_custo_base.sql`, `0305_centro_custo_checks_ingestao.sql`,
-  `0306_dre_caixa_centro.sql`; `supabase/baseline/schema-v6.json`; `src/types/database.ts`.
+  `0306_dre_caixa_centro.sql`, `0307_cliente_corporativo_contrato.sql` (da v6.5.2, idêntico), `0308_dre_rateio_csc.sql`; `supabase/baseline/schema-v6.json`; `src/types/database.ts`.
 - **Ingestão:** `src/lib/ingestao/parsers/lancamentos-centro-custo.ts` (+ teste), `oraculo-centro-custo.test.ts`,
   `lista-fechada-centro-custo.test.ts`, `bases.ts`, `rpcs-ingestor.ts`, `carga.ts`, `aplicar.ts`, `instrucoes-upload.ts`,
   `grafo.ts`, testes de carga/aplicar/paridade/alarme, `promover-carga-checksum.test.ts`; `src/app/admin/ingestao/upload/`;

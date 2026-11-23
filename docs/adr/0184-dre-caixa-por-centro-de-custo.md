@@ -89,4 +89,30 @@ fechada. Precedente: 0298 (v6.4.0).
 - Movimentação com data futura conta como previsto (mesmo predicado da Empresa) — por isso Trips difere do protótipo em
   R$ 9.540,17 no export de 06/11 (2 linhas de 23/11).
 - As duas bases (centro de custo e movimentação) precisam ser do mesmo dia; a diferença aparece como cobertura.
-- Só Realizado e só 2026 por enquanto; Previsto por centro, rateio do CSC e RPA da base ficam fora (briefing §11).
+- Só Realizado e só 2026 por enquanto; Previsto por centro e RPA da base ficam fora (briefing §11). O rateio do CSC,
+  que o briefing deixava para depois, entrou no próprio PR a pedido do Yan — ver o adendo abaixo.
+
+## Adendo (23/11/2026) — rateio do CSC (migration 0308)
+
+Decisões do Yan no PR #311: o rateio reparte **só o valor que caiu no CSC** entre Trips, Weddings e Corporativo (Sem
+centro é ignorado); um **% por categoria ou por grupo** de categoria (bloco-folha do mapa) — o grupo vence e, no
+drawer, trava as categorias dele; **um conjunto único** para todos os períodos, **salvo no banco**, igual para todos;
+**quem vê a DRE edita** (área `financeiro/dre`); aparece por uma **chave "Com rateio"** (a DRE sem rateio continua).
+
+- **Onde a conta roda: no banco, num único ponto.** O corpo de `get_dre_caixa_centro` virou o núcleo interno
+  `financeiro.dre_caixa_centro_nucleo(p_ano, p_ajuste, p_rateio)` (corpo vivo da 0306, md5 conferido). Com `p_rateio`,
+  a parte CSC de cada linha do fato em `_cc_parte` é trocada por partes das três operações pelos %. Tudo o que vem
+  depois soma `valor × peso` por centro, então árvore, totalizadores, recebíveis e taxa do Monde saem da mesma conta;
+  a soma dos centros por linha não muda. `get_dre_caixa_centro` (mesma assinatura) chama o núcleo sem rateio;
+  `get_dre_caixa_centro_rateio` chama com.
+- **Alternativa descartada — aplicar no front:** exigiria reconstruir os totalizadores pelas fórmulas da estrutura,
+  que o front não tem (vêm prontos do banco). Duplicaria a mecânica e erraria em silêncio se o editor mudasse uma
+  fórmula.
+- **Alternativa descartada — FK de `bloco_chave` para `dre_bloco`:** travaria o editor da DRE ao renomear/remover um
+  bloco (e o `ON UPDATE CASCADE` dava falso positivo de destrutiva no classificador do gate). Sem FK, um % de grupo que
+  deixa de existir só para de valer: `get_dre_rateio_csc` devolve `ativo: false` e o drawer avisa; sai no próximo
+  salvamento.
+- **Limites registrados:** mover uma categoria de bloco no editor faz ela herdar o % do bloco novo (sem aviso); o
+  conjunto é substituído inteiro a cada salvamento, com `atualizado_por`/`atualizado_em` só da última gravação (sem
+  histórico de quem mudou cada %); o drawer aceita até 2 casas decimais. A leitura com rateio custa ~1,4 s, buscada
+  em paralelo com a sem rateio.

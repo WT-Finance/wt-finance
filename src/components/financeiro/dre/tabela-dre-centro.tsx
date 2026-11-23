@@ -416,7 +416,12 @@ export default function TabelaDreCentro({
               <>
                 <button
                   type="button"
-                  onClick={() => setDrawerAberto(true)}
+                  onClick={() => {
+                    // O drawer abre por portal no <body>, FORA do card em tela cheia — que só mostra a própria
+                    // subárvore. Sai da tela cheia antes, senão o drawer ficaria invisível (revisor, MÉDIO).
+                    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+                    setDrawerAberto(true)
+                  }}
                   aria-haspopup="dialog"
                   title="Definir os percentuais do rateio do CSC entre Trips, Weddings e Corporativo"
                   className={['foco-neutro', PILL_FILTRO, PILL_FILTRO_INATIVO].join(' ')}
@@ -445,7 +450,12 @@ export default function TabelaDreCentro({
             <RateioCscDrawer
               grupos={gruposDaArvore(ano.porCentro.trips.linhas)}
               salvo={rateio}
-              onSalvar={salvarRateio}
+              onSalvar={async itens => {
+                const r = await salvarRateio(itens)
+                // Rateio apagado: a chave volta a nascer DESLIGADA no próximo rateio (revisor, BAIXO).
+                if (r.ok && itens.length === 0) setComRateio(false)
+                return r
+              }}
               onClose={() => setDrawerAberto(false)}
             />
           )}

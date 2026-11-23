@@ -36,9 +36,13 @@ const somaDe = (p: Pcts | undefined) => {
 const fmtSoma = (n: number | null) => (n == null ? '—' : `${n.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`)
 
 function LinhaRateio({
-  rotulo, nivel, valor, travadaCom, erro, onMudar,
+  alvo, rotulo, rotuloAcessivel, nivel, valor, travadaCom, erro, onMudar,
 }: {
+  /** Chave do alvo ('g:<chave>' | 'c:<id>') — base dos ids (o rótulo pode repetir entre grupos). */
+  alvo: string
   rotulo: string
+  /** Rótulo para leitor de tela: a categoria leva o grupo junto ("Grupo › Categoria"). */
+  rotuloAcessivel: string
   nivel: 'grupo' | 'categoria'
   valor: Pcts | undefined
   /** Categoria travada: mostra o % do grupo, desabilitado. */
@@ -48,7 +52,7 @@ function LinhaRateio({
 }) {
   const exibido = travadaCom ?? valor ?? PCTS_VAZIO
   const soma = somaDe(travadaCom ?? valor)
-  const id = `${nivel}-${rotulo}`
+  const id = `rateio-${alvo.replace(':', '-')}`
   return (
     <>
       <tr className={nivel === 'grupo' ? 'bg-band-soft' : ''}>
@@ -61,7 +65,7 @@ function LinhaRateio({
             <Input
               variant="compacto"
               inputMode="decimal"
-              aria-label={`${rotulo} — % ${ROTULO_RATEIO[c]}`}
+              aria-label={`${rotuloAcessivel} — % ${ROTULO_RATEIO[c]}`}
               aria-invalid={erro ? true : undefined}
               aria-describedby={erro ? `${id}-erro` : undefined}
               disabled={travadaCom != null}
@@ -88,7 +92,7 @@ export default function RateioCscDrawer({ grupos, salvo, onSalvar, onClose }: Ra
   const [erroGeral, setErroGeral] = useState<string | null>(null)
   const [salvando, iniciar] = useTransition()
 
-  const orfaos = (salvo?.itens ?? []).filter(i => (i as { ativo?: unknown }).ativo === false)
+  const orfaos = (salvo?.itens ?? []).filter(i => i.ativo === false)
 
   const mudar = (k: string) => (c: CentroRateio, v: string) => {
     setEstado(prev => ({ ...prev, [k]: { ...(prev[k] ?? PCTS_VAZIO), [c]: v } }))
@@ -109,9 +113,16 @@ export default function RateioCscDrawer({ grupos, salvo, onSalvar, onClose }: Ra
       return
     }
     iniciar(async () => {
-      const res = await onSalvar(r.itens)
-      if (res.ok) onClose()
-      else setErroGeral(res.erro ?? 'Não foi possível salvar o rateio.')
+      // A action pode LANÇAR (guard de sessão/permissão fora do try dela): sem este catch a exceção subiria da
+      // transition para o error boundary e derrubaria a página (revisor, MÉDIO).
+      try {
+        const res = await onSalvar(r.itens)
+        if (res.ok) onClose()
+        else setErroGeral(res.erro ?? 'Não foi possível salvar o rateio.')
+      } catch (e) {
+        console.error('[rateio CSC] salvar', e)
+        setErroGeral('Não foi possível salvar — sua sessão pode ter expirado. Recarregue a página e tente de novo.')
+      }
     })
   }
 
@@ -130,11 +141,12 @@ export default function RateioCscDrawer({ grupos, salvo, onSalvar, onClose }: Ra
       )}
 
       <table className="w-full border-separate border-spacing-0">
+        <caption className="sr-only">Percentuais do rateio do CSC por grupo e categoria</caption>
         <thead>
           <tr className="text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary">
-            <th className="pb-2 pl-2 text-left">Grupo / categoria</th>
-            {CENTROS_RATEIO.map(c => <th key={c} className="px-1 pb-2 text-right">{ROTULO_RATEIO[c]} %</th>)}
-            <th className="pb-2 pl-2 text-right">Soma</th>
+            <th scope="col" className="pb-2 pl-2 text-left">Grupo / categoria</th>
+            {CENTROS_RATEIO.map(c => <th key={c} scope="col" className="px-1 pb-2 text-right">{ROTULO_RATEIO[c]} %</th>)}
+            <th scope="col" className="pb-2 pl-2 text-right">Soma</th>
           </tr>
         </thead>
         <tbody>
@@ -143,13 +155,18 @@ export default function RateioCscDrawer({ grupos, salvo, onSalvar, onClose }: Ra
             const travada = categoriaTravada(estado, g.chave)
             return (
               <Fragment key={g.chave}>
-                <LinhaRateio rotulo={g.rotulo} nivel="grupo" valor={estado[kg]} erro={erros[kg]} onMudar={mudar(kg)} />
+                <LinhaRateio
+                  alvo={kg} rotulo={g.rotulo} rotuloAcessivel={g.rotulo} nivel="grupo"
+                  valor={estado[kg]} erro={erros[kg]} onMudar={mudar(kg)}
+                />
                 {g.categorias.map(c => {
                   const kc = chaveCategoria(c.categoria_id)
                   return (
                     <LinhaRateio
                       key={kc}
+                      alvo={kc}
                       rotulo={c.rotulo}
+                      rotuloAcessivel={`${g.rotulo} › ${c.rotulo}`}
                       nivel="categoria"
                       valor={estado[kc]}
                       travadaCom={travada ? (estado[kg] ?? PCTS_VAZIO) : undefined}

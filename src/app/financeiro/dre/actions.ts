@@ -29,6 +29,7 @@ function traduzir(msg: string): string {
   const m = /Rateio: [^\n]+/.exec(msg)
   if (m) return m[0]
   if (msg.includes('PERMISSAO_NEGADA')) return 'Você não tem permissão para alterar o rateio.'
+  console.error('[rateio CSC] erro não traduzido da RPC', msg) // o usuário vê o genérico; o diagnóstico fica no log
   return 'Não foi possível salvar o rateio. Tente novamente.'
 }
 

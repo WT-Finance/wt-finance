@@ -44,6 +44,12 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
           'A DRE de caixa passa a mostrar o resultado de cada operação, com as antecipações atribuídas a quem ' +
           'precisou do caixa.',
       },
+      {
+        tipo: 'novidade',
+        texto:
+          'É possível repartir os custos da estrutura central (CSC) entre Trips, Weddings e Corporativo por ' +
+          'percentuais definidos por categoria ou grupo, e ver a DRE de cada operação com ou sem essa repartição.',
+      },
     ],
   },
   {

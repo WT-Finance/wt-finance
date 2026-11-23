@@ -235,8 +235,10 @@ describe('RateioCscDrawer', () => {
   const draw = (salvo: Parameters<typeof RateioCscDrawer>[0]['salvo']) => renderToStaticMarkup(createElement(RateioCscDrawer, {
     grupos, salvo, onSalvar: async () => ({ ok: true }), onClose: () => {},
   }))
+  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  // A categoria leva o grupo no rótulo acessível ("Grupo › Categoria" — nomes repetem entre grupos).
   const input = (html: string, rotulo: string, centro: string) =>
-    html.match(new RegExp(`<input[^>]*aria-label="${rotulo} — % ${centro}"[^>]*>`))?.[0] ?? ''
+    html.match(new RegExp(`<input[^>]*aria-label="${esc(rotulo)} — % ${centro}"[^>]*>`))?.[0] ?? ''
 
   it('grupo preenchido trava as categorias dele, que mostram o % do grupo; grupo vazio deixa a categoria livre', () => {
     const html = draw({
@@ -247,14 +249,26 @@ describe('RateioCscDrawer', () => {
       atualizado_em: null,
     })
     expect(html).toContain('data-drawer="Rateio do CSC"')
-    const salarios = input(html, 'Salários', 'Trips')
+    const salarios = input(html, '(−) Despesas Operacionais RH › Salários', 'Trips')
     expect(salarios).toContain('disabled=""')
     expect(salarios).toContain('value="50"')
     expect(html).toContain('(pelo grupo)')
-    const aluguel = input(html, 'Aluguel', 'Trips')
+    const aluguel = input(html, '(−) Despesas Administrativas › Aluguel', 'Trips')
     expect(aluguel).not.toContain('disabled=""')
     expect(aluguel).toContain('value="100"')
     for (const c of ['Trips', 'Weddings', 'Corporativo']) expect(html).toContain(`${c} %`)
+  })
+
+  it('categorias de mesmo nome em grupos diferentes: rótulos acessíveis e ids de erro distintos (revisor, MÉDIO)', () => {
+    const repetidas = [
+      { chave: 'ADM', rotulo: 'ADM', categorias: [{ categoria_id: 1, rotulo: 'Outros' }] },
+      { chave: 'RH', rotulo: 'RH', categorias: [{ categoria_id: 2, rotulo: 'Outros' }] },
+    ]
+    const html = renderToStaticMarkup(createElement(RateioCscDrawer, {
+      grupos: repetidas, salvo: { itens: [], atualizado_em: null }, onSalvar: async () => ({ ok: true }), onClose: () => {},
+    }))
+    expect(html).toContain('aria-label="ADM › Outros — % Trips"')
+    expect(html).toContain('aria-label="RH › Outros — % Trips"')
   })
 
   it('percentual órfão (grupo que saiu da DRE) é avisado; leitura falha bloqueia o Salvar', () => {
