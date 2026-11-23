@@ -1,6 +1,5 @@
 import type { CSSProperties } from 'react'
 import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
-import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import { CENTROS_SELECIONAVEIS, ROTULO_CENTRO, ROTULO_SELETOR, type CentroSelecionavel } from '@/lib/dre-centro/centros'
 
 // ── Seletor de centro de custo do card da DRE por centro (v6.5.1) ────────────
@@ -10,14 +9,7 @@ import { CENTROS_SELECIONAVEIS, ROTULO_CENTRO, ROTULO_SELETOR, type CentroSeleci
 // Seleção CUMULATIVA (pedido do Yan no PR #311): as pills dos centros marcam/desmarcam; com as
 // quatro marcadas acende "Todos" (e clicar em "Todos" marca as quatro). Nesse estado as quatro
 // ficam num cinza MAIS ESCURO que o da seleção normal — "estão todas marcadas", sem se
-// confundir com "escolhi estas".
-
-const AJUDA =
-  'A mesma árvore da DRE de caixa, calculada para cada operação: os recebíveis antecipados voltam ao ' +
-  'mês do vencimento e ao centro dono, e as antecipações (dinheiro, devolução e taxa) ficam com quem ' +
-  'precisou do caixa. Marque um centro, alguns (somados no Total) ou Todos — Todos inclui o que ficou ' +
-  'sem centro no Monde e fecha com a DRE da empresa. Só 2026: antes disso o Monde não tem ' +
-  'o centro preenchido. A DRE da empresa inteira é a tabela acima.'
+// confundir com "escolhi estas". Sem o rótulo "Centro de custo ?" à esquerda (retirado a pedido do Yan no PR #311).
 
 /** Centro marcado porque "Todos" está aceso: 30% de --brand sobre --brand-soft — um degrau mais escuro que a
  *  seleção normal (--brand-soft), mesma borda e tinta (--brand-deep ≈ 4,9:1 sobre o fundo no tema neutro). */
@@ -37,14 +29,6 @@ export default function SeletorCentro({
   const todos = CENTROS_SELECIONAVEIS.every(c => selecao.has(c))
   return (
     <div role="group" aria-label="Centro de custo" className="flex flex-wrap items-center gap-1.5">
-      <span className="mr-1 inline-flex items-center gap-1 text-xs text-text-muted">
-        Centro de custo
-        <GatilhoAjuda
-          rotulo="Centro de custo"
-          texto={AJUDA}
-          classNameBalao="z-30 w-80 !whitespace-normal font-normal normal-case tracking-normal leading-snug"
-        />
-      </span>
       {CENTROS_SELECIONAVEIS.map(c => {
         const marcado = selecao.has(c)
         const ultimo = marcado && selecao.size === 1

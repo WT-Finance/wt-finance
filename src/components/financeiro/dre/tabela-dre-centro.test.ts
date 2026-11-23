@@ -139,6 +139,9 @@ describe('SeletorCentro', () => {
     const html = sel(['csc'])
     for (const t of ['Trips', 'Weddings', 'Corporativo', 'CSC', 'Todos']) expect(html).toContain(`>${t}<`)
     for (const t of ['Empresa', 'Sem centro', 'Lado a lado']) expect(html).not.toContain(`>${t}<`)
+    // sem o rótulo "Centro de custo ?" visível (pedido do Yan no PR #311); o nome fica só no aria-label do grupo
+    expect(html).not.toMatch(/>\s*Centro de custo/)
+    expect(html).toContain('aria-label="Centro de custo"')
     expect(html).toMatch(/aria-pressed="true"[^>]*>CSC</)
   })
 
