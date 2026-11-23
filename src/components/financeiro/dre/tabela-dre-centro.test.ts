@@ -21,8 +21,8 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/components/shared/list-drawer', async () => {
   const { createElement: h } = await import('react')
   return {
-    default: ({ titulo, children }: { titulo: string; children: unknown }) =>
-      h('div', { 'data-drawer': titulo }, children as never),
+    default: ({ titulo, children, rodape }: { titulo: string; children: unknown; rodape?: unknown }) =>
+      h('div', { 'data-drawer': titulo }, h('div', { 'data-rolagem': '' }, children as never), h('div', { 'data-rodape': '' }, rodape as never)),
   }
 })
 
@@ -211,6 +211,9 @@ describe('Rateio do CSC no card', () => {
     expect(render(BASE)).not.toContain('>Rateio<')
     const html = render({ ...BASE, salvarRateio: salvar, rateio: { itens: [], atualizado_em: null } })
     expect(html.indexOf('>Rateio<')).toBeGreaterThan(html.indexOf('>Todos<'))
+    // botão em âmbar (família --warning), pedido do Yan
+    expect(pill(html, 'Rateio')).toContain('background:var(--warning-bg)')
+    expect(pill(html, 'Rateio')).toContain('color:var(--warning-deep)')
     // sem rateio salvo, a chave "Com rateio" nem aparece
     expect(html).not.toContain('>Com rateio<')
   })
@@ -256,7 +259,15 @@ describe('RateioCscDrawer', () => {
     const aluguel = input(html, '(−) Despesas Administrativas › Aluguel', 'Trips')
     expect(aluguel).not.toContain('disabled=""')
     expect(aluguel).toContain('value="100"')
-    for (const c of ['Trips', 'Weddings', 'Corporativo']) expect(html).toContain(`${c} %`)
+    // cabeçalho só com o nome do centro; o "%" é sufixo dentro de cada campo (pedido do Yan)
+    for (const c of ['Trips', 'Weddings', 'Corporativo']) {
+      expect(html).toMatch(new RegExp(`<th[^>]*>${c}</th>`))
+      expect(html).not.toContain(`${c} %</th>`)
+    }
+    expect(html).toMatch(/<input[^>]*aria-label="\(−\) Despesas Administrativas › Aluguel — % Trips"[^>]*\/><span aria-hidden="true"[^>]*>%<\/span>/)
+    // o rodapé (Cancelar/Salvar) vai no slot próprio do ListDrawer, fora da área rolável
+    expect(html).toMatch(/data-rodape=""[^]*Salvar rateio/)
+    expect(html.split('data-rodape')[0]).not.toContain('Salvar rateio')
   })
 
   it('categorias de mesmo nome em grupos diferentes: rótulos acessíveis e ids de erro distintos (revisor, MÉDIO)', () => {

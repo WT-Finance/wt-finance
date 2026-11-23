@@ -189,6 +189,11 @@ Decisões de produto do Yan ao ver o card, aplicadas no mesmo PR antes do merge:
       schema, comentário de `montarItens`, `scope`/legenda na tabela, log do erro não traduzido. Registrado: item salvo
       cuja categoria não está na árvore da tela (ex.: taxa de antecipação, fora da árvore com ajuste) sai no próximo
       salvamento sem aviso — inalcançável pela UI hoje.
+    - **Ajustes do Yan no drawer (23/11):** colunas com largura fixa (centros 104 px, Soma 84 px — a Soma estava
+      espremida); cabeçalho só com o nome do centro e o "%" como sufixo dentro do campo; rodapé Cancelar/Salvar FORA
+      da área rolável — o `ListDrawer` ganhou o slot opcional `rodape` (o sticky dentro da rolagem deixava as linhas
+      vazarem por baixo por causa do padding do viewport; os outros 20 usos do `ListDrawer` não mudam); botão "Rateio"
+      em âmbar (`--warning-bg`/`--warning`/`--warning-deep`, ≈ 5:1).
 
 Gate desta rodada: dois testes que vão ao banco de produção falharam UMA vez e passaram na repetição. Foram a deriva
 sintética do `schema-baseline` e o contrato de `get_marketing_gastos_resumo`, este com `57014 statement timeout`

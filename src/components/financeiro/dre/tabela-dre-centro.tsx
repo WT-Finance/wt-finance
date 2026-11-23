@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
@@ -46,6 +46,14 @@ import { abaDaVisao, nomeArquivoCentro } from '@/lib/dre-centro/exportar'
 //   · sem notas de cobertura sob a tabela (saíram a pedido do Yan: poluíam a leitura).
 
 type VisaoCentro = 'mensal' | 'consolidado'
+
+/** Botão "Rateio" em âmbar (pedido do Yan): a família --warning do previsto/antecipação. Tinta --warning-deep sobre
+ *  --warning-bg ≈ 5:1 (AA). */
+const PILL_RATEIO_STYLE: CSSProperties = {
+  background:  'var(--warning-bg)',
+  borderColor: 'var(--warning)',
+  color:       'var(--warning-deep)',
+}
 
 /** Linhas do bloco de antecipação — pintadas com o fundo âmbar do previsto da DRE de caixa. */
 const CHAVES_ANTECIPACAO: ReadonlySet<string> = new Set([LINHA_C.chave, LINHA_D.chave, LINHA_TAXA.chave])
@@ -424,7 +432,8 @@ export default function TabelaDreCentro({
                   }}
                   aria-haspopup="dialog"
                   title="Definir os percentuais do rateio do CSC entre Trips, Weddings e Corporativo"
-                  className={['foco-neutro', PILL_FILTRO, PILL_FILTRO_INATIVO].join(' ')}
+                  className={['foco-neutro', PILL_FILTRO, 'hover:brightness-95'].join(' ')}
+                  style={PILL_RATEIO_STYLE}
                 >
                   Rateio
                 </button>

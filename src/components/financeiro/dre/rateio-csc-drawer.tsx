@@ -62,20 +62,24 @@ function LinhaRateio({
         </td>
         {CENTROS_RATEIO.map(c => (
           <td key={c} className="px-1 py-1.5">
-            <Input
-              variant="compacto"
-              inputMode="decimal"
-              aria-label={`${rotuloAcessivel} — % ${ROTULO_RATEIO[c]}`}
-              aria-invalid={erro ? true : undefined}
-              aria-describedby={erro ? `${id}-erro` : undefined}
-              disabled={travadaCom != null}
-              value={exibido[c]}
-              onChange={e => onMudar(c, e.target.value)}
-              className="w-20 text-right tabular-nums disabled:opacity-60"
-            />
+            {/* "%" como sufixo fixo dentro do campo (pedido do Yan): o cabeçalho fica só com o nome do centro. */}
+            <span className="relative block">
+              <Input
+                variant="compacto"
+                inputMode="decimal"
+                aria-label={`${rotuloAcessivel} — % ${ROTULO_RATEIO[c]}`}
+                aria-invalid={erro ? true : undefined}
+                aria-describedby={erro ? `${id}-erro` : undefined}
+                disabled={travadaCom != null}
+                value={exibido[c]}
+                onChange={e => onMudar(c, e.target.value)}
+                className="w-full pr-6 text-right tabular-nums disabled:opacity-60"
+              />
+              <span aria-hidden className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[12px] text-text-muted">%</span>
+            </span>
           </td>
         ))}
-        <td className={`pl-2 py-1.5 text-right text-[12px] tabular-nums ${erro ? 'text-danger' : 'text-text-muted'}`}>{fmtSoma(soma)}</td>
+        <td className={`pl-3 py-1.5 text-right text-[12px] tabular-nums whitespace-nowrap ${erro ? 'text-danger' : 'text-text-muted'}`}>{fmtSoma(soma)}</td>
       </tr>
       {erro && (
         <tr>
@@ -127,7 +131,20 @@ export default function RateioCscDrawer({ grupos, salvo, onSalvar, onClose }: Ra
   }
 
   return (
-    <ListDrawer titulo="Rateio do CSC" subtitulo={SUBTITULO} onClose={onClose}>
+    <ListDrawer
+      titulo="Rateio do CSC"
+      subtitulo={SUBTITULO}
+      onClose={onClose}
+      rodape={(
+        <div className="flex items-center justify-end gap-2">
+          {erroGeral && <p role="alert" className="mr-auto text-sm text-danger">{erroGeral}</p>}
+          <Button variant="contorno" size="sm" onClick={onClose} disabled={salvando}>Cancelar</Button>
+          <Button variant="solido" size="sm" onClick={salvar} disabled={salvando || salvo == null}>
+            {salvando ? 'Salvando…' : 'Salvar rateio'}
+          </Button>
+        </div>
+      )}
+    >
       {salvo == null && (
         <p className="mb-4 rounded-md border border-danger bg-danger-bg px-3 py-2 text-sm text-danger">
           Não foi possível ler o rateio salvo. Recarregue a página antes de editar — salvar agora apagaria o que existe.
@@ -140,13 +157,19 @@ export default function RateioCscDrawer({ grupos, salvo, onSalvar, onClose }: Ra
         </p>
       )}
 
-      <table className="w-full border-separate border-spacing-0">
+      {/* Larguras fixas: a categoria fica com o que sobra; os três centros e a Soma não espremem (pedido do Yan). */}
+      <table className="w-full table-fixed border-separate border-spacing-0">
         <caption className="sr-only">Percentuais do rateio do CSC por grupo e categoria</caption>
+        <colgroup>
+          <col />
+          {CENTROS_RATEIO.map(c => <col key={c} className="w-[104px]" />)}
+          <col className="w-[84px]" />
+        </colgroup>
         <thead>
           <tr className="text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary">
             <th scope="col" className="pb-2 pl-2 text-left">Grupo / categoria</th>
-            {CENTROS_RATEIO.map(c => <th key={c} scope="col" className="px-1 pb-2 text-right">{ROTULO_RATEIO[c]} %</th>)}
-            <th scope="col" className="pb-2 pl-2 text-right">Soma</th>
+            {CENTROS_RATEIO.map(c => <th key={c} scope="col" className="whitespace-nowrap px-1 pb-2 text-right">{ROTULO_RATEIO[c]}</th>)}
+            <th scope="col" className="whitespace-nowrap pb-2 pl-3 text-right">Soma</th>
           </tr>
         </thead>
         <tbody>
@@ -180,14 +203,6 @@ export default function RateioCscDrawer({ grupos, salvo, onSalvar, onClose }: Ra
           })}
         </tbody>
       </table>
-
-      <div className="sticky bottom-0 -mx-6 mt-4 flex items-center justify-end gap-2 border-t border-zinc-100 bg-white px-6 py-3">
-        {erroGeral && <p role="alert" className="mr-auto text-sm text-danger">{erroGeral}</p>}
-        <Button variant="contorno" size="sm" onClick={onClose} disabled={salvando}>Cancelar</Button>
-        <Button variant="solido" size="sm" onClick={salvar} disabled={salvando || salvo == null}>
-          {salvando ? 'Salvando…' : 'Salvar rateio'}
-        </Button>
-      </div>
     </ListDrawer>
   )
 }
