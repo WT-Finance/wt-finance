@@ -286,6 +286,23 @@ Desenho que os números sugerem (decisão técnica de uma versão futura, não d
 
 ---
 
+## 7a. Adendo de 23/11 — permissões liberadas
+
+Mesma chave, os 13 `GET` que davam 403 em 19/11 repetidos:
+
+- **Agora 200:** `/reports/sales_by_products`, `/reports/sales_by_sellers`, `/webhooks`, `/webhook_events`,
+  `/companies`, `/goals`, `/commission_plans`, `/transfers`, `/banks`, `/person_roles`, `/bank_reconciliations`,
+  `/packages`. **Segue 403:** `/guides` (sem uso para o Janus).
+- **Vendas por produto, 1º teste de paridade (01/10/2026)** contra a base de Vendas carregada em 19/11: **40 linhas,
+  29 vendas, 9 vendedores, Σ Valor Total R$ 146.895,40 e Σ Receitas R$ 31.020,68 — idênticos ao centavo** nos
+  dois lados. A permissão "de outros vendedores" está efetiva (vêm os 9) e `commission.revenue` vem preenchido.
+  É um dia só: falta a paridade linha a linha e de um período longo.
+- **Webhooks:** 64 eventos no catálogo, **60 assináveis** pela chave, entre eles `bills.changed`/`bills.deleted`,
+  `account_movements.changed`, `people.changed`, `refunds.changed` e `sales.changed` — o sinal de mudança que faltava
+  para contas e pessoas (§5). Nenhum webhook cadastrado.
+- **Não verificado:** se a chave ganhou também permissão de **gravação** — só testável escrevendo, o que não se faz;
+  conferir na tela da credencial no Monde.
+
 ## 8. O que ficou não-verificado
 
 - Paridade da base de **Vendas** (403 no relatório).
