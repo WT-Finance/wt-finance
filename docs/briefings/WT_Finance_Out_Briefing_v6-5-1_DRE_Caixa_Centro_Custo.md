@@ -206,6 +206,14 @@ Decisões de produto do Yan ao ver o card, aplicadas no mesmo PR antes do merge:
     teste dela) saíram juntos, para não ficar código morto; recuperável pelo git. A atribuição das antecipações, que a
     DRE usa, não dependia dela.
 14. **Frase "Sem Δ% contra 2025: o Monde não tem centro de custo antes de 2026." retirada.**
+15. **Drawer (24/11):** subtítulo "Reparte o que foi alocado como CSC para os demais centros de custo (Trips, Weddings e
+    Corporativo)."; tabela com contorno; coluna Soma mais larga (96 px) e afastada da borda. Pill "Rateio" desligada =
+    fundo branco com contorno e letras âmbar (`--surface`/`--warning`/`--warning-deep`); ligada = toda âmbar.
+16. **Com o rateio aplicado, a coluna CSC não aparece** (pedido do Yan, 24/11). Escolhas do agente, a confirmar: (a) a
+    pill CSC também sai do seletor e "Todos" passa a ser Trips + Weddings + Corporativo; uma seleção que só tinha o CSC
+    vira "Todos"; (b) o Total do "Todos" SEGUE somando o CSC (o que ficou nele sem percentual), para continuar fechando
+    com a DRE da empresa — o "?" do Total diz isso; com o "Preencher vazios" aplicado, o CSC zera e o Total é a soma
+    das colunas. Um centro só (Trips, por exemplo) segue como antes.
 
 Gate desta rodada: dois testes que vão ao banco de produção falharam UMA vez e passaram na repetição. Foram a deriva
 sintética do `schema-baseline` e o contrato de `get_marketing_gastos_resumo`, este com `57014 statement timeout`

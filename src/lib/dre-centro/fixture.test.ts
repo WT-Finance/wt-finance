@@ -6,7 +6,7 @@ import { CATEGORIA_TAXA_ANTECIPACAO, fixtureDreCentro, pesosFicticios } from './
 import { BLOCOS, EMPRESA, FIM, REX, TAXA, tot } from './empresa-sintetica'
 import { montarAnoCentro } from './montar'
 import {
-  LINHA_RES, ROTULO_RESULTADO_OPERACIONAL, TITULO_TOTAL_LADO, TITULO_TOTAL_SELECAO,
+  LINHA_RES, ROTULO_RESULTADO_OPERACIONAL, TITULO_TOTAL_CSC_OCULTO, TITULO_TOTAL_LADO, TITULO_TOTAL_SELECAO,
   visaoConsolidado, visaoLadoALado, visaoLadoALadoConsolidado, visaoMensal,
 } from './visoes'
 
@@ -241,6 +241,22 @@ describe('visões', () => {
       expect(v.grupos.map(g => [g.rotulo, g.span])).toEqual([['2025', 4], ['YTD 25', 8], ['Δ% YTD 25·26', 5], ['YTD 26', 10]])
       expect(v.grupos.reduce((s, g) => s + g.span, 0)).toBe(v.colunas.filter(c => !c.fixa).length)
     })
+  })
+
+  // Pedido do Yan (24/11): com o rateio aplicado a coluna CSC some, mas o Total segue somando o CSC (paridade).
+  it('centrosTotal: CSC fora das colunas e dentro do Total (Mensal e Consolidado); o "?" do Total explica', () => {
+    const semCsc = CENTROS.filter(c => c !== 'csc')
+    const k = `b:${LINHA_RES.chave}`
+    const m = visaoLadoALado({ ano: 2026, porCentro: ano.porCentro, fim: FIM, parcial: true, centros: semCsc, centrosTotal: CENTROS })
+    expect(m.colunas.some(c => c.id.endsWith(':csc'))).toBe(false)
+    expect(m.valores.total[k]).toBeCloseTo(tot(REX.slice(0, FIM)), 4) // Total ≡ REX da Empresa, com o CSC dentro
+    expect(m.colunas.find(c => c.id === 'total')?.titulo).toBe(TITULO_TOTAL_LADO + TITULO_TOTAL_CSC_OCULTO)
+    const c = visaoLadoALadoConsolidado({
+      mesJanela: FIM, centros: semCsc, centrosTotal: CENTROS,
+      anos: [{ ano: 2026, parcial: true, fim: FIM, porCentro: ano.porCentro }],
+    })!
+    expect(c.colunas.some(x => x.id.includes(':csc'))).toBe(false)
+    expect(c.valores.total[k]).toBeCloseTo(tot(REX.slice(0, FIM)), 4)
   })
 
   it('Todos › Consolidado com dois anos: ano inteiro, YTD, Δ% por centro e Total do YTD de referência', () => {

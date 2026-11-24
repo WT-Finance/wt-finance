@@ -287,6 +287,11 @@ export const TITULO_TOTAL_SELECAO =
 
 const todosOsCentros = (cs: readonly CentroId[]) => CENTROS.every(c => cs.includes(c))
 
+/** Com o rateio aplicado a coluna CSC sai (pedido do Yan), mas o Total segue somando o que ficou no CSC sem
+ *  percentual — senão deixaria de fechar com a DRE da empresa. */
+export const TITULO_TOTAL_CSC_OCULTO =
+  ' Com o rateio aplicado a coluna CSC não aparece; o que ficou no CSC sem percentual continua somado aqui.'
+
 /** Total (Σ centros, linha a linha — memória de saldo: Σ dos saldos no fim) + a AV dele, presos à direita. */
 function colunasTotal(
   colunas: ColunaVisao[],
@@ -295,13 +300,13 @@ function colunasTotal(
   porCentro: ReadonlyArray<Record<string, number | null>>,
   rotulo: string,
   todos: boolean,
+  /** O Total soma centro que NÃO está nas colunas (o CSC com o rateio aplicado). */
+  somaForaDasColunas = false,
 ): void {
   const total: Record<string, number | null> = {}
   for (const k of Object.keys(porCentro[0] ?? {})) total[k] = porCentro.reduce((s, v) => s + (v[k] ?? 0), 0)
-  colunas.push({
-    id: 'total', rotulo, titulo: todos ? TITULO_TOTAL_LADO : TITULO_TOTAL_SELECAO,
-    tipo: 'valor', fixa: 'total', divisoria: true, ajuda: true,
-  })
+  const titulo = (todos ? TITULO_TOTAL_LADO : TITULO_TOTAL_SELECAO) + (somaForaDasColunas ? TITULO_TOTAL_CSC_OCULTO : '')
+  colunas.push({ id: 'total', rotulo, titulo, tipo: 'valor', fixa: 'total', divisoria: true, ajuda: true })
   valores.total = total
   const rbTotal = baseAv(total[`b:${CHAVE_BASE_AV}`] ?? null)
   colunas.push({ id: 'av', rotulo: 'AV', titulo: '% sobre a Receita Bruta da soma dos centros', tipo: 'av', fixa: 'av' })
@@ -326,6 +331,8 @@ export function visaoLadoALado(args: {
   parcial: boolean
   /** Centros nas colunas, na ordem canônica (default: todos, inclusive Sem centro). */
   centros?: readonly CentroId[]
+  /** Centros somados no Total (default: os das colunas). Com o rateio aplicado o CSC sai das colunas mas fica aqui. */
+  centrosTotal?: readonly CentroId[]
 }): VisaoTabela {
   const { porCentro, fim, parcial } = args
   const cs = CENTROS.filter(c => (args.centros ?? CENTROS).includes(c))
@@ -349,8 +356,9 @@ export function visaoLadoALado(args: {
       for (const m of lc.memoria) valores[id][chaveMemoria(m)] = m.meses[i]
     }
   }
-  const ytdPorCentro = cs.map(c => colunaValor(porCentro[c].linhas, porCentro[c].memoria, fim, l => ytd(l, fim)))
-  colunasTotal(colunas, valores, porCentro.trips, ytdPorCentro, 'Total', todosOsCentros(cs))
+  const ct = CENTROS.filter(c => (args.centrosTotal ?? cs).includes(c))
+  const ytdPorCentro = ct.map(c => colunaValor(porCentro[c].linhas, porCentro[c].memoria, fim, l => ytd(l, fim)))
+  colunasTotal(colunas, valores, porCentro.trips, ytdPorCentro, 'Total', todosOsCentros(ct), ct.some(c => !cs.includes(c)))
   return { grupos, colunas, linhas: porCentro.trips.linhas, memoria: porCentro.trips.memoria, valores }
 }
 
@@ -367,6 +375,8 @@ export function visaoLadoALadoConsolidado(args: {
   mesJanela: number
   /** Centros nas colunas, na ordem canônica (default: todos, inclusive Sem centro). */
   centros?: readonly CentroId[]
+  /** Centros somados no Total (default: os das colunas). Com o rateio aplicado o CSC sai das colunas mas fica aqui. */
+  centrosTotal?: readonly CentroId[]
 }): VisaoTabela | null {
   const { anos, mesJanela } = args
   const cs = CENTROS.filter(c => (args.centros ?? CENTROS).includes(c))
@@ -422,7 +432,8 @@ export function visaoLadoALadoConsolidado(args: {
     }
   })
   // O Total soma TODOS os centros (inclusive o Sem centro escondido por estar zerado — soma igual).
-  const ytdRef = cs.map(c => ytdDe(ref, c))
-  colunasTotal(colunas, valores, ref.porCentro.trips, ytdRef, `Total YTD ${anoCurto(ref.ano)}`, todosOsCentros(cs))
+  const ct = CENTROS.filter(c => (args.centrosTotal ?? cs).includes(c))
+  const ytdRef = ct.map(c => ytdDe(ref, c))
+  colunasTotal(colunas, valores, ref.porCentro.trips, ytdRef, `Total YTD ${anoCurto(ref.ano)}`, todosOsCentros(ct), ct.some(c => !cs.includes(c)))
   return { grupos, colunas, linhas: ref.porCentro.trips.linhas, memoria: ref.porCentro.trips.memoria, valores }
 }

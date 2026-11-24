@@ -20,20 +20,23 @@ const PILL_MARCADA_TODOS_STYLE: CSSProperties = {
 }
 
 export default function SeletorCentro({
-  selecao, onAlternar, onTodos, depois,
+  selecao, onAlternar, onTodos, depois, centros = CENTROS_SELECIONAVEIS,
 }: {
   selecao: ReadonlySet<CentroSelecionavel>
   onAlternar: (c: CentroSelecionavel) => void
   onTodos: () => void
-  /** O que vem depois de "Todos", separado por "|" (o botão Rateio e a chave Com rateio, v6.5.1/0308). */
+  /** O que vem depois de "Todos", separado por "|" (o botão Rateio, v6.5.1/0308). */
   depois?: ReactNode
+  /** Centros com pill (com o rateio do CSC aplicado, sem o CSC — pedido do Yan, 24/11). */
+  centros?: readonly CentroSelecionavel[]
 }) {
-  const todos = CENTROS_SELECIONAVEIS.every(c => selecao.has(c))
+  const todos = centros.every(c => selecao.has(c))
+  const marcadosVisiveis = centros.filter(c => selecao.has(c)).length
   return (
     <div role="group" aria-label="Centro de custo" className="flex flex-wrap items-center gap-1.5">
-      {CENTROS_SELECIONAVEIS.map(c => {
+      {centros.map(c => {
         const marcado = selecao.has(c)
-        const ultimo = marcado && selecao.size === 1
+        const ultimo = marcado && marcadosVisiveis === 1
         return (
           <button
             key={c}

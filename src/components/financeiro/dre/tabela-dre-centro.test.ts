@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { fixtureDreCentro } from '@/lib/dre-centro/fixture'
 import { montarAnoCentro } from '@/lib/dre-centro/montar'
 import { BLOCOS, EMPRESA } from '@/lib/dre-centro/empresa-sintetica'
-import { alternarCentro, selecaoInicial, type CentroSelecionavel } from '@/lib/dre-centro/centros'
+import { alternarCentro, centrosComPill, selecaoInicial, type CentroSelecionavel } from '@/lib/dre-centro/centros'
 import type { TabelaDreCentroProps } from './tabela-dre-centro'
 
 // Render no servidor da DRE por centro (v6.5.1, mockup do GATE 1): a prova automatizada de
@@ -21,8 +21,11 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/components/shared/list-drawer', async () => {
   const { createElement: h } = await import('react')
   return {
-    default: ({ titulo, children, rodape }: { titulo: string; children: unknown; rodape?: unknown }) =>
-      h('div', { 'data-drawer': titulo }, h('div', { 'data-rolagem': '' }, children as never), h('div', { 'data-rodape': '' }, rodape as never)),
+    default: ({ titulo, subtitulo, children, rodape }: { titulo: string; subtitulo?: string; children: unknown; rodape?: unknown }) =>
+      h('div', { 'data-drawer': titulo },
+        h('p', { 'data-subtitulo': '' }, subtitulo ?? ''),
+        h('div', { 'data-rolagem': '' }, children as never),
+        h('div', { 'data-rodape': '' }, rodape as never)),
   }
 })
 
@@ -195,6 +198,14 @@ describe('seleção cumulativa (módulo puro)', () => {
     expect(alternarCentro(tres, 'csc').size).toBe(4)
   })
 
+  it('com o rateio ligado o CSC sai das pills; "Todos" = os três que sobram', () => {
+    const tres = centrosComPill(true)
+    expect(tres).toEqual(['trips', 'weddings', 'corp'])
+    expect(centrosComPill(false)).toEqual(['csc', 'trips', 'weddings', 'corp'])
+    // com os três marcados (Todos aceso), clicar num deles marca só ele
+    expect([...alternarCentro(new Set(tres), 'corp', tres)]).toEqual(['corp'])
+  })
+
   it('abertura: Todos (e "Sem centro", sem pill) = os quatro marcados; lista vazia = os quatro', () => {
     expect(selecaoInicial('lado').size).toBe(4)
     expect(selecaoInicial('sem_centro').size).toBe(4)
@@ -220,12 +231,26 @@ describe('Rateio do CSC no card', () => {
   // Marcador para saber QUAL leitura o card mostra: a com rateio leva o ano 2025 (o Consolidado mostra "YTD 25").
   const leituraRateio = { ok: true as const, anos: [{ ...ano, ano: 2025 }] }
 
-  it('sem rateio salvo: pill BRANCA (desligado) e a DRE é a sem rateio', () => {
+  it('sem rateio salvo: pill BRANCA com contorno e letras âmbar (desligado) e a DRE é a sem rateio, com o CSC', () => {
     const html = render({ ...BASE, salvarRateio: salvar, rateio: { itens: [], atualizado_em: null }, leituraRateio })
     expect(pill(html, 'Rateio')).toContain('aria-pressed="false"')
+    expect(pill(html, 'Rateio')).toContain('background:var(--surface)')
+    expect(pill(html, 'Rateio')).toContain('border-color:var(--warning)')
+    expect(pill(html, 'Rateio')).toContain('color:var(--warning-deep)')
     expect(pill(html, 'Rateio')).not.toContain('var(--warning-bg)')
     expect(html).toContain('YTD 26')
     expect(html).not.toContain('YTD 25')
+    expect(html).toMatch(/<button[^>]*>CSC<\/button>/)
+    expect(html).toContain('>CSC</th>')
+  })
+
+  it('rateio ligado: sem pill e sem coluna CSC; o Total avisa que o que ficou no CSC continua somado', () => {
+    const html = render({ ...BASE, salvarRateio: salvar, rateio: salvo, leituraRateio })
+    expect(html).not.toMatch(/<button[^>]*>CSC<\/button>/)
+    expect(html).not.toContain('>CSC</th>')
+    // Todos = os três que sobram com pill, acende
+    expect(html).toMatch(/aria-pressed="true"[^>]*>Todos</)
+    expect(html).toContain('o que ficou no CSC sem percentual continua somado aqui')
   })
 
   it('com rateio salvo: pill ÂMBAR (ligado) e a DRE é a com rateio', () => {
@@ -265,6 +290,9 @@ describe('RateioCscDrawer', () => {
       atualizado_em: null,
     })
     expect(html).toContain('data-drawer="Rateio do CSC"')
+    expect(html).toContain('Reparte o que foi alocado como CSC para os demais centros de custo (Trips, Weddings e Corporativo).')
+    // a tabela tem contorno próprio
+    expect(html).toMatch(/<div class="overflow-hidden rounded-lg border border-wt-border"><table/)
     const salarios = input(html, '(−) Despesas Operacionais RH › Salários', 'Trips')
     expect(salarios).toContain('disabled=""')
     expect(salarios).toContain('value="50"')

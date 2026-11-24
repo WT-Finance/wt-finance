@@ -14,7 +14,7 @@ import { chaveDeLinha } from '@/lib/dre/identidade'
 import { SUF_PARCIAL } from '@/lib/dre/mes-parcial'
 import { hojeSP } from '@/lib/fmt'
 import {
-  CENTROS, CENTROS_SELECIONAVEIS, ROTULO_CENTRO, ROTULO_SELETOR, SELETOR_INICIAL, alternarCentro, selecaoInicial,
+  CENTROS, CENTROS_SELECIONAVEIS, ROTULO_CENTRO, ROTULO_SELETOR, SELETOR_INICIAL, alternarCentro, centrosComPill, selecaoInicial,
   type CentroId, type CentroSelecionavel, type SeletorCentro as Opcao,
 } from '@/lib/dre-centro/centros'
 import {
@@ -50,6 +50,12 @@ type VisaoCentro = 'mensal' | 'consolidado'
  *  --warning-bg ≈ 5:1 (AA). */
 const PILL_RATEIO_STYLE: CSSProperties = {
   background:  'var(--warning-bg)',
+  borderColor: 'var(--warning)',
+  color:       'var(--warning-deep)',
+}
+/** Desligado (pedido do Yan, 24/11): fundo branco, contorno e letras em âmbar (--warning-deep sobre branco ≈ 5,6:1). */
+const PILL_RATEIO_DESLIGADO_STYLE: CSSProperties = {
+  background:  'var(--surface)',
   borderColor: 'var(--warning)',
   color:       'var(--warning-deep)',
 }
@@ -304,12 +310,18 @@ export default function TabelaDreCentro({
     return () => document.removeEventListener('fullscreenchange', aoMudar)
   }, [])
 
-  const marcados = CENTROS_SELECIONAVEIS.filter(c => selecao.has(c))
-  const todos = marcados.length === CENTROS_SELECIONAVEIS.length
+  // Com o rateio aplicado o CSC sai das pills e das colunas (pedido do Yan, 24/11); o Total do "Todos" segue somando
+  // tudo — inclusive o que ficou no CSC sem percentual —, para continuar fechando com a DRE da empresa.
+  const comPill = centrosComPill(rateioLigado)
+  const marcadosNaPill = comPill.filter(c => selecao.has(c))
+  // Seleção que só tinha o CSC (antes de ligar o rateio) vira "Todos".
+  const marcados = marcadosNaPill.length > 0 ? marcadosNaPill : comPill
+  const todos = marcados.length === comPill.length
   /** Um centro só → a visão dele; vários → os centros nas colunas (`lado`). */
   const unico: CentroSelecionavel | null = marcados.length === 1 ? marcados[0] : null
   const lado = unico == null
-  const centrosColunas: readonly CentroId[] = todos ? CENTROS : marcados
+  const centrosColunas: readonly CentroId[] = todos ? CENTROS.filter(c => !(rateioLigado && c === 'csc')) : marcados
+  const centrosTotal: readonly CentroId[] = todos ? CENTROS : marcados
   const rotuloSelecao = todos ? ROTULO_SELETOR.lado : marcados.map(c => ROTULO_CENTRO[c]).join(' + ')
   const titulo = TITULO
   const cobertos = new Set(anos.map(a => a.ano))
@@ -338,9 +350,10 @@ export default function TabelaDreCentro({
       ? visaoLadoALadoConsolidado({
           mesJanela,
           centros: centrosColunas,
+          centrosTotal,
           anos: anos.map(a => ({ ano: a.ano, parcial: a.parcial, fim: a.fim, porCentro: a.porCentro })),
         })
-      : visaoLadoALado({ ano: ano.ano, porCentro: ano.porCentro, fim: ano.fim, parcial: ano.parcial, centros: centrosColunas })
+      : visaoLadoALado({ ano: ano.ano, porCentro: ano.porCentro, fim: ano.fim, parcial: ano.parcial, centros: centrosColunas, centrosTotal })
     : visaoEfetiva === 'consolidado'
       ? visaoConsolidado({
           mesJanela,
@@ -418,7 +431,8 @@ export default function TabelaDreCentro({
         <div className="mb-4 flex flex-col gap-2">
           <SeletorCentro
             selecao={selecao}
-            onAlternar={c => setSelecao(prev => alternarCentro(prev, c))}
+            onAlternar={c => setSelecao(prev => alternarCentro(prev, c, comPill))}
+            centros={comPill}
             onTodos={() => setSelecao(new Set(CENTROS_SELECIONAVEIS))}
             depois={salvarRateio && (
               <>
@@ -435,8 +449,8 @@ export default function TabelaDreCentro({
                   title={rateioLigado
                     ? 'Rateio do CSC ligado — a DRE mostra o CSC repartido. Para desligar: abra, Limpar e Aplicar'
                     : 'Rateio do CSC desligado — abra para definir os percentuais entre Trips, Weddings e Corporativo'}
-                  className={['foco-neutro', PILL_FILTRO, rateioLigado ? 'hover:brightness-95' : PILL_FILTRO_INATIVO].join(' ')}
-                  style={rateioLigado ? PILL_RATEIO_STYLE : undefined}
+                  className={['foco-neutro', PILL_FILTRO, 'hover:brightness-95'].join(' ')}
+                  style={rateioLigado ? PILL_RATEIO_STYLE : PILL_RATEIO_DESLIGADO_STYLE}
                 >
                   Rateio
                 </button>

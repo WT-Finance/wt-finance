@@ -15,9 +15,7 @@ import {
 // Grupo preenchido TRAVA as categorias dele (os campos delas mostram o % do grupo, desabilitados). Sem centro
 // fica de fora do rateio. Salvar SUBSTITUI o conjunto inteiro (salvar_dre_rateio_csc) — quem vê a DRE edita.
 
-const SUBTITULO =
-  'Reparte o que caiu no CSC entre Trips, Weddings e Corporativo. Sem centro fica de fora. ' +
-  'Preencher o grupo trava as categorias dele. Linha em branco = sem rateio (o valor fica no CSC).'
+const SUBTITULO = 'Reparte o que foi alocado como CSC para os demais centros de custo (Trips, Weddings e Corporativo).'
 
 export interface RateioCscDrawerProps {
   grupos: GrupoRateio[]
@@ -79,7 +77,7 @@ function LinhaRateio({
             </span>
           </td>
         ))}
-        <td className={`pl-3 py-1.5 text-right text-[12px] tabular-nums whitespace-nowrap ${erro ? 'text-danger' : 'text-text-muted'}`}>{fmtSoma(soma)}</td>
+        <td className={`pl-3 pr-4 py-1.5 text-right text-[12px] tabular-nums whitespace-nowrap ${erro ? 'text-danger' : 'text-text-muted'}`}>{fmtSoma(soma)}</td>
       </tr>
       {erro && (
         <tr>
@@ -176,19 +174,21 @@ export default function RateioCscDrawer({ grupos, salvo, onSalvar, onClose }: Ra
         </p>
       )}
 
-      {/* Larguras fixas: a categoria fica com o que sobra; os três centros e a Soma não espremem (pedido do Yan). */}
+      {/* Larguras fixas: a categoria fica com o que sobra; os três centros e a Soma não espremem. Contorno na tabela e
+          a Soma afastada da borda (pedidos do Yan). */}
+      <div className="overflow-hidden rounded-lg border border-wt-border">
       <table className="w-full table-fixed border-separate border-spacing-0">
         <caption className="sr-only">Percentuais do rateio do CSC por grupo e categoria</caption>
         <colgroup>
           <col />
           {CENTROS_RATEIO.map(c => <col key={c} className="w-[104px]" />)}
-          <col className="w-[84px]" />
+          <col className="w-[96px]" />
         </colgroup>
         <thead>
           <tr className="text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary">
-            <th scope="col" className="pb-2 pl-2 text-left">Grupo / categoria</th>
-            {CENTROS_RATEIO.map(c => <th key={c} scope="col" className="whitespace-nowrap px-1 pb-2 text-right">{ROTULO_RATEIO[c]}</th>)}
-            <th scope="col" className="whitespace-nowrap pb-2 pl-3 text-right">Soma</th>
+            <th scope="col" className="border-b border-wt-border py-2.5 pl-2 text-left">Grupo / categoria</th>
+            {CENTROS_RATEIO.map(c => <th key={c} scope="col" className="whitespace-nowrap border-b border-wt-border px-1 py-2.5 text-right">{ROTULO_RATEIO[c]}</th>)}
+            <th scope="col" className="whitespace-nowrap border-b border-wt-border py-2.5 pl-3 pr-4 text-right">Soma</th>
           </tr>
         </thead>
         <tbody>
@@ -222,6 +222,7 @@ export default function RateioCscDrawer({ grupos, salvo, onSalvar, onClose }: Ra
           })}
         </tbody>
       </table>
+      </div>
     </ListDrawer>
   )
 }
