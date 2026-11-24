@@ -42,7 +42,7 @@ baixado hoje, 2,25 MB), manual do TTARS (revisto em 24/10) e ~550 chamadas à AP
 | **Contas a receber** | `/bills?transaction_kind=credit` + detalhe | 1.297/1.297 presentes, 1.296 no valor, 1.297 na liquidação (set/2026) | **Sim** |
 | **Lançamentos por Operação** (RPA) | `/bills/{id}.operation` + operação da venda | 10/10 vínculos e valores (amostra) | **Sim, provável** — aposentaria a RPA |
 | **Pessoas** | `/people` (+ `/cities/{id}`) | 17/17 colunas com campo correspondente | **Sim** — o "5 de 17" de agosto caducou |
-| **Demonstrativo (competência)** | — (não existe `income_statement`) | — | **Não** — segue o veredito PARCIAL de julho |
+| **Demonstrativo (competência)** | sem rota própria; remontado por `sales_by_products` + `/refunds` + `/bills` | bloco da venda 46/48 linhas; categorias 91/94 (mar) e 79/84 (set) | **Sim, com ressalvas** — refeito em 24/11, ver `2026-11-24-demonstrativo-via-api-monde.md` |
 
 ---
 
@@ -209,6 +209,10 @@ e-mail, telefone, celular; cidade em `address.city{id}` → UF e país em `/citi
 ~29 min a 1,3 s, **sem filtro incremental** (pedido 5c da pauta segue aberto).
 
 ### 4.7 Demonstrativo de Resultado (competência) — não substituível hoje
+
+> **Superado em 24/11** — com as permissões liberadas em 23/11, o Demonstrativo foi remontado pela API: ver
+> `2026-11-24-demonstrativo-via-api-monde.md` (bloco da venda 46/48 linhas ao centavo em 4 meses; categorias
+> 91/94 em março e 79/84 em setembro). O texto abaixo é o registro de 19/11.
 
 Não há rota de demonstrativo/DRE. O caminho seria **reconstruir** a partir de vendas (receita) + contas por
 competência com categorias e grupos — exatamente o que a investigação de 27/07 testou e classificou como
