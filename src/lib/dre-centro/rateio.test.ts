@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { DreLinha } from '@/lib/dre/schemas'
 import {
-  PCTS_IGUAIS, categoriaTravada, chaveCategoria, chaveGrupo, estadoInicial, gruposDaArvore, lerPct, montarItens,
+  PCTS_IGUAIS, categoriaTravada, chaveCategoria, chaveGrupo, estadoAplicacao, estadoInicial, gruposDaArvore, lerPct, montarItens,
   preencherVazios, rateioCscSchema, temRateio, validarLinha,
 } from './rateio'
 
@@ -50,6 +50,17 @@ describe('lerPct / validarLinha', () => {
     expect(validarLinha({ trips: '50', weddings: '30', corp: '10' })).toMatchObject({ tipo: 'erro', msg: expect.stringContaining('90%') })
     expect(validarLinha({ trips: '150', weddings: '', corp: '' })).toMatchObject({ tipo: 'erro' })
     expect(validarLinha({ trips: 'x', weddings: '', corp: '' })).toMatchObject({ tipo: 'erro' })
+  })
+})
+
+describe('estadoAplicacao — o véu "Aplicando o rateio…" some quando os dados novos chegam', () => {
+  const antes = { itens: [], atualizado_em: null }
+  it('aplicando enquanto o rateio na tela é o MESMO objeto do clique; ocioso quando chega o novo', () => {
+    expect(estadoAplicacao(null, antes)).toBe('ocioso')
+    expect(estadoAplicacao({ ref: antes, erro: null }, antes)).toBe('aplicando')
+    // a página nova traz um objeto novo, mesmo com conteúdo igual (ex.: salvou o que já estava)
+    expect(estadoAplicacao({ ref: antes, erro: null }, { itens: [], atualizado_em: null })).toBe('ocioso')
+    expect(estadoAplicacao({ ref: antes, erro: 'Rateio: falhou' }, antes)).toBe('erro')
   })
 })
 

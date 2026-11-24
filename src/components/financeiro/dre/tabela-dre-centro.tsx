@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { Loader2 } from 'lucide-react'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
@@ -22,7 +23,7 @@ import {
   type ColunaVisao, type VisaoTabela,
 } from '@/lib/dre-centro/visoes'
 import type { AnoDadosCentro } from '@/lib/dre-centro/montar'
-import { gruposDaArvore, temRateio, type ItemRateio, type RateioCsc } from '@/lib/dre-centro/rateio'
+import { estadoAplicacao, gruposDaArvore, temRateio, type Aplicacao, type ItemRateio, type RateioCsc } from '@/lib/dre-centro/rateio'
 import RateioCscDrawer from './rateio-csc-drawer'
 import { abaDaVisao, nomeArquivoCentro } from '@/lib/dre-centro/exportar'
 
@@ -286,6 +287,16 @@ export default function TabelaDreCentro({
   // Limpar e Aplicar. Rateio salvo cuja leitura falhou mostra o ERRO do card, nunca a DRE sem rateio com a pill
   // acesa (seriam números errados com cara de certos).
   const [drawerAberto, setDrawerAberto] = useState(false)
+  // Carregamento ao aplicar (pedido do Yan, 24/11): o drawer fecha no clique e a DRE fica coberta por "Aplicando o
+  // rateio…" até a página nova chegar com os dados novos (objeto `rateio` novo) — ver `estadoAplicacao`.
+  const [aplicacao, setAplicacao] = useState<Aplicacao | null>(null)
+  const estadoAplic = estadoAplicacao(aplicacao, rateio)
+  useEffect(() => {
+    if (estadoAplic !== 'aplicando') return
+    // Segurança: o véu nunca fica preso se a revalidação não vier.
+    const t = setTimeout(() => setAplicacao(null), 30_000)
+    return () => clearTimeout(t)
+  }, [estadoAplic])
   const rateioLigado = temRateio(rateio)
   const leitura: LeituraCentro = !rateioLigado
     ? leituraSem
@@ -461,7 +472,21 @@ export default function TabelaDreCentro({
             <RateioCscDrawer
               grupos={gruposDaArvore(ano.porCentro.trips.linhas)}
               salvo={rateio}
-              onSalvar={salvarRateio}
+              onSalvar={async itens => {
+                // Fecha já: a espera aparece na própria DRE, não num botão escondido atrás do drawer.
+                setAplicacao({ ref: rateio, erro: null })
+                setDrawerAberto(false)
+                try {
+                  const r = await salvarRateio(itens)
+                  if (!r.ok) setAplicacao({ ref: rateio, erro: r.erro ?? 'Não foi possível aplicar o rateio.' })
+                  return r
+                } catch (e) {
+                  console.error('[rateio CSC] aplicar', e)
+                  const erro = 'Não foi possível aplicar o rateio — sua sessão pode ter expirado. Recarregue a página.'
+                  setAplicacao({ ref: rateio, erro })
+                  return { ok: false, erro }
+                }
+              }}
               onClose={() => setDrawerAberto(false)}
             />
           )}
@@ -502,7 +527,25 @@ export default function TabelaDreCentro({
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-lg border border-wt-border bg-band">
+        {estadoAplic === 'erro' && aplicacao?.erro && (
+          <p role="alert" className="mb-3 flex items-start justify-between gap-3 rounded-md border border-danger bg-danger-bg px-3 py-2 text-sm text-danger">
+            <span>{aplicacao.erro}</span>
+            <button type="button" onClick={() => setAplicacao(null)} className="foco-neutro shrink-0 text-xs underline">
+              Fechar
+            </button>
+          </p>
+        )}
+        <div className="relative overflow-hidden rounded-lg border border-wt-border bg-band" aria-busy={estadoAplic === 'aplicando'}>
+          {estadoAplic === 'aplicando' && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="absolute inset-0 z-40 flex items-center justify-center gap-2 bg-surface/75 text-sm font-medium text-text-secondary backdrop-blur-[1px]"
+            >
+              <Loader2 size={18} className="animate-spin motion-reduce:animate-none" aria-hidden />
+              Aplicando o rateio…
+            </div>
+          )}
           <div className="pb-1.5 pr-1.5">
             <ScrollAutoHide
               eixo="both"

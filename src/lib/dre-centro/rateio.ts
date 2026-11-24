@@ -164,5 +164,23 @@ export function preencherVazios(estado: EstadoRateio, grupos: readonly GrupoRate
   return out
 }
 
+// ── Carregamento ao aplicar (pedido do Yan, 24/11) ──────────────────────────
+// Depois de gravar, a página é remontada no servidor (todas as leituras da DRE) — leva alguns segundos. O card cobre a
+// DRE com "Aplicando o rateio…" até os DADOS NOVOS chegarem: a página nova traz um objeto `rateio` novo (referência
+// diferente da guardada no clique). Assim o véu some no momento certo, sem relógio; o relógio de segurança só existe
+// para ele nunca ficar preso se a revalidação não vier.
+export interface Aplicacao {
+  /** O `rateio` que estava na tela no clique. */
+  ref: RateioCsc | null
+  erro: string | null
+}
+export type EstadoAplicacao = 'ocioso' | 'aplicando' | 'erro'
+
+export function estadoAplicacao(a: Aplicacao | null, rateioAtual: RateioCsc | null): EstadoAplicacao {
+  if (a == null) return 'ocioso'
+  if (a.erro != null) return 'erro'
+  return a.ref === rateioAtual ? 'aplicando' : 'ocioso'
+}
+
 /** Há rateio salvo? (a chave "Com rateio" só aparece quando há). */
 export const temRateio = (r: RateioCsc | null) => (r?.itens.length ?? 0) > 0

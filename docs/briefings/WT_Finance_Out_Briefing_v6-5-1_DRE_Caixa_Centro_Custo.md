@@ -214,6 +214,12 @@ Decisões de produto do Yan ao ver o card, aplicadas no mesmo PR antes do merge:
     Corporativo; uma seleção que só tinha o CSC vira "Todos". Escolha do agente, a confirmar: (b) o Total do "Todos" SEGUE somando o CSC (o que ficou nele sem percentual), para continuar fechando
     com a DRE da empresa — o "?" do Total diz isso; com o "Preencher vazios" aplicado, o CSC zera e o Total é a soma
     das colunas. Um centro só (Trips, por exemplo) segue como antes.
+17. **Carregamento ao aplicar** (pedido do Yan, 24/11): depois de gravar, a página inteira é remontada no servidor
+    (todas as leituras da DRE) e leva alguns segundos. Agora o drawer fecha no clique em "Aplicar" e a DRE fica coberta
+    por "Aplicando o rateio…" com um ícone girando (`aria-busy`/`role="status"`; sem animação com
+    `prefers-reduced-motion`). O véu some quando a página nova chega — detectado pelo dado (o objeto `rateio` novo,
+    `estadoAplicacao`), não por tempo; há um relógio de segurança de 30 s. Erro ao aplicar: o véu sai e a mensagem
+    aparece acima da tabela (os valores digitados no drawer se perdem nesse caso raro — a validação é feita antes).
 
 Gate desta rodada: dois testes que vão ao banco de produção falharam UMA vez e passaram na repetição. Foram a deriva
 sintética do `schema-baseline` e o contrato de `get_marketing_gastos_resumo`, este com `57014 statement timeout`
