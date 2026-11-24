@@ -220,6 +220,11 @@ Decisões de produto do Yan ao ver o card, aplicadas no mesmo PR antes do merge:
     `prefers-reduced-motion`). O véu some quando a página nova chega — detectado pelo dado (o objeto `rateio` novo,
     `estadoAplicacao`), não por tempo; há um relógio de segurança de 30 s. Erro ao aplicar: o véu sai e a mensagem
     aparece acima da tabela (os valores digitados no drawer se perdem nesse caso raro — a validação é feita antes).
+    - **Correção (24/11, o Yan viu a tabela parada sem o véu):** o drawer chamava a action dentro de
+      `startTransition(async …)`, e o React 19 segura TODAS as atualizações de uma transição assíncrona até ela
+      terminar — fechar o drawer e ligar o véu só aconteciam no fim, quando já não havia o que esperar. Agora o drawer
+      usa um estado simples de "salvando" e a chamada fica fora de transição: o drawer fecha e o véu aparece no clique.
+      Não verificado em tela pelo agente (login).
 
 Gate desta rodada: dois testes que vão ao banco de produção falharam UMA vez e passaram na repetição. Foram a deriva
 sintética do `schema-baseline` e o contrato de `get_marketing_gastos_resumo`, este com `57014 statement timeout`

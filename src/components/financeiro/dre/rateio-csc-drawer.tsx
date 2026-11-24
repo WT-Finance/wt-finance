@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useState, useTransition } from 'react'
+import { Fragment, useState } from 'react'
 import ListDrawer from '@/components/shared/list-drawer'
 import Button from '@/components/ui/button'
 import { Input } from '@/components/ui/field'
@@ -92,7 +92,10 @@ export default function RateioCscDrawer({ grupos, salvo, onSalvar, onClose }: Ra
   const [estado, setEstado] = useState<EstadoRateio>(() => estadoInicial(salvo))
   const [erros, setErros] = useState<Record<string, string>>({})
   const [erroGeral, setErroGeral] = useState<string | null>(null)
-  const [salvando, iniciar] = useTransition()
+  // Estado simples, NÃO useTransition: dentro de um startTransition(async) o React 19 SEGURA todas as atualizações
+  // (fechar o drawer, ligar o véu "Aplicando o rateio…" no card) até a action inteira terminar — o drawer fechava
+  // tarde e o véu nunca aparecia, deixando a tabela parada sem sinal (Yan, 24/11).
+  const [salvando, setSalvando] = useState(false)
 
   const orfaos = (salvo?.itens ?? []).filter(i => i.ativo === false)
 
@@ -106,7 +109,8 @@ export default function RateioCscDrawer({ grupos, salvo, onSalvar, onClose }: Ra
     })
   }
 
-  function salvar() {
+  async function salvar() {
+    if (salvando) return
     setErroGeral(null)
     const r = montarItens(estado, grupos)
     setErros(r.erros)
@@ -114,18 +118,19 @@ export default function RateioCscDrawer({ grupos, salvo, onSalvar, onClose }: Ra
       setErroGeral('Corrija as linhas marcadas — cada uma precisa somar 100%.')
       return
     }
-    iniciar(async () => {
-      // A action pode LANÇAR (guard de sessão/permissão fora do try dela): sem este catch a exceção subiria da
-      // transition para o error boundary e derrubaria a página (revisor, MÉDIO).
-      try {
-        const res = await onSalvar(r.itens)
-        if (res.ok) onClose()
-        else setErroGeral(res.erro ?? 'Não foi possível salvar o rateio.')
-      } catch (e) {
-        console.error('[rateio CSC] salvar', e)
-        setErroGeral('Não foi possível salvar — sua sessão pode ter expirado. Recarregue a página e tente de novo.')
-      }
-    })
+    setSalvando(true)
+    // A action pode LANÇAR (guard de sessão/permissão fora do try dela): o catch mostra a mensagem em vez de deixar a
+    // exceção derrubar a página (revisor, MÉDIO).
+    try {
+      const res = await onSalvar(r.itens)
+      if (res.ok) onClose()
+      else setErroGeral(res.erro ?? 'Não foi possível salvar o rateio.')
+    } catch (e) {
+      console.error('[rateio CSC] salvar', e)
+      setErroGeral('Não foi possível salvar — sua sessão pode ter expirado. Recarregue a página e tente de novo.')
+    } finally {
+      setSalvando(false)
+    }
   }
 
   return (
@@ -154,7 +159,7 @@ export default function RateioCscDrawer({ grupos, salvo, onSalvar, onClose }: Ra
             </Button>
             <span className="ml-auto flex gap-2">
               <Button variant="contorno" size="sm" onClick={onClose} disabled={salvando}>Cancelar</Button>
-              <Button variant="solido" size="sm" onClick={salvar} disabled={salvando || salvo == null}>
+              <Button variant="solido" size="sm" onClick={() => void salvar()} disabled={salvando || salvo == null}>
                 {salvando ? 'Aplicando…' : 'Aplicar'}
               </Button>
             </span>
