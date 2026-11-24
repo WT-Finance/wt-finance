@@ -263,9 +263,9 @@ export interface TabelaDreCentroProps {
   seletorInicial?: Opcao | readonly CentroSelecionavel[]
   /** Visão em que Todos (ou vários centros) abre (default: Consolidado — pedido do Yan no PR #311). Um centro abre em Mensal. */
   visaoLadoInicial?: VisaoCentro
+  /** A DRE por centro JÁ com o rateio do CSC aplicado (get_dre_caixa_centro_rateio — sem rateio salvo é idêntica à
+   *  sem rateio). Uma leitura só: buscar as duas estourava o timeout do banco (24/11). */
   leitura: LeituraCentro
-  /** A mesma leitura COM o rateio do CSC (0308). Ausente = sem rateio na tela (só o drawer some junto). */
-  leituraRateio?: LeituraCentro
   /** Os percentuais salvos; null = a leitura falhou (o drawer avisa e não salva por cima). */
   rateio?: RateioCsc | null
   /** Server Action de salvar (vem da página). Ausente = sem o botão Rateio. */
@@ -279,13 +279,12 @@ type LeituraCentro = { ok: true; anos: AnoDadosCentro[] } | { ok: false; motivo:
 const TITULO = 'Demonstrativo de Resultado por Centro de Custo'
 
 export default function TabelaDreCentro({
-  seletorInicial = SELETOR_INICIAL, visaoLadoInicial = 'consolidado', leitura: leituraSem, leituraRateio, rateio = null,
+  seletorInicial = SELETOR_INICIAL, visaoLadoInicial = 'consolidado', leitura, rateio = null,
   salvarRateio, anosDisponiveis, mesJanela,
 }: TabelaDreCentroProps) {
   // Rateio do CSC (0308). Decisão do Yan (24/11, no lugar da chave "Com rateio"): o rateio está LIGADO quando há
-  // rateio salvo — a pill "Rateio" fica âmbar e a DRE vem com o CSC repartido; para desligar, abrir o drawer,
-  // Limpar e Aplicar. Rateio salvo cuja leitura falhou mostra o ERRO do card, nunca a DRE sem rateio com a pill
-  // acesa (seriam números errados com cara de certos).
+  // rateio salvo — a pill "Rateio" fica âmbar e a DRE (que já chega com o rateio aplicado) mostra o CSC repartido;
+  // para desligar, abrir o drawer, Limpar e Aplicar.
   const [drawerAberto, setDrawerAberto] = useState(false)
   // Carregamento ao aplicar (pedido do Yan, 24/11): o drawer fecha no clique e a DRE fica coberta por "Aplicando o
   // rateio…" até a página nova chegar com os dados novos (objeto `rateio` novo) — ver `estadoAplicacao`.
@@ -298,9 +297,6 @@ export default function TabelaDreCentro({
     return () => clearTimeout(t)
   }, [estadoAplic])
   const rateioLigado = temRateio(rateio)
-  const leitura: LeituraCentro = !rateioLigado
-    ? leituraSem
-    : leituraRateio?.ok ? leituraRateio : { ok: false, motivo: 'erro' }
   const anos = leitura.ok ? leitura.anos : []
   // Seleção CUMULATIVA dos centros (pedido do Yan no PR #311): as quatro marcadas = Todos (inclusive Sem centro).
   const [selecao, setSelecao] = useState<ReadonlySet<CentroSelecionavel>>(() => selecaoInicial(seletorInicial))

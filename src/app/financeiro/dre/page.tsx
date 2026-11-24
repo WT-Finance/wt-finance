@@ -33,7 +33,7 @@ import { PILL, PILL_NEUTRO } from '@/components/shared/botoes'
 import TabelaDreCentro, { type TabelaDreCentroProps } from '@/components/financeiro/dre/tabela-dre-centro'
 import { dreCaixaCentroSchema, paraDreCentroAno } from '@/lib/dre-centro/schemas'
 import { montarAnoCentro } from '@/lib/dre-centro/montar'
-import { rateioCscSchema, temRateio } from '@/lib/dre-centro/rateio'
+import { rateioCscSchema } from '@/lib/dre-centro/rateio'
 import { salvarRateioCsc } from './actions'
 
 // DRE por Fluxo de Caixa (v5.3.0 · Onda 2) — a tabela hierárquica da controladoria
@@ -143,13 +143,14 @@ export default async function DrePage({
       // ler o payload de um ANO da DRE, o `parseRpc` rejeitou em silêncio e o card virou
       // "sem movimentações". Acrescentar no fim não desloca ninguém.
       ...anosDisponiveis.map(a => rpcDre(db, 'get_dre_competencia_mensal', { p_ano: a })),
-      // v6.5.1 — DRE de caixa por centro de custo do ANO CORRENTE (0306). Entra no FIM (índices
-      // posicionais, ver acima). Os demais anos com centro, se houver, vêm num 2º estágio abaixo.
-      rpcDre(db, 'get_dre_caixa_centro', { p_ano: anoCorrente }),
-      // v6.5.1 (0308) — rateio do CSC: os percentuais e a mesma leitura COM o rateio, do ano corrente.
-      // No FIM (índices posicionais). Em paralelo: não custa wall-clock.
-      rpcDre(db, 'get_dre_rateio_csc'),
+      // v6.5.1 — DRE de caixa por centro de custo do ANO CORRENTE, numa ÚNICA leitura pesada: a com o rateio
+      // do CSC (0308). Sem rateio salvo ela é idêntica à sem rateio (provado no ensaio e no contrato), e o rateio
+      // não tem mais chave liga/desliga (decisão do Yan, 24/11). Chamar as DUAS em paralelo com as outras
+      // leituras da página estourava o statement_timeout de 8 s do `authenticated` (logs do preview, 24/11).
+      // Entra no FIM (índices posicionais, ver acima). Os demais anos com centro vêm num 2º estágio abaixo.
       rpcDre(db, 'get_dre_caixa_centro_rateio', { p_ano: anoCorrente }),
+      // Os percentuais do rateio (leitura leve).
+      rpcDre(db, 'get_dre_rateio_csc'),
     ]).then(rs => rs.map(r => (r.status === 'fulfilled' ? r.value : empty))),
     buscarUltimaCargaMovimentacao(),
   ])
@@ -183,24 +184,17 @@ export default async function DrePage({
   // contra o protótipo. FAIL-SAFE POR CARD: falha da RPC ⇒ o card mostra o erro sozinho; a tabela
   // da Empresa e o resto da página seguem.
   const OFFSET_CENTRO = OFFSET_COMP + anosDisponiveis.length
-  const centroCorrente = parseRpc(dreCaixaCentroSchema, resultados[OFFSET_CENTRO], 'get_dre_caixa_centro')
+  const centroCorrente = parseRpc(dreCaixaCentroSchema, resultados[OFFSET_CENTRO], 'get_dre_caixa_centro_rateio')
+  // Rateio do CSC (0308): os percentuais (null = a leitura falhou; o drawer avisa).
+  const rateioCsc = parseRpc(rateioCscSchema, resultados[OFFSET_CENTRO + 1], 'get_dre_rateio_csc')
   // Só os anos com centro de custo no dado (derivado, nunca fixo — inv. 12). O corrente já veio;
   // os demais da janela, se houver, num 2º estágio (hoje só 2026 tem centro: não custa nada).
   const anosComCentro = (centroCorrente?.anos_com_centro ?? []).filter(a => anosDisponiveis.includes(a))
   const outrosAnosCentro = anosComCentro.filter(a => a !== anoCorrente)
-  // Rateio do CSC (0308): os percentuais (null = a leitura falhou; o drawer avisa) e a leitura COM rateio.
-  const rateioCsc = parseRpc(rateioCscSchema, resultados[OFFSET_CENTRO + 1], 'get_dre_rateio_csc')
-  const centroRateioCorrente = parseRpc(dreCaixaCentroSchema, resultados[OFFSET_CENTRO + 2], 'get_dre_caixa_centro_rateio')
-  // 2º estágio: os outros anos com centro (hoje nenhum). A versão COM rateio deles só é pedida se há rateio salvo.
-  const pedirRateioOutros = temRateio(rateioCsc)
-  const [outrosCentro, outrosCentroRateio] = await Promise.all([
-    Promise.allSettled(outrosAnosCentro.map(a => rpcDre(db, 'get_dre_caixa_centro', { p_ano: a }))),
-    Promise.allSettled(pedirRateioOutros ? outrosAnosCentro.map(a => rpcDre(db, 'get_dre_caixa_centro_rateio', { p_ano: a })) : []),
-  ]).then(([sem, com]) => [
-    sem.map((r, i) => parseRpc(dreCaixaCentroSchema, r.status === 'fulfilled' ? r.value : empty, `get_dre_caixa_centro(${outrosAnosCentro[i]})`)),
-    com.map((r, i) => parseRpc(dreCaixaCentroSchema, r.status === 'fulfilled' ? r.value : empty, `get_dre_caixa_centro_rateio(${outrosAnosCentro[i]})`)),
-  ])
-  /** A mesma montagem para as duas leituras (sem e com rateio). */
+  const outrosCentro = await Promise.allSettled(
+    outrosAnosCentro.map(a => rpcDre(db, 'get_dre_caixa_centro_rateio', { p_ano: a })),
+  ).then(rs => rs.map((r, i) =>
+    parseRpc(dreCaixaCentroSchema, r.status === 'fulfilled' ? r.value : empty, `get_dre_caixa_centro_rateio(${outrosAnosCentro[i]})`)))
   const montarLeitura = (
     corrente: typeof centroCorrente,
     outros: ReadonlyArray<typeof centroCorrente>,
@@ -225,8 +219,7 @@ export default async function DrePage({
       return { ok: false, motivo: 'erro' }
     }
   }
-  const leituraCentro = montarLeitura(centroCorrente, outrosCentro, 'sem rateio')
-  const leituraCentroRateio = montarLeitura(centroRateioCorrente, pedirRateioOutros ? outrosCentroRateio : outrosCentro, 'com rateio')
+  const leituraCentro = montarLeitura(centroCorrente, outrosCentro, 'com rateio (vazio = sem rateio)')
   const carimbosCentro = {
     centroCusto: centroCorrente?.centro_carregado_em ?? null,
     antecipacoes: centroCorrente?.antecipacoes_atualizado_em ?? null,
@@ -618,7 +611,6 @@ export default async function DrePage({
               Depois do "Maiores variações", que lê a tabela da Empresa e fica colado a ela. */}
           <TabelaDreCentro
             leitura={leituraCentro}
-            leituraRateio={leituraCentroRateio}
             rateio={rateioCsc}
             salvarRateio={salvarRateioCsc}
             anosDisponiveis={anosDisponiveis}

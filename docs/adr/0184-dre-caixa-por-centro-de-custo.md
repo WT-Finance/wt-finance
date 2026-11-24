@@ -116,5 +116,8 @@ lugar da chave "Com rateio" de 23/11).
   salvamento.
 - **Limites registrados:** mover uma categoria de bloco no editor faz ela herdar o % do bloco novo (sem aviso); o
   conjunto é substituído inteiro a cada salvamento, com `atualizado_por`/`atualizado_em` só da última gravação (sem
-  histórico de quem mudou cada %); o drawer aceita até 2 casas decimais. A leitura com rateio custa ~1,4 s, buscada
-  em paralelo com a sem rateio.
+  histórico de quem mudou cada %); o drawer aceita até 2 casas decimais.
+- **A página faz UMA leitura pesada por ano: a com rateio** (`get_dre_caixa_centro_rateio`), que sem rateio salvo é
+  idêntica à sem rateio. Buscar as duas em paralelo com as demais leituras da DRE estourou o `statement_timeout` de 8 s
+  do `authenticated` no preview (24/11: "canceling statement due to statement timeout" nas duas). Com uma só, a mesma
+  carga simulada ficou em ~1,8 s. `get_dre_caixa_centro` (sem rateio) segue existindo para os contratos e a paridade.

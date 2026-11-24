@@ -228,24 +228,22 @@ describe('Rateio do CSC no card', () => {
     expect(html).not.toContain('Com rateio')
   })
 
-  // Marcador para saber QUAL leitura o card mostra: a com rateio leva o ano 2025 (o Consolidado mostra "YTD 25").
-  const leituraRateio = { ok: true as const, anos: [{ ...ano, ano: 2025 }] }
-
-  it('sem rateio salvo: pill BRANCA com contorno e letras âmbar (desligado) e a DRE é a sem rateio, com o CSC', () => {
-    const html = render({ ...BASE, salvarRateio: salvar, rateio: { itens: [], atualizado_em: null }, leituraRateio })
+  // A página entrega UMA leitura, já com o rateio aplicado (get_dre_caixa_centro_rateio; sem rateio salvo ela é a sem
+  // rateio). Buscar as duas estourava o timeout de 8 s do banco (logs do preview, 24/11).
+  it('sem rateio salvo: pill BRANCA com contorno e letras âmbar (desligado) e a coluna CSC aparece', () => {
+    const html = render({ ...BASE, salvarRateio: salvar, rateio: { itens: [], atualizado_em: null } })
     expect(pill(html, 'Rateio')).toContain('aria-pressed="false"')
     expect(pill(html, 'Rateio')).toContain('background:var(--surface)')
     expect(pill(html, 'Rateio')).toContain('border-color:var(--warning)')
     expect(pill(html, 'Rateio')).toContain('color:var(--warning-deep)')
     expect(pill(html, 'Rateio')).not.toContain('var(--warning-bg)')
     expect(html).toContain('YTD 26')
-    expect(html).not.toContain('YTD 25')
     expect(pill(html, 'CSC')).not.toContain('disabled=""')
     expect(html).toContain('>CSC</th>')
   })
 
   it('rateio ligado: pill CSC APAGADA (visível, desabilitada) e sem coluna CSC; o Total avisa que o CSC segue somado', () => {
-    const html = render({ ...BASE, salvarRateio: salvar, rateio: salvo, leituraRateio })
+    const html = render({ ...BASE, salvarRateio: salvar, rateio: salvo })
     const csc = pill(html, 'CSC')
     expect(csc).toContain('disabled=""')
     expect(csc).toContain('aria-pressed="false"')
@@ -256,18 +254,11 @@ describe('Rateio do CSC no card', () => {
     expect(html).toContain('o que ficou no CSC sem percentual continua somado aqui')
   })
 
-  it('com rateio salvo: pill ÂMBAR (ligado) e a DRE é a com rateio', () => {
-    const html = render({ ...BASE, salvarRateio: salvar, rateio: salvo, leituraRateio })
+  it('com rateio salvo: pill ÂMBAR (ligado)', () => {
+    const html = render({ ...BASE, salvarRateio: salvar, rateio: salvo })
     expect(pill(html, 'Rateio')).toContain('aria-pressed="true"')
     expect(pill(html, 'Rateio')).toContain('background:var(--warning-bg)')
     expect(pill(html, 'Rateio')).toContain('color:var(--warning-deep)')
-    expect(html).toContain('YTD 25')
-  })
-
-  it('rateio salvo cuja leitura falhou: o card mostra o ERRO (nunca a DRE sem rateio com a pill acesa)', () => {
-    const html = render({ ...BASE, salvarRateio: salvar, rateio: salvo, leituraRateio: { ok: false, motivo: 'erro' } })
-    expect(html).toContain('Não foi possível carregar a DRE por centro de custo')
-    expect(html).not.toContain('YTD 26')
   })
 })
 

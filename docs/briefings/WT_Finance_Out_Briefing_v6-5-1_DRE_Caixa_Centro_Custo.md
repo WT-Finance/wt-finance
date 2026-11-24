@@ -225,6 +225,15 @@ Decisões de produto do Yan ao ver o card, aplicadas no mesmo PR antes do merge:
       terminar — fechar o drawer e ligar o véu só aconteciam no fim, quando já não havia o que esperar. Agora o drawer
       usa um estado simples de "salvando" e a chamada fica fora de transição: o drawer fecha e o véu aparece no clique.
       Não verificado em tela pelo agente (login).
+18. **Correção: "Não foi possível carregar a DRE por centro de custo" ao aplicar o rateio** (Yan, 24/11). Causa, pelos
+    logs do preview na Vercel: `get_dre_caixa_centro` E `get_dre_caixa_centro_rateio` cancelados por `statement
+    timeout` (8 s do `authenticated`) — as duas leituras pesadas por centro rodavam em paralelo com as outras ~10 da
+    página (sozinhas, 1–2 s cada; a resposta com rateio passa no schema e na montagem — sonda descartável). Correção: a
+    página faz UMA leitura por centro, a com rateio (sem rateio salvo ela é idêntica à sem rateio — ensaio e contrato);
+    o card perdeu a propriedade `leituraRateio`. Carga da página simulada (todas as leituras em paralelo): antes, a 1ª
+    rodada chegou a 6,9 s na leitura por centro; agora ~1,8 s (ressalva: as rodadas novas pegaram o banco já
+    aquecido). Risco que fica: em pico de carga o banco ainda pode passar de 8 s — registrado; se voltar, o próximo
+    passo é tirar a DRE por centro do carregamento inicial (busca sob demanda).
 
 Gate desta rodada: dois testes que vão ao banco de produção falharam UMA vez e passaram na repetição. Foram a deriva
 sintética do `schema-baseline` e o contrato de `get_marketing_gastos_resumo`, este com `57014 statement timeout`
