@@ -182,5 +182,6 @@ export function estadoAplicacao(a: Aplicacao | null, rateioAtual: RateioCsc | nu
   return a.ref === rateioAtual ? 'aplicando' : 'ocioso'
 }
 
-/** Há rateio salvo? (a chave "Com rateio" só aparece quando há). */
-export const temRateio = (r: RateioCsc | null) => (r?.itens.length ?? 0) > 0
+/** O rateio está LIGADO: há ao menos um % salvo que ainda VALE (alvo ativo no mapa vivo — `ativo` ausente conta como
+ *  ativo). Só órfãos = nada é repartido no banco, então a pill não acende nem o CSC some (revisor, MÉDIO). */
+export const temRateio = (r: RateioCsc | null) => (r?.itens ?? []).some(i => i.ativo !== false)

@@ -1,5 +1,5 @@
 import { chaveDeLinha } from '@/lib/dre/identidade'
-import { chaveMemoria, type VisaoTabela } from './visoes'
+import { TITULO_TOTAL_CSC_OCULTO, chaveMemoria, type VisaoTabela } from './visoes'
 
 // ── Exportar a DRE por centro (v6.5.1) — módulo PURO ─────────────────────────
 // A planilha leva a VISÃO DA TELA, com todas as linhas (categorias abertas) e a memória no
@@ -36,6 +36,13 @@ export function abaDaVisao(nome: string, v: VisaoTabela): AbaExport {
   for (const m of v.memoria) {
     const k = chaveMemoria(m)
     linhas.push([m.rotulo, ...v.colunas.map(c => (c.tipo === 'valor' ? arred(v.valores[c.id]?.[k]) : null))])
+  }
+  // Com o rateio aplicado o Total soma o CSC (o que ficou sem percentual) sem a coluna dele: a planilha circula sem o
+  // "?" da tela, então a explicação vai junto, numa nota no fim (revisor, MÉDIO).
+  const total = v.colunas.find(c => c.id === 'total')
+  if (total?.titulo.includes(TITULO_TOTAL_CSC_OCULTO.trim())) {
+    linhas.push([])
+    linhas.push([`Nota sobre a coluna "${total.rotulo}": ${total.titulo}`])
   }
   return { nome: nome.slice(0, 31), linhas, larguras: [46, ...v.colunas.map(c => (c.tipo === 'valor' ? 16 : 9))] }
 }

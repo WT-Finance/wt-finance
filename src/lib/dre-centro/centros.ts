@@ -2,10 +2,10 @@
 //
 // Os centros vêm do relatório "Lançamentos por Centro de Custo" do Monde (D1–D7 da M0).
 // "Sem centro" é coluna VISÍVEL e nunca redistribuída: lançamento sem centro se resolve no
-// Monde, no próprio lançamento. O CSC é um centro próprio; o rateio dele entre as unidades
-// é fronteira (§11 do briefing).
+// Monde, no próprio lançamento. O CSC é um centro próprio; o rateio dele entre Trips, Weddings e Corporativo é o
+// "Rateio do CSC" (0308, `rateio.ts`) — entrou no PR #311 a pedido do Yan.
 
-/** Ordem canônica de exibição (pills, colunas, Quem cobre quem, Exportar): CSC primeiro (pedido do Yan no PR #311).
+/** Ordem canônica de exibição (pills, colunas, Exportar): CSC primeiro (pedido do Yan no PR #311).
  *  Nenhum cálculo depende da ordem — a atribuição só soma por centro e os dados vêm por chave. */
 export const CENTROS = ['csc', 'trips', 'weddings', 'corp', 'sem_centro'] as const
 export type CentroId = (typeof CENTROS)[number]
@@ -63,7 +63,7 @@ export const ROTULO_SELETOR: Record<SeletorCentro, string> = {
   lado: 'Todos', // era "Lado a lado" (pedido do Yan no PR #311); o id interno segue `lado`
 }
 
-/** Abertura do card: os centros lado a lado (a comparação e o Quem cobre quem). */
+/** Abertura do card: "Todos" (os centros nas colunas). */
 export const SELETOR_INICIAL: SeletorCentro = 'lado'
 
 /** Registro vazio por centro — ponto único de inicialização (nenhum centro esquecido). */

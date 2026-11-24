@@ -5,6 +5,7 @@ import { CENTROS } from './centros'
 import { CATEGORIA_TAXA_ANTECIPACAO, fixtureDreCentro, pesosFicticios } from './fixture'
 import { BLOCOS, EMPRESA, FIM, REX, TAXA, tot } from './empresa-sintetica'
 import { montarAnoCentro } from './montar'
+import { abaDaVisao } from './exportar'
 import {
   LINHA_RES, ROTULO_RESULTADO_OPERACIONAL, TITULO_TOTAL_CSC_OCULTO, TITULO_TOTAL_LADO, TITULO_TOTAL_SELECAO,
   visaoConsolidado, visaoLadoALado, visaoLadoALadoConsolidado, visaoMensal,
@@ -257,6 +258,13 @@ describe('visões', () => {
     })!
     expect(c.colunas.some(x => x.id.includes(':csc'))).toBe(false)
     expect(c.valores.total[k]).toBeCloseTo(tot(REX.slice(0, FIM)), 4)
+    // a planilha leva a explicação (circula sem o "?" da tela) — e só quando o CSC está fora das colunas
+    const aba = abaDaVisao('Todos Consolidado', c)
+    expect(aba.linhas.at(-1)?.[0]).toContain('o que ficou no CSC sem percentual continua somado aqui')
+    const semNota = abaDaVisao('Todos Consolidado', visaoLadoALadoConsolidado({
+      mesJanela: FIM, anos: [{ ano: 2026, parcial: true, fim: FIM, porCentro: ano.porCentro }],
+    })!)
+    expect(semNota.linhas.flat().some(x => String(x).startsWith('Nota sobre a coluna'))).toBe(false)
   })
 
   it('Todos › Consolidado com dois anos: ano inteiro, YTD, Δ% por centro e Total do YTD de referência', () => {

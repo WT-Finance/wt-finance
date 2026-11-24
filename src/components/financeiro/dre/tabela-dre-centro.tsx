@@ -317,12 +317,13 @@ export default function TabelaDreCentro({
     return () => document.removeEventListener('fullscreenchange', aoMudar)
   }, [])
 
-  // Com o rateio aplicado o CSC sai das pills e das colunas (pedido do Yan, 24/11); o Total do "Todos" segue somando
-  // tudo — inclusive o que ficou no CSC sem percentual —, para continuar fechando com a DRE da empresa.
+  // Com o rateio aplicado o CSC fica APAGADO na pill e sai das colunas (pedido do Yan, 24/11); o Total do "Todos" segue
+  // somando tudo — inclusive o que ficou no CSC sem percentual —, para continuar fechando com a DRE da empresa.
   const comPill = centrosComPill(rateioLigado)
   const marcadosNaPill = comPill.filter(c => selecao.has(c))
   // Seleção que só tinha o CSC (antes de ligar o rateio) vira "Todos".
   const marcados = marcadosNaPill.length > 0 ? marcadosNaPill : comPill
+  const selecaoEfetiva: ReadonlySet<CentroSelecionavel> = new Set(marcados)
   const todos = marcados.length === comPill.length
   /** Um centro só → a visão dele; vários → os centros nas colunas (`lado`). */
   const unico: CentroSelecionavel | null = marcados.length === 1 ? marcados[0] : null
@@ -437,8 +438,10 @@ export default function TabelaDreCentro({
 
         <div className="mb-4 flex flex-col gap-2">
           <SeletorCentro
-            selecao={selecao}
-            onAlternar={c => setSelecao(prev => alternarCentro(prev, c, comPill))}
+            // A seleção EFETIVA (sem o CSC apagado; "só CSC" com rateio ligado = Todos): as pills mostram o que a tabela
+            // mostra, e desmarcar não conta o CSC oculto (revisor, MÉDIO).
+            selecao={selecaoEfetiva}
+            onAlternar={c => setSelecao(alternarCentro(selecaoEfetiva, c, comPill))}
             centros={comPill}
             onTodos={() => setSelecao(new Set(CENTROS_SELECIONAVEIS))}
             depois={salvarRateio && (
@@ -451,12 +454,14 @@ export default function TabelaDreCentro({
                     if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
                     setDrawerAberto(true)
                   }}
+                  // Travado enquanto um Aplicar está em curso: evita um segundo Aplicar sobreposto (revisor, BAIXO).
+                  disabled={estadoAplic === 'aplicando'}
                   aria-haspopup="dialog"
                   aria-pressed={rateioLigado}
                   title={rateioLigado
                     ? 'Rateio do CSC ligado — a DRE mostra o CSC repartido. Para desligar: abra, Limpar e Aplicar'
                     : 'Rateio do CSC desligado — abra para definir os percentuais entre Trips, Weddings e Corporativo'}
-                  className={['foco-neutro', PILL_FILTRO, 'hover:brightness-95'].join(' ')}
+                  className={['foco-neutro', PILL_FILTRO, 'hover:brightness-95 disabled:opacity-60 disabled:cursor-wait'].join(' ')}
                   style={rateioLigado ? PILL_RATEIO_STYLE : PILL_RATEIO_DESLIGADO_STYLE}
                 >
                   Rateio
@@ -474,11 +479,12 @@ export default function TabelaDreCentro({
                 setDrawerAberto(false)
                 try {
                   const r = await salvarRateio(itens)
-                  if (!r.ok) setAplicacao({ ref: rateio, erro: r.erro ?? 'Não foi possível aplicar o rateio.' })
+                  // O drawer já fechou (e o que foi digitado com ele): a mensagem diz para refazer (revisor, MÉDIO).
+                  if (!r.ok) setAplicacao({ ref: rateio, erro: `${r.erro ?? 'Não foi possível aplicar o rateio.'} Abra o Rateio e refaça.` })
                   return r
                 } catch (e) {
                   console.error('[rateio CSC] aplicar', e)
-                  const erro = 'Não foi possível aplicar o rateio — sua sessão pode ter expirado. Recarregue a página.'
+                  const erro = 'Não foi possível aplicar o rateio — sua sessão pode ter expirado. Recarregue a página e refaça.'
                   setAplicacao({ ref: rateio, erro })
                   return { ok: false, erro }
                 }
@@ -531,14 +537,18 @@ export default function TabelaDreCentro({
             </button>
           </p>
         )}
+        {/* Região de status SEMPRE montada (o texto entra só durante o Aplicar): leitor de tela anuncia com mais
+            confiança do que um nó que já nasce com texto (revisor, BAIXO). */}
+        <p role="status" aria-live="polite" className="sr-only">
+          {estadoAplic === 'aplicando' ? 'Aplicando o rateio…' : ''}
+        </p>
         <div className="relative overflow-hidden rounded-lg border border-wt-border bg-band" aria-busy={estadoAplic === 'aplicando'}>
           {estadoAplic === 'aplicando' && (
             <div
-              role="status"
-              aria-live="polite"
+              aria-hidden
               className="absolute inset-0 z-40 flex items-center justify-center gap-2 bg-surface/75 text-sm font-medium text-text-secondary backdrop-blur-[1px]"
             >
-              <Loader2 size={18} className="animate-spin motion-reduce:animate-none" aria-hidden />
+              <Loader2 size={18} className="animate-spin motion-reduce:animate-none" />
               Aplicando o rateio…
             </div>
           )}

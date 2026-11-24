@@ -5,7 +5,7 @@ import type { DreCentroAno } from './tipos'
 
 // ── Um ano da DRE por centro, pronto para a tela (v6.5.1) — módulo PURO ──────
 // Encadeia: árvore operacional por centro → atribuição das antecipações (§3.4) → linhas do
-// bloco e da memória → Quem cobre quem → notas de cobertura. A página chama no servidor; o
+// bloco e da memória → notas de cobertura. A página chama no servidor; o
 // componente só escolhe a visão (Mensal, Consolidado, Lado a lado), sem ida ao servidor.
 
 export interface NaoIdentificada {

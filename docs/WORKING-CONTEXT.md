@@ -107,14 +107,15 @@ Worktree `.claude/worktrees/v6-5-1-dre-caixa-centro-custo`. Briefing `docs/brief
 
 > 🔴 **Yan:**
 >
-> 1. Conferir no preview do #311 o card "DRE por centro de custo" (conferência visual não feita pelo agente — login).
->    Até a 1ª carga ele mostra "a base de centro de custo ainda não foi carregada".
-> 2. Mergear o **#311**. Nada de banco a aplicar depois (0304/0305/0306/0308 já estão no ar). Se o #312 for mergeado
+> 1. **O rateio salvo no teste do preview está no banco de PRODUÇÃO** (24/11: 131 categorias com 33,33/33,33/33,34).
+>    Depois do merge todos veem a DRE por centro com ele ligado. Se era só teste: drawer › Limpar › Aplicar.
+> 2. Conferir no preview do #311 o Rateio (pill, drawer, "Aplicando o rateio…") — conferência visual não feita pelo
+>    agente (login).
+> 3. Mergear o **#311**. Nada de banco a aplicar depois (0304/0305/0306/0308 já estão no ar). Se o #312 for mergeado
 >    antes, o #311 precisa de rebase sobre a main (CHANGELOGs e versão; a 0307 é o mesmo arquivo nos dois).
-> 3. Depois do deploy: 1ª carga real em Admin › Ingestão › Upload › "Lançamentos por Centro de Custo", **no mesmo dia**
->    da carga de movimentação; conferências do briefing §10.
-> 4. Lançar no Monde as taxas de antecipação pendentes (a nota do card mostra o valor) e mostrar à diretoria.
-> 5. Pós-merge: `/pos-merge` (pull na raiz + remover esta worktree).
+> 4. Manter a carga de "Lançamentos por Centro de Custo" **no mesmo dia** da de movimentação; conferências do briefing §10.
+> 5. Lançar no Monde as taxas de antecipação pendentes (o valor não aparece mais no card) e mostrar à diretoria.
+> 6. Pós-merge: `/pos-merge` (pull na raiz + remover esta worktree).
 
 ---
 

@@ -129,5 +129,9 @@ describe('trava e montagem', () => {
     expect(temRateio(salvo)).toBe(true)
     expect(temRateio({ itens: [], atualizado_em: null })).toBe(false)
     expect(temRateio(null)).toBe(false)
+    // só órfãos (o editor da DRE mudou a estrutura): nada vale no banco ⇒ desligado (revisor, MÉDIO)
+    const orfao = { categoria_id: null, bloco_chave: 'SUMIU', pct_trips: 100, pct_weddings: 0, pct_corp: 0, ativo: false }
+    expect(temRateio({ itens: [orfao], atualizado_em: null })).toBe(false)
+    expect(temRateio({ itens: [orfao, { ...orfao, bloco_chave: 'RH', ativo: true }], atualizado_em: null })).toBe(true)
   })
 })

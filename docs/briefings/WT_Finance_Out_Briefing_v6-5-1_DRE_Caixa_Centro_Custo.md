@@ -235,6 +235,18 @@ Decisões de produto do Yan ao ver o card, aplicadas no mesmo PR antes do merge:
     aquecido). Risco que fica: em pico de carga o banco ainda pode passar de 8 s — registrado; se voltar, o próximo
     passo é tirar a DRE por centro do carregamento inicial (busca sob demanda).
 
+**`revisor` — revisão final do delta pós-5baf71d3 (24/11, antes do merge):** aprovado com ressalvas, sem CRÍTICO/ALTO.
+Corrigidos: MÉDIO (seleção "só CSC" + rateio ligado: a tabela mostrava Todos e nenhuma pill acesa; desmarcar contava o CSC
+oculto — o seletor recebe a seleção efetiva; teste novo), MÉDIO (`temRateio` contava item órfão como ligado — agora só
+itens ativos; teste novo), MÉDIO (Excel com o CSC oculto: o Total não fecha com as colunas — a aba leva a nota do "?";
+teste novo), MÉDIO (erro ao aplicar perde o rascunho do drawer, consequência de fechar no clique — a mensagem diz
+"Abra o Rateio e refaça"); BAIXOs: botão Rateio travado durante o Aplicar, região `role="status"` sempre montada,
+comentários obsoletos (Quem cobre quem, chave "Com rateio", "rateio é fronteira"). Registrados: o véu pode sumir
+antes do dado novo se outro refresh da página chegar durante o Aplicar (aceitável — não fica preso); com a leitura única,
+se ela estourar o timeout o card de erro não tem o botão Rateio (para limpar um rateio é preciso o card no ar);
+`montarNotas` ainda calcula as notas que a tela não mostra (pré-existente, desde a retirada das notas); os caminhos de
+erro dentro do drawer (`else`/`catch` após `onSalvar`) ficaram inalcançáveis no uso pelo card — inofensivos.
+
 Gate desta rodada: dois testes que vão ao banco de produção falharam UMA vez e passaram na repetição. Foram a deriva
 sintética do `schema-baseline` e o contrato de `get_marketing_gastos_resumo`, este com `57014 statement timeout`
 (RPC de Marketing, não tocada nesta versão). É instabilidade do banco ao vivo, não regressão; fica registrada.
@@ -267,18 +279,22 @@ sintética do `schema-baseline` e o contrato de `get_marketing_gastos_resumo`, e
 
 ## 7. 🔴 Pendências do Yan
 
-1. Conferir o **preview do PR**: a tabela da Empresa igual à de produção; o card por centro mostrando "a base de centro de
-   custo ainda não foi carregada".
-2. **Mergear** o PR.
-3. **1ª carga real** (checkpoint da M2): Admin › Ingestão › Upload › "Lançamentos por Centro de Custo", **no mesmo dia** da
-   carga de Lançamentos por Categoria (movimentação), relatório com todos os grupos abertos.
-4. Conferir um centro contra o protótipo, a soma dos centros contra a visão Empresa em dois meses e as antecipações de
+1. **O rateio salvo no teste está no banco de PRODUÇÃO** (o preview usa o mesmo banco): em 24/11 havia 131 categorias
+   com 33,33/33,33/33,34 ("Preencher vazios"). Depois do merge, TODOS veem a DRE por centro com esse rateio ligado
+   (pill âmbar). Se era só teste: abrir o drawer, **Limpar e Aplicar** (antes ou logo depois do merge).
+2. Conferir no **preview do PR** o Rateio inteiro (pill, drawer, Aplicar com o "Aplicando o rateio…") e a tabela da
+   Empresa igual à de produção.
+3. **Mergear** o PR. Nada de banco a aplicar depois (0304–0306 e 0308 no ar; a 0307 é a do #312, idêntica). Se o #312
+   for mergeado antes, este PR precisa de rebase (CHANGELOGs e versão) — pedir ao agente.
+4. Base de centro de custo: já há carga de 2026; manter a carga **no mesmo dia** da de Lançamentos por Categoria
+   (movimentação), relatório com todos os grupos abertos.
+5. Conferir um centro contra o protótipo, a soma dos centros contra a visão Empresa em dois meses e as antecipações de
    2026 contra o registro (briefing §10).
-5. Pedir ao Financeiro o lançamento das taxas de antecipação pendentes no Monde. Com as notas fora da tela, o valor não
+6. Pedir ao Financeiro o lançamento das taxas de antecipação pendentes no Monde. Com as notas fora da tela, o valor não
    aparece mais no card. No print do Yan de 09/11 eram R$ 23.098, nas antecipações de 09/04, 24/09, 09/10, 13/10 e 30/10.
    No mesmo print, a de 30/10 (Asaas, R$ 519,6 k) estava sem recebíveis identificados. Se isso continuar depois da carga
    do mesmo dia, essa antecipação fica fora do bloco C/D dos centros.
-6. **Mostrar à diretoria** e anotar o que ela pedir.
+7. **Mostrar à diretoria** e anotar o que ela pedir.
 
 ## 8. Arquivos
 

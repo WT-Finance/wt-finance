@@ -254,6 +254,13 @@ describe('Rateio do CSC no card', () => {
     expect(html).toContain('o que ficou no CSC sem percentual continua somado aqui')
   })
 
+  it('só o CSC marcado e o rateio liga: pills e tabela concordam — Todos aceso com os três (revisor, MÉDIO)', () => {
+    const html = render({ ...BASE, seletorInicial: ['csc'], salvarRateio: salvar, rateio: salvo })
+    expect(html).toMatch(/aria-pressed="true"[^>]*>Todos</)
+    for (const c of ['Trips', 'Weddings', 'Corporativo']) expect(pill(html, c)).toContain('aria-pressed="true"')
+    expect(pill(html, 'CSC')).toContain('disabled=""')
+  })
+
   it('com rateio salvo: pill ÂMBAR (ligado)', () => {
     const html = render({ ...BASE, salvarRateio: salvar, rateio: salvo })
     expect(pill(html, 'Rateio')).toContain('aria-pressed="true"')
