@@ -1,5 +1,5 @@
 import { CENTROS, porCentro, type CentroId } from './centros'
-import { atribuirAntecipacoes, quemCobreQuem, type QuemCobreQuem } from './atribuicao'
+import { atribuirAntecipacoes } from './atribuicao'
 import { indiceUltimoTotalizador, mesFimRealizado, montarLinhasCentro, type LinhasCentro } from './visoes'
 import type { DreCentroAno } from './tipos'
 
@@ -38,7 +38,6 @@ export interface AnoDadosCentro {
   fim: number
   parcial: boolean
   porCentro: Record<CentroId, LinhasCentro>
-  quem: QuemCobreQuem
   notas: NotasCentro
 }
 
@@ -80,7 +79,6 @@ export function montarAnoCentro(d: DreCentroAno): AnoDadosCentro {
     fim,
     parcial: d.relacao === 'corrente',
     porCentro: Object.fromEntries(CENTROS.map(c => [c, montarLinhasCentro(d.arvores[c], c, atr)])) as Record<CentroId, LinhasCentro>,
-    quem: quemCobreQuem(entrada, atr),
     notas: montarNotas(d, atr.naoDevolvidoNoAno),
   }
 }

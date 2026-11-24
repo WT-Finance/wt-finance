@@ -121,38 +121,5 @@ export function atribuirAntecipacoes(e: EntradaAtribuicao): Atribuicao {
   return { pesos, criterio, c, d, taxa, cedidos, saldoOperacional, saldoCaixa, naoDevolvidoNoAno }
 }
 
-// ── Quem cobre quem (seção 9 do protótipo) ───────────────────────────────────
-// Posição acumulada no fim de cada mês. Usos = o déficit dos centros com saldo operacional
-// negativo. Fontes = o saldo dos centros positivos + os recebíveis já antecipados e ainda não
-// vencidos (por dono) − as taxas pagas + o caixa que a empresa já tinha (o que falta para
-// fechar: −saldo de caixa acumulado da empresa). Usos ≡ fontes POR CONSTRUÇÃO — a linha de
-// conferência é zero, e o teste prova.
-
-export interface QuemCobreQuem {
-  deficit: Record<CentroId, number[]>
-  positivos: Record<CentroId, number[]>
-  recebiveisNaoVencidos: Record<CentroId, number[]>
-  taxasPagas: number[]
-  caixaPrevio: number[]
-  totalUsos: number[]
-  totalFontes: number[]
-}
-
-export function quemCobreQuem(e: EntradaAtribuicao, a: Atribuicao): QuemCobreQuem {
-  const deficit = porCentro(k => a.saldoOperacional[k].map(s => Math.max(0, -s)))
-  const positivos = porCentro(k => a.saldoOperacional[k].map(s => Math.max(0, s)))
-  const recebiveisNaoVencidos = porCentro(() => zeros12())
-  for (const r of e.recebiveis) {
-    for (let m = r.mesAntecipacao; m < Math.min(r.mesVencimento, 13); m++) {
-      recebiveisNaoVencidos[r.dono][m - 1] += r.valor
-    }
-  }
-  const taxasPagas = acumular(Array.from({ length: 12 }, (_, m) => CENTROS.reduce((s, k) => s + a.taxa[k][m], 0)))
-  const caixaPrevio = Array.from({ length: 12 }, (_, m) => -CENTROS.reduce((s, k) => s + a.saldoCaixa[k][m], 0))
-  const somaCentros = (r: Record<CentroId, number[]>, m: number) => CENTROS.reduce((s, k) => s + r[k][m], 0)
-  const totalUsos = Array.from({ length: 12 }, (_, m) => somaCentros(deficit, m))
-  const totalFontes = Array.from({ length: 12 }, (_, m) =>
-    somaCentros(positivos, m) + somaCentros(recebiveisNaoVencidos, m) + taxasPagas[m] + caixaPrevio[m],
-  )
-  return { deficit, positivos, recebiveisNaoVencidos, taxasPagas, caixaPrevio, totalUsos, totalFontes }
-}
+// O "Quem cobre quem" (seção 9 do protótipo) saiu do card a pedido do Yan no PR #311 ("está confuso") — e a conta
+// dele saiu junto, para não ficar código morto. Recuperável pelo histórico do git.

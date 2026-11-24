@@ -198,6 +198,14 @@ Decisões de produto do Yan ao ver o card, aplicadas no mesmo PR antes do merge:
       formulário (nada vai ao banco antes de Aplicar). "Preencher vazios" dá 33,33% / 33,33% / 33,34% (o último leva o
       resto) às CATEGORIAS vazias dos grupos sem % próprio — escolha do agente, a confirmar: a linha do grupo não é
       preenchida, porque travaria as categorias e passaria por cima das já definidas.
+12. **Sem a chave "Com rateio"; o estado é a cor da pill "Rateio"** (decisão do Yan, 24/11): branca = sem rateio
+    salvo (desligado); âmbar = rateio salvo (ligado), e a DRE vem com o CSC repartido para todos. Para desligar: abrir o
+    drawer, Limpar e Aplicar. Rateio salvo cuja leitura falhou mostra o erro do card (nunca a DRE sem rateio com a pill
+    acesa). Limite: nesse caso a pill some junto com o card; o caminho é recarregar a página.
+13. **"Quem cobre quem" retirado** ("está confuso") — o componente e a conta (`quemCobreQuem` em `atribuicao.ts`, com o
+    teste dela) saíram juntos, para não ficar código morto; recuperável pelo git. A atribuição das antecipações, que a
+    DRE usa, não dependia dela.
+14. **Frase "Sem Δ% contra 2025: o Monde não tem centro de custo antes de 2026." retirada.**
 
 Gate desta rodada: dois testes que vão ao banco de produção falharam UMA vez e passaram na repetição. Foram a deriva
 sintética do `schema-baseline` e o contrato de `get_marketing_gastos_resumo`, este com `57014 statement timeout`

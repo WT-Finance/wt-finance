@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { CENTROS, porCentro, zeros12, type CentroId } from './centros'
-import { atribuirAntecipacoes, quemCobreQuem, type EntradaAtribuicao } from './atribuicao'
+import { atribuirAntecipacoes, type EntradaAtribuicao } from './atribuicao'
 import type { RecebivelAntecipado } from './tipos'
 
 const soma = (v: number[]) => v.reduce((s, x) => s + x, 0)
@@ -90,19 +90,6 @@ describe('atribuirAntecipacoes — identidades (§3.4, inv. 4)', () => {
       const fluxo = e.operacional[k].map((op, m) => op + a.c[k][m] + a.d[k][m] + a.taxa[k][m])
       expect(a.saldoCaixa[k][11]).toBeCloseTo(soma(fluxo), 9)
     }
-  })
-})
-
-describe('quemCobreQuem — usos ≡ fontes por construção', () => {
-  it('a conferência é zero em todo mês', () => {
-    const e = entrada()
-    const q = quemCobreQuem(e, atribuirAntecipacoes(e))
-    for (let m = 0; m < 12; m++) expect(q.totalFontes[m] - q.totalUsos[m]).toBeCloseTo(0, 9)
-    // jan: 100 (Weddings) + 60 (Trips) antecipados e ainda não vencidos
-    expect(q.recebiveisNaoVencidos.weddings[0]).toBe(100)
-    expect(q.recebiveisNaoVencidos.weddings[1]).toBe(0)
-    expect(q.recebiveisNaoVencidos.trips[1]).toBe(60)
-    expect(q.recebiveisNaoVencidos.corp[11]).toBe(40)
   })
 })
 

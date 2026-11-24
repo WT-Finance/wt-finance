@@ -100,8 +100,9 @@ Worktree `.claude/worktrees/v6-5-1-dre-caixa-centro-custo`. Briefing `docs/brief
   Out-briefing §4.1.
 - **Rateio do CSC (23/11), no #311 — 0308 APLICADA** (aditiva, backup-gate verde; banco na **0308**, livre **0309**; a
   0307 é da v6.5.2 e entrou aqui como arquivo idêntico). Botão "Rateio" depois de "Todos" abre o drawer de % (grupo ou
-  categoria, grupo trava as categorias, soma 100) para Trips/Weddings/Corporativo; chave "Com rateio" mostra a DRE com o
-  CSC repartido (abre desligada). Só o valor do CSC é repartido; Sem centro fica de fora; quem vê a DRE edita; um
+  categoria, grupo trava as categorias, soma 100) para Trips/Weddings/Corporativo. Com rateio salvo a pill fica âmbar e
+  a DRE vem com o CSC repartido (para desligar: Limpar e Aplicar); a chave "Com rateio" e o "Quem cobre quem" saíram
+  (24/11). Só o valor do CSC é repartido; Sem centro fica de fora; quem vê a DRE edita; um
   conjunto para todos os períodos. Conta no banco (núcleo `financeiro.dre_caixa_centro_nucleo`). Out-briefing §4.1 item 11.
 
 > 🔴 **Yan:**

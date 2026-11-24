@@ -31,14 +31,14 @@ classificação: CHECKs de base). ADR-0184.
   soma deles; "Sem centro" é coluna do Todos, sem pill própria); visões Mensal e Consolidado por centro e no Todos — o Todos abre em Consolidado (um bloco por ano com os
   5 centros e a AV de cada um, Δ% por centro a partir de 2027, Total do YTD) e o Mensal dele empilha os meses (um
   bloco por mês com os 5 centros, mais o Total); bloco de antecipação (C, D, taxa no fundo âmbar do previsto;
-  Resultado de caixa); memória fora das somas; Quem cobre quem (Todos); Exportar da visão da tela (a coluna leva o
-  bloco: "Jan · Trips"); carimbos "Centro de custo" e "Antecipações". Só Realizado, sem pills de modo e sem notas sob
-  a tabela (pedidos do Yan na revisão do PR).
+  Resultado de caixa); memória fora das somas; Exportar da visão da tela (a coluna leva o
+  bloco: "Jan · Trips"); carimbos "Centro de custo" e "Antecipações". Só Realizado, sem pills de modo, sem notas sob
+  a tabela e sem o "Quem cobre quem" (pedidos do Yan na revisão do PR).
 - Módulo puro `src/lib/dre-centro/` (atribuição §3.4, visões, notas, exportação) com testes contra o protótipo.
 - **Rateio do CSC** (0308, pedido do Yan no PR): botão "Rateio" depois de "Todos" abre um drawer com % para Trips,
   Weddings e Corporativo por grupo de categoria ou por categoria (grupo trava as categorias; soma 100; "Limpar",
-  "Preencher vazios" com 33,33/33,33/33,34 e "Aplicar"); chave "Com rateio" mostra a DRE com o CSC repartido (abre
-  desligada). Tabela `financeiro.dre_rateio_csc`; o corpo de
+  "Preencher vazios" com 33,33/33,33/33,34 e "Aplicar"). Com rateio salvo a pill fica âmbar e a DRE vem com o CSC
+  repartido; sem rateio, branca (para desligar: Limpar e Aplicar). Tabela `financeiro.dre_rateio_csc`; o corpo de
   `get_dre_caixa_centro` virou o núcleo interno `financeiro.dre_caixa_centro_nucleo` (rateio aplicado só na partição da
   linha do fato por centro); RPCs novas `get_dre_caixa_centro_rateio`, `get_dre_rateio_csc` e `salvar_dre_rateio_csc`.
   A 0307 da v6.5.2 (arquivo idêntico) entra para o histórico local casar com o remoto.

@@ -9,7 +9,6 @@ import {
   AcoesHierarquia, CabecalhoCard, CelulaAv, CelulaConta, CelulaDeltaPct, CelulaValor, RotuloGrupo, ThConta,
   W_AV, W_TOTAL, classeFixa, estiloFixa, estiloLinha, fundoPrevisto, type Fixa,
 } from './tabela-dre'
-import QuemCobreQuem from './quem-cobre-quem'
 import SeletorCentro from './seletor-centro'
 import { chaveDeLinha } from '@/lib/dre/identidade'
 import { SUF_PARCIAL } from '@/lib/dre/mes-parcial'
@@ -276,14 +275,15 @@ export default function TabelaDreCentro({
   seletorInicial = SELETOR_INICIAL, visaoLadoInicial = 'consolidado', leitura: leituraSem, leituraRateio, rateio = null,
   salvarRateio, anosDisponiveis, mesJanela,
 }: TabelaDreCentroProps) {
-  // Rateio do CSC (0308, decisão do Yan: chave liga/desliga; abre DESLIGADA — a DRE fica como antes até alguém
-  // ligar). Só liga com rateio salvo E a leitura com rateio sã: senão ligar trocaria o card pelo erro e
-  // esconderia a própria chave.
-  const [comRateio, setComRateio] = useState(false)
+  // Rateio do CSC (0308). Decisão do Yan (24/11, no lugar da chave "Com rateio"): o rateio está LIGADO quando há
+  // rateio salvo — a pill "Rateio" fica âmbar e a DRE vem com o CSC repartido; para desligar, abrir o drawer,
+  // Limpar e Aplicar. Rateio salvo cuja leitura falhou mostra o ERRO do card, nunca a DRE sem rateio com a pill
+  // acesa (seriam números errados com cara de certos).
   const [drawerAberto, setDrawerAberto] = useState(false)
-  const rateioDisponivel = temRateio(rateio) && leituraRateio?.ok === true
-  const comRateioEfetivo = comRateio && rateioDisponivel
-  const leitura: LeituraCentro = comRateioEfetivo && leituraRateio ? leituraRateio : leituraSem
+  const rateioLigado = temRateio(rateio)
+  const leitura: LeituraCentro = !rateioLigado
+    ? leituraSem
+    : leituraRateio?.ok ? leituraRateio : { ok: false, motivo: 'erro' }
   const anos = leitura.ok ? leitura.anos : []
   // Seleção CUMULATIVA dos centros (pedido do Yan no PR #311): as quatro marcadas = Todos (inclusive Sem centro).
   const [selecao, setSelecao] = useState<ReadonlySet<CentroSelecionavel>>(() => selecaoInicial(seletorInicial))
@@ -431,27 +431,15 @@ export default function TabelaDreCentro({
                     setDrawerAberto(true)
                   }}
                   aria-haspopup="dialog"
-                  title="Definir os percentuais do rateio do CSC entre Trips, Weddings e Corporativo"
-                  className={['foco-neutro', PILL_FILTRO, 'hover:brightness-95'].join(' ')}
-                  style={PILL_RATEIO_STYLE}
+                  aria-pressed={rateioLigado}
+                  title={rateioLigado
+                    ? 'Rateio do CSC ligado — a DRE mostra o CSC repartido. Para desligar: abra, Limpar e Aplicar'
+                    : 'Rateio do CSC desligado — abra para definir os percentuais entre Trips, Weddings e Corporativo'}
+                  className={['foco-neutro', PILL_FILTRO, rateioLigado ? 'hover:brightness-95' : PILL_FILTRO_INATIVO].join(' ')}
+                  style={rateioLigado ? PILL_RATEIO_STYLE : undefined}
                 >
                   Rateio
                 </button>
-                {temRateio(rateio) && (
-                  <button
-                    type="button"
-                    onClick={() => setComRateio(v => !v)}
-                    disabled={!rateioDisponivel}
-                    aria-pressed={comRateioEfetivo}
-                    title={rateioDisponivel
-                      ? (comRateioEfetivo ? 'Mostrando a DRE com o CSC rateado — clique para ver sem rateio' : 'Mostrar a DRE com o CSC rateado')
-                      : 'Não foi possível carregar a DRE com rateio — recarregue a página'}
-                    className={['foco-neutro', PILL_FILTRO, comRateioEfetivo ? '' : PILL_FILTRO_INATIVO, 'disabled:opacity-50 disabled:cursor-not-allowed'].join(' ')}
-                    style={comRateioEfetivo ? PILL_FILTRO_ATIVO_STYLE : undefined}
-                  >
-                    Com rateio
-                  </button>
-                )}
               </>
             )}
           />
@@ -459,12 +447,7 @@ export default function TabelaDreCentro({
             <RateioCscDrawer
               grupos={gruposDaArvore(ano.porCentro.trips.linhas)}
               salvo={rateio}
-              onSalvar={async itens => {
-                const r = await salvarRateio(itens)
-                // Rateio apagado: a chave volta a nascer DESLIGADA no próximo rateio (revisor, BAIXO).
-                if (r.ok && itens.length === 0) setComRateio(false)
-                return r
-              }}
+              onSalvar={salvarRateio}
               onClose={() => setDrawerAberto(false)}
             />
           )}
@@ -516,16 +499,7 @@ export default function TabelaDreCentro({
             </ScrollAutoHide>
           </div>
         </div>
-
-        {visaoEfetiva === 'consolidado' && anos.length === 1 && (
-          <p className="mt-3 text-xs text-text-muted">
-            Sem Δ% contra {ano.ano - 1}: o Monde não tem centro de custo antes de {anos[0].ano}.
-          </p>
-        )}
       </div>
-
-      {/* Quem cobre quem é da empresa inteira (usos e fontes de todos os centros): só com Todos. */}
-      {todos && <QuemCobreQuem dados={ano.quem} fim={ano.fim} parcial={ano.parcial} ano={ano.ano} />}
     </div>
   )
 }

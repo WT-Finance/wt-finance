@@ -97,7 +97,9 @@ fechada. Precedente: 0298 (v6.4.0).
 Decisões do Yan no PR #311: o rateio reparte **só o valor que caiu no CSC** entre Trips, Weddings e Corporativo (Sem
 centro é ignorado); um **% por categoria ou por grupo** de categoria (bloco-folha do mapa) — o grupo vence e, no
 drawer, trava as categorias dele; **um conjunto único** para todos os períodos, **salvo no banco**, igual para todos;
-**quem vê a DRE edita** (área `financeiro/dre`); aparece por uma **chave "Com rateio"** (a DRE sem rateio continua).
+**quem vê a DRE edita** (área `financeiro/dre`). O rateio fica **ligado enquanto houver rateio salvo**: a pill
+"Rateio" fica âmbar e a DRE vem com o CSC repartido; para desligar, Limpar e Aplicar no drawer (decisão de 24/11, no
+lugar da chave "Com rateio" de 23/11).
 
 - **Onde a conta roda: no banco, num único ponto.** O corpo de `get_dre_caixa_centro` virou o núcleo interno
   `financeiro.dre_caixa_centro_nucleo(p_ano, p_ajuste, p_rateio)` (corpo vivo da 0306, md5 conferido). Com `p_rateio`,

@@ -69,16 +69,18 @@ describe('TabelaDreCentro', () => {
   })
 
   // Pedidos do Yan no PR #311: "Lado a lado" virou "Todos", abre em Consolidado; Mensal = meses empilhados, sem acumulado.
-  it('abre em Todos › Consolidado: um bloco por ano com os 5 centros e a AV, Total do YTD e o Quem cobre quem', () => {
+  it('abre em Todos › Consolidado: um bloco por ano com os 5 centros e a AV e o Total do YTD', () => {
     const html = render(BASE)
     expect(html).toMatch(/aria-pressed="true"[^>]*>Todos</)
     expect(html).toMatch(/aria-pressed="true"[^>]*>Consolidado</)
     expect(html).not.toContain('Lado a lado')
-    for (const t of ['>Trips<', '>Weddings<', '>Corporativo<', '>CSC<', '>Sem centro<', 'YTD 26', 'Total YTD 26', 'Quem cobre quem', 'Total das fontes']) {
+    for (const t of ['>Trips<', '>Weddings<', '>Corporativo<', '>CSC<', '>Sem centro<', 'YTD 26', 'Total YTD 26']) {
       expect(html).toContain(t)
     }
-    // um só ano coberto: cada centro uma vez no cabeçalho, sem blocos de mês (o "Jan" que existe é o do Quem cobre quem)
+    // um só ano coberto: cada centro uma vez no cabeçalho, sem blocos de mês
     expect(html.match(/>Weddings<\/th>/g)?.length).toBe(1)
+    // pedidos do Yan (24/11): sem o "Quem cobre quem" e sem a frase do Δ% contra o ano sem centro
+    for (const t of ['Quem cobre quem', 'Total das fontes', 'Sem Δ%']) expect(html).not.toContain(t)
   })
 
   it('Todos › Mensal: um bloco por mês com os 5 centros, sem o acumulado, e o Total', () => {
@@ -211,22 +213,33 @@ describe('Rateio do CSC no card', () => {
     expect(render(BASE)).not.toContain('>Rateio<')
     const html = render({ ...BASE, salvarRateio: salvar, rateio: { itens: [], atualizado_em: null } })
     expect(html.indexOf('>Rateio<')).toBeGreaterThan(html.indexOf('>Todos<'))
-    // botão em âmbar (família --warning), pedido do Yan
+    // não existe mais a chave "Com rateio": o estado é a cor da própria pill (decisão do Yan, 24/11)
+    expect(html).not.toContain('Com rateio')
+  })
+
+  // Marcador para saber QUAL leitura o card mostra: a com rateio leva o ano 2025 (o Consolidado mostra "YTD 25").
+  const leituraRateio = { ok: true as const, anos: [{ ...ano, ano: 2025 }] }
+
+  it('sem rateio salvo: pill BRANCA (desligado) e a DRE é a sem rateio', () => {
+    const html = render({ ...BASE, salvarRateio: salvar, rateio: { itens: [], atualizado_em: null }, leituraRateio })
+    expect(pill(html, 'Rateio')).toContain('aria-pressed="false"')
+    expect(pill(html, 'Rateio')).not.toContain('var(--warning-bg)')
+    expect(html).toContain('YTD 26')
+    expect(html).not.toContain('YTD 25')
+  })
+
+  it('com rateio salvo: pill ÂMBAR (ligado) e a DRE é a com rateio', () => {
+    const html = render({ ...BASE, salvarRateio: salvar, rateio: salvo, leituraRateio })
+    expect(pill(html, 'Rateio')).toContain('aria-pressed="true"')
     expect(pill(html, 'Rateio')).toContain('background:var(--warning-bg)')
     expect(pill(html, 'Rateio')).toContain('color:var(--warning-deep)')
-    // sem rateio salvo, a chave "Com rateio" nem aparece
-    expect(html).not.toContain('>Com rateio<')
+    expect(html).toContain('YTD 25')
   })
 
-  it('com rateio salvo, a chave "Com rateio" aparece DESLIGADA (a DRE abre como antes)', () => {
-    const html = render({ ...BASE, salvarRateio: salvar, rateio: salvo, leituraRateio: { ok: true, anos: [ano] } })
-    expect(pill(html, 'Com rateio')).toContain('aria-pressed="false"')
-    expect(pill(html, 'Com rateio')).not.toContain('disabled=""')
-  })
-
-  it('leitura com rateio que falhou: a chave fica desabilitada (ligar esconderia a própria chave atrás do erro)', () => {
+  it('rateio salvo cuja leitura falhou: o card mostra o ERRO (nunca a DRE sem rateio com a pill acesa)', () => {
     const html = render({ ...BASE, salvarRateio: salvar, rateio: salvo, leituraRateio: { ok: false, motivo: 'erro' } })
-    expect(pill(html, 'Com rateio')).toContain('disabled=""')
+    expect(html).toContain('Não foi possível carregar a DRE por centro de custo')
+    expect(html).not.toContain('YTD 26')
   })
 })
 
