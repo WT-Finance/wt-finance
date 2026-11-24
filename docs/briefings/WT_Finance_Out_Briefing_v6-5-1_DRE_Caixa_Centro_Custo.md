@@ -209,9 +209,9 @@ Decisões de produto do Yan ao ver o card, aplicadas no mesmo PR antes do merge:
 15. **Drawer (24/11):** subtítulo "Reparte o que foi alocado como CSC para os demais centros de custo (Trips, Weddings e
     Corporativo)."; tabela com contorno; coluna Soma mais larga (96 px) e afastada da borda. Pill "Rateio" desligada =
     fundo branco com contorno e letras âmbar (`--surface`/`--warning`/`--warning-deep`); ligada = toda âmbar.
-16. **Com o rateio aplicado, a coluna CSC não aparece** (pedido do Yan, 24/11). Escolhas do agente, a confirmar: (a) a
-    pill CSC também sai do seletor e "Todos" passa a ser Trips + Weddings + Corporativo; uma seleção que só tinha o CSC
-    vira "Todos"; (b) o Total do "Todos" SEGUE somando o CSC (o que ficou nele sem percentual), para continuar fechando
+16. **Com o rateio aplicado, a coluna CSC não aparece** (pedido do Yan, 24/11). (a) A pill CSC fica APAGADA (visível,
+    desabilitada, com o "porquê" no texto de ajuda — decisão do Yan, 24/11) e "Todos" passa a ser Trips + Weddings +
+    Corporativo; uma seleção que só tinha o CSC vira "Todos". Escolha do agente, a confirmar: (b) o Total do "Todos" SEGUE somando o CSC (o que ficou nele sem percentual), para continuar fechando
     com a DRE da empresa — o "?" do Total diz isso; com o "Preencher vazios" aplicado, o CSC zera e o Total é a soma
     das colunas. Um centro só (Trips, por exemplo) segue como antes.
 

@@ -240,13 +240,16 @@ describe('Rateio do CSC no card', () => {
     expect(pill(html, 'Rateio')).not.toContain('var(--warning-bg)')
     expect(html).toContain('YTD 26')
     expect(html).not.toContain('YTD 25')
-    expect(html).toMatch(/<button[^>]*>CSC<\/button>/)
+    expect(pill(html, 'CSC')).not.toContain('disabled=""')
     expect(html).toContain('>CSC</th>')
   })
 
-  it('rateio ligado: sem pill e sem coluna CSC; o Total avisa que o que ficou no CSC continua somado', () => {
+  it('rateio ligado: pill CSC APAGADA (visível, desabilitada) e sem coluna CSC; o Total avisa que o CSC segue somado', () => {
     const html = render({ ...BASE, salvarRateio: salvar, rateio: salvo, leituraRateio })
-    expect(html).not.toMatch(/<button[^>]*>CSC<\/button>/)
+    const csc = pill(html, 'CSC')
+    expect(csc).toContain('disabled=""')
+    expect(csc).toContain('aria-pressed="false"')
+    expect(csc).toContain('está repartido entre Trips, Weddings e Corporativo')
     expect(html).not.toContain('>CSC</th>')
     // Todos = os três que sobram com pill, acende
     expect(html).toMatch(/aria-pressed="true"[^>]*>Todos</)

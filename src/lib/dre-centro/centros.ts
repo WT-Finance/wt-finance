@@ -38,7 +38,8 @@ export function selecaoInicial(s: SeletorCentro | readonly CentroSelecionavel[])
   return new Set(unico ? [unico] : CENTROS_SELECIONAVEIS)
 }
 
-/** Centros com pill no momento: com o rateio do CSC aplicado o CSC sai (pedido do Yan, 24/11). */
+/** Centros SELECIONÁVEIS no momento: com o rateio do CSC aplicado o CSC não entra (a pill dele fica apagada, visível —
+ *  pedido do Yan, 24/11). */
 export function centrosComPill(rateioLigado: boolean): readonly CentroSelecionavel[] {
   return rateioLigado ? CENTROS_SELECIONAVEIS.filter(c => c !== 'csc') : CENTROS_SELECIONAVEIS
 }
