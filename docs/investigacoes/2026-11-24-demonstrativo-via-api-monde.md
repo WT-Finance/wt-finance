@@ -13,14 +13,15 @@
 
 ## 1. Resposta curta
 
-**Sim, com ressalvas pequenas e nomeadas.** O Demonstrativo tem dois blocos, e os dois agora se remontam pela API
-com regras que saem de **metadado** (situação da venda, tipo do produto, tipo da conta, natureza da categoria),
-não de ajuste a valor:
+**Sim, com ressalvas pequenas e nomeadas.** O Demonstrativo tem dois blocos, e os dois agora se remontam pela API.
+As regras são de situação da venda, tipo do produto, tipo da conta e natureza da categoria; uma parte delas foi
+achada por ajuste em dois meses e então **confirmada num mês de controle que não participou do ajuste**
+(novembro/2025, regra congelada antes de ver o resultado):
 
 | Bloco | Meses testados | Resultado |
 |---|---|---|
-| **Bloco da venda** (12 linhas: Comissão, Over, Taxas, Desconto, Operação própria, Reembolsos) | nov/2025, mar, jun, set/2026 | **46 de 48 linhas ao centavo**; nov/2025 e mar/2026 **12/12** |
-| **Categorias** (128 contas em 14 grupos) | mar, set/2026 | mar **91/94 contas** (Δ R$ 104,97 no total do bloco); set **79/84** (Δ R$ 2.197,75, dos quais R$ 542,74 provados como edição posterior à carga) |
+| **Bloco da venda** (12 linhas: Comissão, Over, Taxas, Desconto, Operação própria, Reembolsos) | nov/2025, mar, jun, set/2026 | **46 de 48 linhas ao centavo**; nov/2025 (controle) e mar/2026 **12/12** |
+| **Categorias** (128 contas em 14 grupos) | nov/2025 (controle), mar, set/2026 | **nov/2025: 91/92 contas, Δ R$ 23,05 em R$ 1,01 Mi**; mar 91/94 (Δ R$ 104,97); set 79/84 (Δ R$ 2.197,75, dos quais R$ 542,74 provados como edição posterior à carga) |
 
 O que mudou desde julho, e por que agora fecha:
 
@@ -53,11 +54,17 @@ categorias em mais meses (inclusive 2024) e uma comparação contra uma exporta�
 | Reembolso Cliente | `/refunds?refund_type=customer`, Σ `amount` | pela **`issue_date`** do reembolso |
 | Reembolso Fornecedor (receita / desconto) | `/refunds?refund_type=vendor`, positivos / negativos | pela **`issue_date`** |
 
-Como a regra foi achada (para não ser ajuste): "venda excluída fora" e "produto cancelado dentro" vieram da partição
-de março por situação; "só fechada" veio de junho, onde a diferença de Comissão (5.744,35) e de Taxa de Serviço
-(35.839,63) era **exatamente** a soma dos produtos de vendas **abertas**; "Taxa de Serviço sem operação" veio de
-setembro, onde a sobra era a taxa dos produtos de operação, que já entram inteiros em "Operação própria". Cada
-regra foi então reaplicada aos outros meses sem mudança.
+Como a regra foi achada — e o quanto cada parte está provada:
+
+- "Venda excluída fora" e "produto cancelado dentro" vieram da partição de março por situação.
+- "Só fechada" veio de junho, onde as diferenças de Comissão (5.744,35) e de Taxa de Serviço (35.839,63) eram
+  **exatamente** a soma dos produtos de vendas abertas. Em setembro a mesma regra **fecha a Taxa de Serviço** mas
+  **piora a Comissão** (de −3.379,79 para −6.999,00) — é a Taxa de Serviço que a confirma ali.
+- "Taxa de Serviço sem operação" veio de setembro e **se apoia em um único produto** (3.022,48): nos outros três
+  meses nenhum produto de operação tinha taxa. É coerente (o produto de operação já entra inteiro em "Operação
+  própria"), mas a prova é de um caso.
+- **Novembro/2025 não foi usado para derivar nada** e fechou 12/12 com a regra final — é o controle fora da amostra
+  do bloco da venda.
 
 ### 2.2 Prova
 
@@ -69,9 +76,11 @@ regra foi então reaplicada aos outros meses sem mudança.
 | set/2026 | 11/12 | Comissão −6.999,00 |
 
 Vendas editadas no Monde **depois da carga** (19/11 15:52), por `updated_since`: nov/2025 **2**, mar **12**,
-jun **7**, set **49**. As duas diferenças estão nos meses com edição posterior e são compatíveis com ela (em
-setembro, uma venda hoje aberta foi editada depois da carga e outras 61 linhas de vendas fechadas também), mas
-**não está provado** que sejam edição — o relatório só mostra o valor de hoje.
+jun **7**, set **49**. As duas diferenças estão nos meses com mais edição posterior, mas **não estão explicadas**.
+Os −6.999,00 de setembro (valor redondo, cara de um item só) foram investigados e duas hipóteses caíram:
+a venda de setembro hoje aberta e editada depois da carga foi na verdade **criada em 23/11** com data retroativa
+(já fica fora pela regra "só fechada"); e entre as 49 vendas editadas só há um produto excluído, com comissão de
+175,22. O relatório mostra só o valor de hoje — sem uma exportação feita na mesma hora não há como fechar.
 
 ---
 
@@ -89,12 +98,16 @@ setembro, uma venda hoje aberta foi editada depois da carga e outras 61 linhas d
 5. **As três categorias que espelham o bloco da venda** — "Comissão", "Reembolso Fornecedor - C" e
    "Reembolso / Carta de Crédito" — só contam em conta **avulsa da venda** (`sale_standalone`) e em lançamento
    comum; vindas de **fatura de cliente, fatura de fornecedor ou avulso de fornecedor** (`customer_invoice`,
-   `vendor_invoice`, `vendor_standalone`), saem. Nessas faturas elas carregam os mesmos valores que o bloco da venda
-   já conta (comissão, reembolsos) — somá-las seria contar duas vezes. As demais categorias contam em qualquer tipo
-   de conta, faturas inclusive.
-   - A regra foi lida em setembro e **corrigida por março**: em setembro nenhuma das três tinha conta avulsa de venda;
-     em março "Reembolso Fornecedor - C" tem R$ 334.059,31 no Demonstrativo, **exatamente** o avulso da venda. São
-     as mesmas três categorias que julho isolou por outro caminho ("filtro H2").
+   `vendor_invoice`, `vendor_standalone`), saem. As demais categorias contam em qualquer tipo de conta, faturas
+   inclusive.
+   - ⚠️ **Esta parte da regra foi achada testando quais tipos de conta fecham o valor** — é ajuste, não metadado. A
+     leitura natural ("nas faturas elas espelham o bloco da venda, então contá-las seria duplicar") **não foi
+     provada** e os valores não batem um com o outro (em setembro, 429.711,86 de "Reembolso Fornecedor - C" em
+     faturas contra 54.008,44 no bloco da venda). O que a sustenta: são as mesmas três categorias que julho isolou
+     por outro caminho ("filtro H2").
+   - Ela foi lida em setembro e **corrigida por março** (em março "Reembolso Fornecedor - C" tem R$ 334.059,31 no
+     Demonstrativo, exatamente o avulso da venda; em setembro não havia avulso). Ou seja, **os dois meses foram
+     usados para ajustá-la** — a prova fora da amostra é novembro/2025 (§3.3).
 
 ### 3.2 Prova
 
@@ -119,9 +132,21 @@ mudaram antes da carga).
 | Taxa do Cartão de Crédito/Débito | 542,78 | **não explicado** |
 | Acréscimos Cobrados | 1.112,23 | **não explicado** — duas faturas de cliente de débito, sem edição após a carga; em março a mesma combinação entra |
 
-**Resíduo recorrente:** Taxa do Cartão sobra nos dois meses e sempre do mesmo lado (a API tem menos taxa que o
-Demonstrativo). Candidatos não testados: taxa lançada em fatura de cartão (`credit_card_invoice`, que não foi aberta
-nesta sonda) ou taxa do lado do fornecedor.
+### 3.3 Controle fora da amostra — novembro/2025
+
+Regra congelada (script com sha256 registrado antes da coleta e conferido depois — idêntico), mês que não participou
+de nenhum ajuste, com só 2 vendas editadas depois da carga:
+
+- **91 de 92 contas ao centavo; 13 de 14 grupos; Δ do bloco R$ 23,05 em R$ 1,01 Mi**, numa conta só
+  ("Diferença Apuração de Baixas C", 3.536,83 × 3.559,88).
+- **A regra das três categorias foi exercida nos dois sentidos:** descartou R$ 1,2 Mi delas vindos de faturas e
+  manteve R$ 33.961,29 de "Reembolso Fornecedor - C" em avulso de venda. Se estivesse errada, o mês não fecharia.
+- Taxa do Cartão fecha **ao centavo** em novembro.
+
+**Resíduo de Taxa do Cartão:** sobra em março e setembro (não em novembro), sempre do mesmo lado (a API tem menos taxa que o
+Demonstrativo). Hipóteses descartadas: fatura de cartão (o changelog de 05/11 diz que ela recusa categorias);
+conta liquidada e depois cancelada (nenhuma, nos dois meses); cancelamento no dia da carga antes das 15:52 (os logs
+reclassificados com corte à meia-noite dão o mesmo resultado). Sem explicação.
 
 ---
 
@@ -129,10 +154,11 @@ nesta sonda) ou taxa do lado do fornecedor.
 
 | Mês | Bloco da venda | Categorias | Δ no resultado |
 |---|---|---|---|
+| nov/2025 (controle) | 12/12 ao centavo | 91/92 | **R$ 23,05** |
 | mar/2026 | 12/12 ao centavo | 91/94 | **R$ 104,97** (0,02% do resultado líquido do bloco de categorias) |
 | set/2026 | 11/12 | 79/84 | Comissão −6.999,00 (edição não provada) + categorias 2.197,75 (542,74 edição provada) |
 
-Junho e novembro/2025 tiveram só o bloco da venda testado (abrir as contas de um mês custa ~35 min).
+Junho teve só o bloco da venda testado (abrir as contas de um mês custa ~25–35 min).
 
 ---
 
@@ -143,7 +169,11 @@ cada conta (2–3 mil chamadas, **~35 min a 0,7 s**, ritmo sem nenhum 429 em 6,1
 reembolsos (~200 páginas, sem filtro por data — 10 mil reembolsos desde 2015). O detalhe das contas é **o mesmo
 espelho de contas** que as bases Movimentação, Aberto, Contas a receber e Operação pedem (estudo de 19/11, §5): o
 Demonstrativo não exige pipeline próprio de dados, só a regra de montagem por cima. Histórico 2024–2026: ~90 mil
-detalhes, ~18 h de carga inicial, diluída; depois, o webhook `bills.changed` mantém em dia.
+detalhes, ~18 h de carga inicial, diluída. Para manter em dia, o candidato é o webhook `bills.changed` — **se** ele
+funcionar como documentado: nenhum webhook foi cadastrado nem nenhum aviso foi visto.
+
+Efeito colateral: cada página do relatório Vendas por produto fica registrada como **exportação** no Histórico do
+Monde. Esta investigação gerou ~200 desses registros (23 e 24/11).
 
 ---
 
@@ -153,7 +183,8 @@ detalhes, ~18 h de carga inicial, diluída; depois, o webhook `bills.changed` ma
    posterior" de "regra errada" nas diferenças de setembro.
 2. **Bloco de categorias em mais meses**, incluindo **2024** (o Monde vinha alterando 2024/2025 do Demonstrativo,
    registro da v6.1.0) e um mês de dezembro.
-3. **Taxa do Cartão:** abrir as faturas de cartão de um mês e testar os dois candidatos do §3.2.
+3. **Taxa do Cartão** (março e setembro, não novembro): as hipóteses à mão caíram (§3.2); a exportação na mesma
+   hora (item 1) é o próximo teste.
 4. **Acréscimos Cobrados em fatura de débito:** entra em março e sai em setembro — achar o metadado que separa.
 5. **Decisão de produto (Yan):** aceitar uma tolerância (ex.: resíduo por conta ≤ R$ X) ou exigir centavo. Hoje o
    upload é a "verdade" porque é a tela do Monde; a remontagem pela API é a mesma conta, feita por nós.
@@ -162,7 +193,7 @@ detalhes, ~18 h de carga inicial, diluída; depois, o webhook `bills.changed` ma
 
 ## 7. Não verificado
 
-- Bloco de categorias em nov/2025 e jun/2026; qualquer mês de 2024.
+- Bloco de categorias em jun/2026; qualquer mês de 2024; um mês de dezembro (fechamento de ano).
 - As duas diferenças do bloco da venda (jun Desconto −1,58; set Comissão −6.999,00).
 - Taxa do Cartão (resíduo recorrente), Acréscimos Cobrados (set) e Tarifa de Remessa (mar).
 - O conteúdo de um aviso de webhook real (nenhum cadastrado).
