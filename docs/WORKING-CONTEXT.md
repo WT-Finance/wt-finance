@@ -9,23 +9,26 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-11-25 (v6.5.1 em produção; v6.5.2 em PR, atualizada com a main).
+Última atualização: 2026-11-25 (pós-merge da v6.5.2 — PR #312 mergeado às 16:39; v6.5.1 às 16:17).
 
 ---
 
-## Em PR — v6.5.2 "Faturamento Corporativo: Cadastro de clientes alinhado à planilha oficial"
+## Em produção — v6.5.2 "Faturamento Corporativo: Cadastro de clientes alinhado à planilha oficial" (PR #312, mergeado 25/11 às 16:39)
 
 Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v6-5-2_Cadastro_Clientes.md`. Migration **0307 APLICADA**
-(10/11, aditiva). **Atualizado com a `main` em 25/11** (depois do merge da v6.5.1): versão 6.5.2 sobre a 6.5.1, CHANGELOGs
-com as duas entradas, `schema-v6.json` regenerado do banco vivo (na **0308**). Banco na **0308**, livre **0309**.
+(10/11, aditiva). Mergeada depois da v6.5.1 (a `main` entrou na branch por commit de merge). Banco na **0308**, livre
+**0309**. ADR livre **0185**.
 
 - Situação **Eventual** (recebe e-mail de fatura como Ativo), coluna **Contrato** ✓/✗, **tela cheia** no Cadastro.
 - Import do Cadastro acha a aba pelo cabeçalho e normaliza juros/multa ("1% ao mês" → `1%`) — a planilha oficial
   importa direto, sem preparação. Linha de total do Monde ignorada no Faturamento.
-- 🔴 **Yan, depois do merge/deploy:** reimportar `Faturamento Clientes - Corporativo.xlsx` (OneDrive) em Faturamento
+- 🔴 **Yan, agora que está no ar:** reimportar `Faturamento Clientes - Corporativo.xlsx` (OneDrive) em Faturamento
   Corp → Cadastro → Importar — só isso grava os 28 Eventuais e o Contrato dos 249 (a 0307 não escreve dado). A EXCOM
   passa à linha da planilha (vencimento 10/20/30, 2%/2%, e-mails da controladoria), como você decidiu.
 - Filtro de situação do Cadastro abre em **"Todos"** (era "Toda", abrindo em "Ativo") — decidido pelo Yan.
+- 🔴 **Yan, limpeza na raiz** (depois de mergear o PR de docs deste pós-merge): `git pull --ff-only`; remover as worktrees
+  `fix+v6-5-2-cliente-eventual` e `atualiza-pr-312` e as branches `fix/v6-5-2-cliente-eventual`, `atualiza-312` e
+  `docs/pos-merge-v6-5-2` (fixtures da worktree já conferidas no arquivo, sha idêntico).
 
 ---
 
