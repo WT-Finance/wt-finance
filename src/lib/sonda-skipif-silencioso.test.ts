@@ -73,6 +73,14 @@ const INVENTARIO: ReadonlyArray<{
     porque: 'v6.0.0/M8: catálogo vivo × supabase/baseline/schema-v6.json (drift) + drift sintético — só pg READ ONLY',
   },
   {
+    arquivo: 'src/lib/ingestao/oraculo-centro-custo.test.ts',
+    bandeira: 'REQUIRE_FIXTURES',
+    envs: ['REQUIRE_FIXTURES'],
+    porque: 'GATE 1 (v6.5.1/M2): oráculo do arquivo real de Lançamentos por Centro de Custo (outline do ' +
+      'próprio export, sem tratado) + fixture negativa derivada — mesmo gate de presença de fixture ' +
+      '(gitignoradas, `scripts/ingestao/fixtures.mjs`)',
+  },
+  {
     arquivo: 'src/lib/ingestao/oraculo-contas-receber.test.ts',
     bandeira: 'REQUIRE_FIXTURES',
     envs: ['REQUIRE_FIXTURES'],

@@ -1,0 +1,78 @@
+import type { CSSProperties, ReactNode } from 'react'
+import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
+import { CENTROS_SELECIONAVEIS, ROTULO_CENTRO, ROTULO_SELETOR, type CentroSelecionavel } from '@/lib/dre-centro/centros'
+
+// ── Seletor de centro de custo do card da DRE por centro (v6.5.1) ────────────
+// Vive DENTRO do card por centro, que é separado da tabela da Empresa (decisão do Yan no
+// GATE 1). Estado do card, sem ida ao servidor: todos os centros já vêm no mesmo payload.
+//
+// Seleção CUMULATIVA (pedido do Yan no PR #311): as pills dos centros marcam/desmarcam; com as
+// quatro marcadas acende "Todos" (e clicar em "Todos" marca as quatro). Nesse estado as quatro
+// ficam num cinza MAIS ESCURO que o da seleção normal — "estão todas marcadas", sem se
+// confundir com "escolhi estas". Sem o rótulo "Centro de custo ?" à esquerda (retirado a pedido do Yan no PR #311).
+
+/** Centro marcado porque "Todos" está aceso: 30% de --brand sobre --brand-soft — um degrau mais escuro que a
+ *  seleção normal (--brand-soft), mesma borda e tinta (--brand-deep ≈ 4,9:1 sobre o fundo no tema neutro). */
+const PILL_MARCADA_TODOS_STYLE: CSSProperties = {
+  background:  'color-mix(in srgb, var(--brand) 30%, var(--brand-soft))',
+  borderColor: 'var(--brand)',
+  color:       'var(--brand-deep)',
+}
+
+export default function SeletorCentro({
+  selecao, onAlternar, onTodos, depois, centros = CENTROS_SELECIONAVEIS,
+}: {
+  selecao: ReadonlySet<CentroSelecionavel>
+  onAlternar: (c: CentroSelecionavel) => void
+  onTodos: () => void
+  /** O que vem depois de "Todos", separado por "|" (o botão Rateio, v6.5.1/0308). */
+  depois?: ReactNode
+  /** Centros SELECIONÁVEIS agora. Os demais aparecem APAGADOS (desabilitados): com o rateio do CSC aplicado, o CSC
+   *  (pedido do Yan, 24/11 — a pill fica visível, só apagada). */
+  centros?: readonly CentroSelecionavel[]
+}) {
+  const todos = centros.every(c => selecao.has(c))
+  const marcadosVisiveis = centros.filter(c => selecao.has(c)).length
+  return (
+    <div role="group" aria-label="Centro de custo" className="flex flex-wrap items-center gap-1.5">
+      {CENTROS_SELECIONAVEIS.map(c => {
+        const habilitado = centros.includes(c)
+        const marcado = habilitado && selecao.has(c)
+        const ultimo = marcado && marcadosVisiveis === 1
+        return (
+          <button
+            key={c}
+            type="button"
+            onClick={() => onAlternar(c)}
+            disabled={!habilitado}
+            aria-pressed={marcado}
+            title={!habilitado
+              ? `Com o rateio aplicado, o ${ROTULO_CENTRO[c]} está repartido entre Trips, Weddings e Corporativo`
+              : todos ? `Ver só ${ROTULO_CENTRO[c]}` : ultimo ? 'Pelo menos um centro fica marcado' : marcado ? `Desmarcar ${ROTULO_CENTRO[c]}` : `Marcar ${ROTULO_CENTRO[c]}`}
+            className={['foco-neutro', PILL_FILTRO, marcado ? '' : PILL_FILTRO_INATIVO, 'disabled:opacity-40 disabled:cursor-not-allowed'].join(' ')}
+            style={marcado ? (todos ? PILL_MARCADA_TODOS_STYLE : PILL_FILTRO_ATIVO_STYLE) : undefined}
+          >
+            {ROTULO_CENTRO[c]}
+          </button>
+        )
+      })}
+      <span className="mx-1 h-4 w-px bg-wt-border-strong" aria-hidden />
+      <button
+        type="button"
+        onClick={onTodos}
+        aria-pressed={todos}
+        title="Marcar todos os centros (inclui o que ficou sem centro no Monde)"
+        className={['foco-neutro', PILL_FILTRO, todos ? '' : PILL_FILTRO_INATIVO].join(' ')}
+        style={todos ? PILL_FILTRO_ATIVO_STYLE : undefined}
+      >
+        {ROTULO_SELETOR.lado}
+      </button>
+      {depois && (
+        <>
+          <span className="mx-1 h-4 w-px bg-wt-border-strong" aria-hidden />
+          {depois}
+        </>
+      )}
+    </div>
+  )
+}

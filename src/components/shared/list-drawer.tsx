@@ -11,9 +11,12 @@ interface Props {
   subtitulo?: string
   onClose: () => void
   children: ReactNode
+  /** Faixa fixa no pé do painel, FORA da área rolável (ex.: Cancelar/Salvar). Sticky dentro da rolagem deixava
+   *  o conteúdo vazar por baixo por causa do padding do viewport (v6.5.1, drawer do rateio). Opcional. */
+  rodape?: ReactNode
 }
 
-export default function ListDrawer({ titulo, subtitulo, onClose, children }: Props) {
+export default function ListDrawer({ titulo, subtitulo, onClose, children, rodape }: Props) {
   const [visible, setVisible] = useState(false)
   const painelRef = useRef<HTMLDivElement>(null)
 
@@ -86,6 +89,11 @@ export default function ListDrawer({ titulo, subtitulo, onClose, children }: Pro
         <ScrollAutoHide className="px-6 py-5">
           {children}
         </ScrollAutoHide>
+        {rodape && (
+          <div className="shrink-0 border-t border-zinc-100 bg-white px-6 py-3">
+            {rodape}
+          </div>
+        )}
       </div>
     </>,
     document.body,

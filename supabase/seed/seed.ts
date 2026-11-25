@@ -38,7 +38,7 @@
  * (`scripts/ingestao/fixtures-manifest.json`, papel "cru"):
  *   vendas-cru-*.xlsx (N arquivos → UMA carga de vendas-produto), movimentacao-cru.xlsx,
  *   aberto-cru.xlsx, operacao-cru.csv, demonstrativo-cru.xlsx, contas-receber-cru-*.xlsx (N arquivos →
- *   UMA carga de contas-receber, v6.4.0).
+ *   UMA carga de contas-receber, v6.4.0), centro-custo-cru.xlsx (lancamentos-centro-custo, v6.5.1).
  * Base sem arquivo correspondente no diretório é PULADA, com aviso — nunca adivinhada por outro
  * nome.
  *
@@ -88,6 +88,7 @@ const ORDEM_CARGA: readonly BaseIngestao[] = [
   'lancamentos-operacao',
   'demonstrativo-competencia',
   'contas-receber', // v6.4.0 — independente, sem aresta
+  'lancamentos-centro-custo', // v6.5.1 — independente, sem aresta
 ]
 
 function assertirOrdemContraGrafo(): void {
@@ -144,8 +145,8 @@ dispara os alarmes de carga normalmente (e-mail) e NÃO remove o cru do bucket.
 
 Arquivos reconhecidos por NOME CANÔNICO (scripts/ingestao/fixtures-manifest.json, papel "cru"):
   vendas-cru-*.xlsx (um ou mais), movimentacao-cru.xlsx, aberto-cru.xlsx, operacao-cru.csv,
-  demonstrativo-cru.xlsx, contas-receber-cru-*.xlsx (um ou mais). Base sem arquivo correspondente é
-  pulada, com aviso.
+  demonstrativo-cru.xlsx, contas-receber-cru-*.xlsx (um ou mais), centro-custo-cru.xlsx. Base sem
+  arquivo correspondente é pulada, com aviso.
 
 Metas (app.meta_setor) só são recarregadas com --aplicar (ela escreve).
 `.trim()
@@ -198,6 +199,7 @@ const NOME_CANONICO_POR_BASE: Record<BaseIngestao, string> = {
   'lancamentos-operacao': 'operacao-cru.csv',
   'demonstrativo-competencia': 'demonstrativo-cru.xlsx',
   'contas-receber': 'contas-receber-cru-*.xlsx',
+  'lancamentos-centro-custo': 'centro-custo-cru.xlsx',
 }
 
 function localizarArquivosLocais(base: BaseIngestao, dir: string): ArquivoLocal[] {
@@ -222,6 +224,8 @@ function localizarArquivosLocais(base: BaseIngestao, dir: string): ArquivoLocal[
         .filter((nome) => REGEX_CONTAS_RECEBER_CRU.test(nome))
         .sort()
         .map((nome) => ({ nomeOriginal: nome, caminhoAbsoluto: path.join(dir, nome) }))
+    case 'lancamentos-centro-custo':
+      return arquivoUnico(dir, 'centro-custo-cru.xlsx')
     default: {
       const exaustivo: never = base
       throw new Error(`Base não reconhecida: ${String(exaustivo)}`)

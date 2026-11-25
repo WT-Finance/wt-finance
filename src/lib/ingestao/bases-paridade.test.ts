@@ -27,16 +27,24 @@ import { BASES_INGESTAO, BASES_COM_ESCOPO_DE_CHAVE, BASES_MULTIARQUIVO } from '.
 //     ela (briefing da v6.4.0 §11) e não há cadência de carga a vigiar por ora. É exceção DECLARADA
 //     abaixo, não esquecimento: se um dia ganhar RPA/expectativa, a exceção sai daqui e a migration
 //     correspondente entra.
+//
+// v6.5.1 (`lancamentos-centro-custo`, a sétima base) — mesma forma:
+//   • os CHECKs de `ingestao.carga`/`ingestao.promocao` (7 bases) vêm da destrutiva
+//     `0305_centro_custo_checks_ingestao.sql` (nasceu em supabase/patches/; `git mv` em 09/11 para o Yan
+//     aplicar em TTY) — a 0298 fica com a lista de 6, como registro;
+//   • as três RPCs com `BASE_INVALIDA` são redefinidas pela `0304_centro_custo_base.sql` com a 7ª base (o
+//     teste pega a definição vigente por nome, então já a segue);
+//   • sem RPA nem expectativa do vigia: segunda exceção DECLARADA.
 const RAIZ = join(__dirname, '..', '..', '..')
 const PASTA_MIGRATIONS = join(RAIZ, 'supabase/migrations')
 const SQL = readFileSync(join(PASTA_MIGRATIONS, '0274_role_ingestor_e_escopo_api_chave.sql'), 'utf8')
 const SQL_0280 = readFileSync(join(PASTA_MIGRATIONS, '0280_ingestao_execucao_alarmes_vigia.sql'), 'utf8')
 const SQL_PATCH = semComentariosSql(
-  readFileSync(join(RAIZ, 'supabase/migrations/0298_contas_receber_checks_ingestao.sql'), 'utf8'),
+  readFileSync(join(PASTA_MIGRATIONS, '0305_centro_custo_checks_ingestao.sql'), 'utf8'),
 )
 
 /** Bases SEM RPA: fora do CHECK de escopo de chave (0274/0289) e da expectativa do vigia (0280). */
-const BASES_SEM_RPA_NEM_EXPECTATIVA: readonly string[] = ['contas-receber']
+const BASES_SEM_RPA_NEM_EXPECTATIVA: readonly string[] = ['contas-receber', 'lancamentos-centro-custo']
 const BASES_COM_RPA = BASES_INGESTAO.filter((b) => !BASES_SEM_RPA_NEM_EXPECTATIVA.includes(b))
 
 /** Remove comentários de linha (`-- …`) — o DOWN e as notas do patch trazem listas de bases e a
@@ -112,8 +120,8 @@ describe('paridade — bases do contrato de ingestão: bases.ts ↔ CHECK da 027
   it('o CHECK lista exatamente as bases COM RPA (BASES_INGESTAO menos as exceções declaradas), na mesma ordem', () => {
     expect(basesDoCheck(SQL)).toEqual([...BASES_COM_RPA])
   })
-  it('a exceção declarada é só `contas-receber` — acrescentar outra base aqui é decisão, não conveniência', () => {
-    expect([...BASES_SEM_RPA_NEM_EXPECTATIVA]).toEqual(['contas-receber'])
+  it('as exceções declaradas são só `contas-receber` e `lancamentos-centro-custo` — acrescentar outra base aqui é decisão, não conveniência', () => {
+    expect([...BASES_SEM_RPA_NEM_EXPECTATIVA]).toEqual(['contas-receber', 'lancamentos-centro-custo'])
   })
   it('a validação com nome de erro em api_chave_registrar (definição VIGENTE) usa a mesma lista', () => {
     const { arquivo, sql } = migrationVigenteDeApiChaveRegistrar()
@@ -133,35 +141,37 @@ describe('paridade — bases do contrato de ingestão: bases.ts ↔ CHECK da 027
   it('BASES_COM_ESCOPO_DE_CHAVE (bases.ts, que filtra a UI e a Server Action de chaves) é a mesma lista do SQL', () => {
     expect([...BASES_COM_ESCOPO_DE_CHAVE]).toEqual(basesDoCheck(SQL))
   })
-  it('são seis bases, todas em kebab-case, e `contas-receber` é a última (a ordem dos CHECKs a repete)', () => {
-    expect(BASES_INGESTAO).toHaveLength(6)
+  it('são sete bases, todas em kebab-case, e `lancamentos-centro-custo` é a última (a ordem dos CHECKs a repete)', () => {
+    expect(BASES_INGESTAO).toHaveLength(7)
     for (const b of BASES_INGESTAO) expect(b).toMatch(/^[a-z]+(-[a-z]+)*$/)
-    expect(BASES_INGESTAO[BASES_INGESTAO.length - 1]).toBe('contas-receber')
+    expect(BASES_INGESTAO[BASES_INGESTAO.length - 1]).toBe('lancamentos-centro-custo')
+    expect(BASES_INGESTAO[BASES_INGESTAO.length - 2]).toBe('contas-receber')
   })
   it('as bases multiarquivo são Vendas e Contas a receber (um arquivo por ano / por faixa de vencimento)', () => {
     expect([...BASES_MULTIARQUIVO]).toEqual(['vendas-produto', 'contas-receber'])
   })
 })
 
-describe('paridade — bases do contrato de ingestão: bases.ts ↔ ingestao.carga (patch v6.4.0 + RPCs da 0295)', () => {
+describe('paridade — bases do contrato de ingestão: bases.ts ↔ ingestao.carga (patch v6.5.1 + RPCs da 0304)', () => {
   it('o CHECK ingestao_carga_base_valida (patch) lista exatamente as bases de BASES_INGESTAO (mesma ordem)', () => {
     expect(basesDoCheckCarga(SQL_PATCH)).toEqual([...BASES_INGESTAO])
   })
   it.each(['ingestao_carga_abrir', 'ingestao_carga_ultima', 'ingestao_soma_por_ano'])(
-    'a validação nomeada BASE_INVALIDA de %s (definição VIGENTE: a 0295 ou posterior) usa a mesma lista',
+    'a validação nomeada BASE_INVALIDA de %s (definição VIGENTE: a 0304 ou posterior) usa a mesma lista',
     (nome) => {
       const { arquivo, corpo } = corpoVigenteComBaseInvalida(nome)
-      expect(arquivo >= '0295', `vigente de ${nome}: ${arquivo} — a 0295 trouxe contas-receber`).toBe(true)
+      expect(arquivo >= '0304', `vigente de ${nome}: ${arquivo} — a 0304 trouxe lancamentos-centro-custo`).toBe(true)
       expect(basesDaValidacaoNomeada(corpo), `${nome} (${arquivo})`).toEqual([...BASES_INGESTAO])
     },
   )
-  it('as três RPCs que validam base são exatamente estas (uma 4ª RPC com BASE_INVALIDA na 0295 pede um bloco aqui)', () => {
-    const sql = readFileSync(join(PASTA_MIGRATIONS, readdirSync(PASTA_MIGRATIONS).find(f => f.startsWith('0295_')) ?? ''), 'utf8')
+  it('as três RPCs que validam base são exatamente estas (uma 4ª RPC com BASE_INVALIDA na 0304 pede um bloco aqui)', () => {
+    const sql = readFileSync(join(PASTA_MIGRATIONS, readdirSync(PASTA_MIGRATIONS).find(f => f.startsWith('0304_')) ?? ''), 'utf8')
     expect(sql.match(/RAISE EXCEPTION 'BASE_INVALIDA/g)).toHaveLength(3)
   })
-  it('ingestao_soma_por_ano tem ramo para a base nova e fecha em ELSE RAISE (CASE/IF sem ELSE é fail-open)', () => {
+  it('ingestao_soma_por_ano tem ramo para a base nova (e o da anterior) e fecha em ELSE RAISE (CASE/IF sem ELSE é fail-open)', () => {
     const { corpo } = corpoVigenteComBaseInvalida('ingestao_soma_por_ano')
     expect(corpo).toContain("p_base = 'contas-receber'")
+    expect(corpo).toContain("p_base = 'lancamentos-centro-custo'")
     // (comentários SQL podem separar o ELSE do RAISE)
     expect(corpo).toMatch(/ELSE\s*(--[^\n]*\n\s*)*RAISE EXCEPTION 'BASE_SEM_SOMA/)
   })
@@ -170,7 +180,7 @@ describe('paridade — bases do contrato de ingestão: bases.ts ↔ ingestao.car
 // A QUARTA repetição da mesma lista: `ingestao.promocao` (0277), a tabela que torna a promoção
 // idempotente por `carga_id`. Achado MÉDIO do `revisor-db` na M5 — sem este bloco, uma base nova
 // em `BASES_INGESTAO` sem a migration correspondente passaria batida justamente aqui.
-describe('paridade — bases do contrato de ingestão: bases.ts ↔ ingestao.promocao (patch v6.4.0)', () => {
+describe('paridade — bases do contrato de ingestão: bases.ts ↔ ingestao.promocao (patch v6.5.1)', () => {
   it('o CHECK ingestao_promocao_base_valida (patch) lista exatamente as bases de BASES_INGESTAO (mesma ordem)', () => {
     expect(basesDoCheckCarga(SQL_PATCH, 'ingestao_promocao_base_valida')).toEqual([...BASES_INGESTAO])
   })
@@ -183,7 +193,8 @@ describe('paridade — bases do contrato de ingestão: bases.ts ↔ ingestao.pro
 })
 
 // A QUINTA repetição (0280, M6): o CHECK `ingestao_expectativa_alvo_valido` (as bases que o vigia
-// pode esperar). `contas-receber` fica FORA por decisão declarada (sem expectativa de vigia por ora).
+// pode esperar). `contas-receber` e `lancamentos-centro-custo` ficam FORA por decisão declarada (sem
+// expectativa de vigia por ora).
 // O mesmo CHECK repete os PROCESSOS de `ingestao.execucao` — e uma divergência ali deixaria o
 // vigia esperando um processo que não consegue gravar execução (ou o contrário).
 describe('paridade — bases e processos da ingestão: 0280 (expectativa, execução)', () => {

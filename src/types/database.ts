@@ -470,8 +470,14 @@ export type Database = {
         }
         Returns: Json
       }
+      get_dre_caixa_centro: {
+        Args: { p_ajuste?: boolean; p_ano: number }
+        Returns: Json
+      }
+      get_dre_caixa_centro_rateio: { Args: { p_ano: number }; Returns: Json }
       get_dre_competencia_mensal: { Args: { p_ano: number }; Returns: Json }
       get_dre_mensal: { Args: { p_ano: number }; Returns: Json }
+      get_dre_rateio_csc: { Args: never; Returns: Json }
       get_executiva_kpis: {
         Args: {
           p_ant_from?: string
@@ -833,6 +839,10 @@ export type Database = {
         Args: { p_linhas: Json }
         Returns: undefined
       }
+      inserir_lote_staging_centro_custo: {
+        Args: { p_linhas: Json }
+        Returns: undefined
+      }
       inserir_lote_staging_contas_receber: {
         Args: { p_linhas: Json }
         Returns: undefined
@@ -855,6 +865,7 @@ export type Database = {
       }
       inserir_metas: { Args: { p_metas: Json }; Returns: undefined }
       limpar_staging_aberto: { Args: never; Returns: undefined }
+      limpar_staging_centro_custo: { Args: never; Returns: undefined }
       limpar_staging_contas_receber: { Args: never; Returns: undefined }
       limpar_staging_demonstrativo: { Args: never; Returns: undefined }
       limpar_staging_movimentacao: { Args: never; Returns: undefined }
@@ -1005,6 +1016,10 @@ export type Database = {
         Args: { p_carga_id: string; p_checksums: Json }
         Returns: Json
       }
+      promover_carga_centro_custo: {
+        Args: { p_carga_id: string; p_checksums: Json }
+        Returns: Json
+      }
       promover_carga_contas_receber: {
         Args: { p_carga_id: string; p_checksums: Json }
         Returns: Json
@@ -1041,6 +1056,7 @@ export type Database = {
       }
       resultado_boletos: { Args: { p_refs: string[] }; Returns: Json }
       resultado_notas: { Args: { p_refs: string[] }; Returns: Json }
+      salvar_dre_rateio_csc: { Args: { p_itens: Json }; Returns: Json }
       solic_anexar: { Args: { p_anexos: Json; p_id: number }; Returns: Json }
       solic_anexo_excluir: { Args: { p_anexo_id: number }; Returns: Json }
       solic_anexo_path: { Args: { p_anexo_id: number }; Returns: Json }
@@ -1100,6 +1116,7 @@ export type Database = {
             Returns: boolean
           }
       validar_carga_aberto: { Args: never; Returns: Json }
+      validar_carga_centro_custo: { Args: never; Returns: Json }
       validar_carga_contas_receber: { Args: never; Returns: Json }
       validar_carga_demonstrativo: { Args: never; Returns: Json }
       validar_carga_movimentacao: { Args: never; Returns: Json }

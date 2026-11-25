@@ -826,6 +826,18 @@ esse `CREATE OR REPLACE`, sem deixar rastro no catálogo. É a forma de achar o 
 usuário, em vez de aplicar a correção e torcer. Foi assim que o parser de `NA`/número de parcela da
 base Operação (0285) foi validado antes de ir para produção.
 
+**E com o DADO do oráculo carregado na mesma transação (v6.5.1, 0304/0306).** Quando o oráculo é um arquivo
+de um dia específico (fixture) e não o que está em produção, carregue-o DENTRO da transação revertida
+pelas próprias RPCs de carga (`limpar_` → `inserir_lote_` → `promover_carga_*`, com os adaptadores reais
+do app), aplique o corpo da migration ainda não aplicada e só então chame a leitura nova — com
+`set_config('request.jwt.claims', '{"role":"service_role"}', true)` para passar o `exigir_acesso`. Na
+v6.5.1 isso provou, antes do push, o rateio e a DRE por centro ao centavo contra o protótipo, a paridade
+linha a linha com `get_dre_mensal` e o tempo da chamada. Dois cuidados: (1) se a promoção precisa de um
+CHECK que só um patch destrutivo amplia, amplie-o DENTRO da transação (o ROLLBACK desfaz) e com
+`lock_timeout` curto; (2) **regra que reproduz um protótipo se pina ANTES do SQL**, por engenharia reversa
+offline com as mesmas fixtures (a da identificação de antecipações bateu 3.186/3.186 só depois de achar o
+desempate por Número e a regra "taxa vai à antecipação mais antiga") — o ensaio confirma, não descobre.
+
 Referência viva: `src/lib/dre/reverter-diario.test.ts` (0268). **Enforcement:**
 `src/lib/sonda-teste-escreve-banco.test.ts` — **allowlist**: TODO `src/**/*.test.ts` que obtém o
 driver `pg` é alvo e precisa de `BEGIN`/`ROLLBACK`/`lock_timeout`/`skipIf` sem `COMMIT`, a menos

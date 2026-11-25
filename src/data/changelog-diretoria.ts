@@ -35,6 +35,24 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '6.5.1',
+    data: '2026-11-09T11:00', // horário real de autoria; reconciliar ao horário do merge no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'A DRE de caixa passa a mostrar o resultado de cada operação, com as antecipações atribuídas a quem ' +
+          'precisou do caixa.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'É possível repartir os custos da estrutura central (CSC) entre Trips, Weddings e Corporativo por ' +
+          'percentuais definidos por categoria ou grupo, e ver a DRE de cada operação com ou sem essa repartição.',
+      },
+    ],
+  },
+  {
     versao: '6.5.0',
     data: '2026-11-05T17:25', // horário real do merge (PR #308), reconciliado no /pos-merge
     itens: [
