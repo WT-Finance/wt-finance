@@ -6,11 +6,14 @@
 //  • Obrigatória apenas EMPRESA (a chave); as demais colunas podem faltar/estar vazias.
 //  • "ENVIAR PARA" → destinatarios (string concatenada). IGNORA EMAIL 1-6 (decomposição da
 //    planilha) — o split por ';' é da Fase 4 (envio); aqui só guardamos o texto.
-//  • Situação normalizada p/ 'ativo'/'inativo' (o resto do cadastro é texto livre).
+//  • Situação normalizada p/ 'ativo'/'eventual'/'inativo' (situacao-cliente.ts, v6.5.2); o resto do
+//    cadastro é texto livre.
 //  • Casamento de cabeçalho tolerante a acento/caixa/espaço (normalizeHeader).
 
 import { toStr } from '@/lib/carga/coercao'
 import { normalizeHeader } from '@/lib/carga/vendas-parser'
+import { normalizarSituacaoCliente, normalizarContrato } from './situacao-cliente'
+import { normalizarPctEntrada } from './juros-multa'
 import { validarColunasObrigatorias, mensagemColunasFaltando, type RequisitoColuna } from '@/lib/carga/colunas-obrigatorias'
 
 export interface ClienteCorpRaw {
@@ -24,6 +27,7 @@ export interface ClienteCorpRaw {
   destinatarios: string | null
   forma_pgto:    string | null
   contato_whats: string | null
+  contrato:      string | null   // 'sim' | 'nao' | null (v6.5.2)
 }
 
 // Cabeçalho da planilha → campo. IGNORA EMAIL 1-6 (não mapeados de propósito). O "ENVIAR PARA"
@@ -39,6 +43,7 @@ const COL_MAP: Record<string, keyof ClienteCorpRaw> = {
   'ENVIAR PARA':    'destinatarios',
   'FORMA DE PGTO':  'forma_pgto',
   'CONTATO WHATS':  'contato_whats',
+  'CONTRATO':       'contrato',
 }
 
 const COL_MAP_NORM: Record<string, keyof ClienteCorpRaw> = Object.fromEntries(
@@ -53,18 +58,11 @@ const CLIENTES_REQUISITOS: RequisitoColuna[] = [
   { label: 'EMPRESA', aceitos: [normalizeHeader('EMPRESA')] },
 ]
 
-/** Situação → 'ativo' | 'inativo' | null (a planilha traz "Ativo"/"Inativo"). */
-function normalizarSituacao(v: string | null): string | null {
-  if (!v) return null
-  const n = normalizeHeader(v) // lower + sem acento + trim
-  if (n.includes('inativ')) return 'inativo'
-  if (n.includes('ativ'))   return 'ativo'
-  return null
-}
 
 const CHAVES_VAZIAS: ClienteCorpRaw = {
   empresa: null, situacao: null, faturar_em: null, vencimento: null, obs: null,
   pct_juros: null, pct_multa: null, destinatarios: null, forma_pgto: null, contato_whats: null,
+  contrato: null,
 }
 
 export async function parseClientesCorpFile(
@@ -83,7 +81,15 @@ export async function parseClientesCorpFile(
       workbook = XLSX.read(buffer, { type: 'array', cellDates: true, raw: false })
     }
 
-    const sheet = workbook.Sheets[workbook.SheetNames[0]]
+    // A aba é achada pelo CABEÇALHO, não pela posição (v6.5.2): a planilha oficial abre numa aba
+    // auxiliar ("calculo reverso") e os clientes ficam na aba FATURAMENTO. Usa a 1ª aba cujo
+    // cabeçalho tem EMPRESA; sem nenhuma, cai na 1ª aba (e a validação abaixo dá o erro claro).
+    const temEmpresa = (nome: string): boolean => {
+      const cab = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[nome], { header: 1, range: 0, defval: null })[0] ?? []
+      return cab.some(h => normalizeHeader(String(h ?? '').trim()) === normalizeHeader('EMPRESA'))
+    }
+    const nomeAba = workbook.SheetNames.find(temEmpresa) ?? workbook.SheetNames[0]
+    const sheet = workbook.Sheets[nomeAba]
     const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: null })
     if (rows.length === 0) return { error: 'Arquivo vazio ou sem dados.' }
 
@@ -100,7 +106,11 @@ export async function parseClientesCorpFile(
         if (!campo) continue // ignora colunas não mapeadas (inclui EMAIL 1-6)
         c[campo] = toStr(row[h])
       }
-      c.situacao = normalizarSituacao(c.situacao)
+      c.situacao  = normalizarSituacaoCliente(c.situacao)
+      c.contrato  = normalizarContrato(c.contrato)
+      // juros/multa no formato do contrato do boleto ("N%") já na entrada — v6.5.2
+      c.pct_juros = normalizarPctEntrada(c.pct_juros)
+      c.pct_multa = normalizarPctEntrada(c.pct_multa)
       // sem EMPRESA não há chave → pula (linhas em branco / sobras de planilha)
       if (c.empresa) result.push(c)
     }

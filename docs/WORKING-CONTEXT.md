@@ -9,7 +9,23 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-11-25 (pós-merge da v6.5.1 — PR #311 mergeado às 16:17).
+Última atualização: 2026-11-25 (v6.5.1 em produção; v6.5.2 em PR, atualizada com a main).
+
+---
+
+## Em PR — v6.5.2 "Faturamento Corporativo: Cadastro de clientes alinhado à planilha oficial"
+
+Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v6-5-2_Cadastro_Clientes.md`. Migration **0307 APLICADA**
+(10/11, aditiva). **Atualizado com a `main` em 25/11** (depois do merge da v6.5.1): versão 6.5.2 sobre a 6.5.1, CHANGELOGs
+com as duas entradas, `schema-v6.json` regenerado do banco vivo (na **0308**). Banco na **0308**, livre **0309**.
+
+- Situação **Eventual** (recebe e-mail de fatura como Ativo), coluna **Contrato** ✓/✗, **tela cheia** no Cadastro.
+- Import do Cadastro acha a aba pelo cabeçalho e normaliza juros/multa ("1% ao mês" → `1%`) — a planilha oficial
+  importa direto, sem preparação. Linha de total do Monde ignorada no Faturamento.
+- 🔴 **Yan, depois do merge/deploy:** reimportar `Faturamento Clientes - Corporativo.xlsx` (OneDrive) em Faturamento
+  Corp → Cadastro → Importar — só isso grava os 28 Eventuais e o Contrato dos 249 (a 0307 não escreve dado). A EXCOM
+  passa à linha da planilha (vencimento 10/20/30, 2%/2%, e-mails da controladoria), como você decidiu.
+- Filtro de situação do Cadastro abre em **"Todos"** (era "Toda", abrindo em "Ativo") — decidido pelo Yan.
 
 ---
 
@@ -31,16 +47,11 @@ ADR-0184 (com adendo do rateio do CSC).
 - **Desempenho:** a página faz UMA leitura pesada por centro (`get_dre_caixa_centro_rateio`); duas em paralelo estouravam o
   `statement_timeout` de 8 s. Se o erro "Não foi possível carregar a DRE por centro de custo" voltar em pico, o próximo
   passo é buscar a DRE por centro depois do carregamento inicial.
-- **#312 (v6.5.2) ainda aberto:** mexe na mesma versão/CHANGELOGs — vai precisar de rebase sobre esta `main` (a 0307 é o
-  mesmo arquivo nos dois).
 
 > 🔴 **Yan:**
 >
 > 1. **Rateio de teste em PRODUÇÃO** (24/11: 131 categorias com 33,33/33,33/33,34). Se era só teste: drawer › Limpar › Aplicar.
-> 2. Mergear o PR de docs deste pós-merge (data do CHANGELOG_DIRETORIA + este arquivo).
-> 3. Limpeza na raiz (o agente não alcança — sessão isolada na worktree): tirar a cópia untracked do briefing (idêntica à
->    do main), `git pull --ff-only`, remover a worktree e as branches — comandos no relatório do pós-merge.
-> 4. Lançar no Monde as taxas de antecipação pendentes (o valor não aparece mais no card); conferências do briefing §10;
+> 2. Lançar no Monde as taxas de antecipação pendentes (o valor não aparece mais no card); conferências do briefing §10;
 >    mostrar à diretoria.
 
 ---

@@ -17,6 +17,7 @@ import {
   externalReferenceNota, type ModoNota,
 } from '@/lib/asaas/notas'
 import { emailAmbiente } from '@/lib/email/config'
+import { situacaoEnviavel } from '@/lib/faturamento/situacao-cliente'
 import { enviarFaturaEmail, splitDestinatarios } from '@/lib/email/fatura'
 import { jurosMultaDoCadastro, JUROS_MULTA_DEFAULT } from '@/lib/faturamento/juros-multa'
 
@@ -626,12 +627,13 @@ export async function enviarEmailFatura(ref: string, opts?: OpcoesEnvioFatura): 
       validos = splitDestinatarios(opts.destinatariosOverride.join(';')).validos
       if (validos.length === 0) return falhar('Nenhum destinatário válido informado.')
     } else {
-      // Caminho do cadastro (botão por-linha da 4a): exige cliente ATIVO com destinatário válido.
+      // Caminho do cadastro (botão por-linha da 4a): exige cliente ATIVO ou EVENTUAL (v6.5.2)
+      // com destinatário válido.
       const cadRes = await (db.rpc as any)('buscar_cliente_corporativo', { p_nomes: [cliente] })
       if (cadRes?.error) return falhar('Não foi possível consultar o cadastro de clientes.')
       const cads = (cadRes?.data ?? []) as Array<{ empresa: string; situacao: string | null; destinatarios: string | null }>
       if (!cads.length) return falhar('Cliente não está no Cadastro de Clientes.')
-      if ((cads[0].situacao ?? '').trim().toLowerCase() !== 'ativo') return falhar('Cliente inativo no cadastro.')
+      if (!situacaoEnviavel(cads[0].situacao)) return falhar('Cliente inativo ou sem situação no cadastro.')
       validos = splitDestinatarios(cads[0].destinatarios).validos
       if (validos.length === 0) return falhar('Nenhum destinatário válido no cadastro do cliente.')
     }
@@ -683,7 +685,7 @@ export interface LinhaEnvioEmail {
   anexosLabel:   string    // "boleto e nota" | "boleto (nota pendente)" | "boleto"
   destinatarios: string    // seed editável (string do cadastro; '' se fora do cadastro)
   noCadastro:    boolean
-  ativo:         boolean   // cadastro com situação 'ativo'
+  ativo:         boolean   // cadastro com situação enviável: 'ativo' ou 'eventual' (v6.5.2)
   jaEnviado:     boolean   // já enviado com sucesso NESTE modo (idempotência)
   estado:        'pronto' | 'atencao' | 'enviado'  // estado INICIAL (o cliente recomputa ao editar)
   motivo?:       string    // rótulo do porquê (quando 'atencao')
@@ -729,7 +731,7 @@ export async function prepararEnvioEmails(refs: string[]): Promise<{ modo: 'test
     const notaPendente = !!d.nota_status && !notaPronta
     const cad = cadByNome.get(normNome(pessoa))
     const noCadastro = !cad
-    const ativo = ((cad?.situacao ?? '').trim().toLowerCase() === 'ativo')
+    const ativo = situacaoEnviavel(cad?.situacao) // ativo OU eventual (v6.5.2)
     const destinatarios = cad?.destinatarios ?? ''
     const { validos, invalidos } = splitDestinatarios(destinatarios)
     const jaEnviado = jaSet.has(ref)
@@ -743,7 +745,7 @@ export async function prepararEnvioEmails(refs: string[]): Promise<{ modo: 'test
     } else {
       estado = 'atencao'
       motivo = noCadastro ? 'Cliente fora do Cadastro'
-        : !ativo ? 'Cliente inativo no Cadastro'
+        : !ativo ? 'Cliente inativo ou sem situação no Cadastro'
         : notaPendente ? 'Nota fiscal pendente'
         : invalidos.length > 0 ? 'Destinatário inválido'
         : 'Sem destinatário'
