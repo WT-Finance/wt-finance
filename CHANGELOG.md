@@ -40,6 +40,53 @@ copiadas idênticas nesta branch para o `db push`).
 
 ---
 
+## [6.5.1] — 2026-11-09
+
+PATCH (decisão do Yan; pelo critério das v6.3.0/v6.4.0 seria MINOR — base nova + destrutiva) · **DRE de caixa por
+centro de custo.** Out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-5-1_DRE_Caixa_Centro_Custo.md`; medição
+`docs/auditoria/v6-5-1-m0-dre-centro-custo.md`; contrato da base `docs/specs/v6-5-1-m2-base-centro-custo.md`.
+Migrations **0304** e **0306 APLICADAS** (aditivas) e **0305 APLICADA** pelo Yan em TTY (destrutiva por
+classificação: CHECKs de base). ADR-0184.
+
+### Adicionado
+
+- **Base de ingestão `lancamentos-centro-custo`** (sétima do contrato v1): relatório "Lançamentos por Centro de
+  Custo" do Monde, um arquivo por carga, pelo card de upload. Checksum pelo outline de cada centro (Σ Valor Centro
+  Custo com o sinal da movimentação); grupo recolhido "+" rejeita a carga; lista fechada (sem Pessoa, Descrição nem
+  Valor Lançamento) com sonda estática; centro desconhecido reprova. A promoção regenera
+  `financeiro.centro_custo_rateio` (Σ pesos = 1 exato por Número) na mesma transação (0304).
+- **`get_dre_caixa_centro(p_ano, p_ajuste)`** (0306): DRE de caixa por centro com a mesma fonte e o mesmo mapa vivo de
+  `get_dre_mensal`; identificação dos recebíveis antecipados (regra §3.3, de-para `financeiro.antecipacao_conta_monde`)
+  com deslocamento ao mês do vencimento no centro dono e a taxa no bloco de antecipação; recebíveis, taxa do Monde por
+  centro, eventos, cobertura e carimbos. `p_ajuste=false` dá Σ centros = Empresa linha a linha.
+- **Card "Demonstrativo de Resultado por Centro de Custo"** na seção Regime de Caixa da DRE, separado da tabela da
+  Empresa (decisão do GATE 1): seletor CSC/Trips/Weddings/Corporativo (CSC primeiro também nas colunas) marcável cumulativamente + Todos (as quatro marcadas
+  acendem o Todos e ficam num cinza mais escuro que a seleção normal; alguns marcados = colunas só deles e Total =
+  soma deles; "Sem centro" é coluna do Todos, sem pill própria); visões Mensal e Consolidado por centro e no Todos — o Todos abre em Consolidado (um bloco por ano com os
+  5 centros e a AV de cada um, Δ% por centro a partir de 2027, Total do YTD) e o Mensal dele empilha os meses (um
+  bloco por mês com os 5 centros, mais o Total); bloco de antecipação (C, D, taxa no fundo âmbar do previsto;
+  Resultado de caixa); memória fora das somas; Exportar da visão da tela (a coluna leva o
+  bloco: "Jan · Trips"); carimbos "Centro de custo" e "Antecipações". Só Realizado, sem pills de modo, sem notas sob
+  a tabela e sem o "Quem cobre quem" (pedidos do Yan na revisão do PR).
+- Módulo puro `src/lib/dre-centro/` (atribuição §3.4, visões, notas, exportação) com testes contra o protótipo.
+- **Rateio do CSC** (0308, pedido do Yan no PR): botão "Rateio" depois de "Todos" abre um drawer com % para Trips,
+  Weddings e Corporativo por grupo de categoria ou por categoria (grupo trava as categorias; soma 100; "Limpar",
+  "Preencher vazios" com 33,33/33,33/33,34 e "Aplicar"). Com rateio salvo a pill fica âmbar e a DRE vem com o CSC
+  repartido; sem rateio, branca (para desligar: Limpar e Aplicar). Tabela `financeiro.dre_rateio_csc`; o corpo de
+  `get_dre_caixa_centro` virou o núcleo interno `financeiro.dre_caixa_centro_nucleo` (rateio aplicado só na partição da
+  linha do fato por centro); RPCs novas `get_dre_caixa_centro_rateio`, `get_dre_rateio_csc` e `salvar_dre_rateio_csc`.
+  A 0307 da v6.5.2 (arquivo idêntico) entra para o histórico local casar com o remoto.
+
+### Verificado
+
+- Ensaio revertido com as fixtures de 06/11: rateio × base por categoria ≡ "Rateio sem ajuste" do protótipo ao
+  centavo; 16/16 antecipações e 3.186/3.186 recebíveis iguais; Weddings/Corp/CSC ≡ oráculo ao centavo (Trips −9.540,17
+  = 2 linhas de movimentação futura que a Empresa trata como previsto).
+- Casos de contrato permanentes: paridade linha a linha sem ajuste, Σ Resultado de caixa ≡ REX com ajuste, anon e
+  usuário sem `financeiro/dre` negados. Visão Empresa intocada (snapshot gravado antes da versão).
+
+---
+
 ## [6.5.0] — 2026-10-26
 
 MINOR · **Financeiro · Geral, segunda versão.** Out-briefing

@@ -1,0 +1,234 @@
+'use client'
+
+import { Fragment, useState } from 'react'
+import ListDrawer from '@/components/shared/list-drawer'
+import Button from '@/components/ui/button'
+import { Input } from '@/components/ui/field'
+import {
+  CENTROS_RATEIO, PCTS_VAZIO, ROTULO_RATEIO, categoriaTravada, chaveCategoria, chaveGrupo, estadoInicial,
+  lerPct, montarItens, preencherVazios,
+  type CentroRateio, type EstadoRateio, type GrupoRateio, type ItemRateio, type Pcts, type RateioCsc,
+} from '@/lib/dre-centro/rateio'
+
+// ── Drawer do RATEIO DO CSC (v6.5.1, 0308) ───────────────────────────────────
+// Um % por GRUPO (bloco-folha da DRE) ou por CATEGORIA, para Trips, Weddings e Corporativo; Σ = 100 por linha.
+// Grupo preenchido TRAVA as categorias dele (os campos delas mostram o % do grupo, desabilitados). Sem centro
+// fica de fora do rateio. Salvar SUBSTITUI o conjunto inteiro (salvar_dre_rateio_csc) — quem vê a DRE edita.
+
+const SUBTITULO = 'Reparte o que foi alocado como CSC para os demais centros de custo (Trips, Weddings e Corporativo).'
+
+export interface RateioCscDrawerProps {
+  grupos: GrupoRateio[]
+  /** O que está salvo; null = a leitura falhou (o drawer avisa e não deixa salvar por cima). */
+  salvo: RateioCsc | null
+  onSalvar: (itens: ItemRateio[]) => Promise<{ ok: boolean; erro?: string }>
+  onClose: () => void
+}
+
+const somaDe = (p: Pcts | undefined) => {
+  if (!p) return null
+  const v = CENTROS_RATEIO.map(c => lerPct(p[c]))
+  if (v.every(x => x === null)) return null
+  return v.reduce<number>((s, x) => s + (x == null || Number.isNaN(x) ? 0 : x), 0)
+}
+const fmtSoma = (n: number | null) => (n == null ? '—' : `${n.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`)
+
+function LinhaRateio({
+  alvo, rotulo, rotuloAcessivel, nivel, valor, travadaCom, erro, onMudar,
+}: {
+  /** Chave do alvo ('g:<chave>' | 'c:<id>') — base dos ids (o rótulo pode repetir entre grupos). */
+  alvo: string
+  rotulo: string
+  /** Rótulo para leitor de tela: a categoria leva o grupo junto ("Grupo › Categoria"). */
+  rotuloAcessivel: string
+  nivel: 'grupo' | 'categoria'
+  valor: Pcts | undefined
+  /** Categoria travada: mostra o % do grupo, desabilitado. */
+  travadaCom?: Pcts
+  erro?: string
+  onMudar: (c: CentroRateio, v: string) => void
+}) {
+  const exibido = travadaCom ?? valor ?? PCTS_VAZIO
+  const soma = somaDe(travadaCom ?? valor)
+  const id = `rateio-${alvo.replace(':', '-')}`
+  return (
+    <>
+      <tr className={nivel === 'grupo' ? 'bg-band-soft' : ''}>
+        <td className={`py-1.5 pr-3 text-[13px] ${nivel === 'grupo' ? 'pl-2 font-semibold text-text-primary' : 'pl-7 text-text-secondary'}`}>
+          {rotulo}
+          {travadaCom && <span className="ml-1.5 text-[11px] text-text-muted">(pelo grupo)</span>}
+        </td>
+        {CENTROS_RATEIO.map(c => (
+          <td key={c} className="px-1 py-1.5">
+            {/* "%" como sufixo fixo dentro do campo (pedido do Yan): o cabeçalho fica só com o nome do centro. */}
+            <span className="relative block">
+              <Input
+                variant="compacto"
+                inputMode="decimal"
+                aria-label={`${rotuloAcessivel} — % ${ROTULO_RATEIO[c]}`}
+                aria-invalid={erro ? true : undefined}
+                aria-describedby={erro ? `${id}-erro` : undefined}
+                disabled={travadaCom != null}
+                value={exibido[c]}
+                onChange={e => onMudar(c, e.target.value)}
+                className="w-full pr-6 text-right tabular-nums disabled:opacity-60"
+              />
+              <span aria-hidden className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[12px] text-text-muted">%</span>
+            </span>
+          </td>
+        ))}
+        <td className={`pl-3 pr-4 py-1.5 text-right text-[12px] tabular-nums whitespace-nowrap ${erro ? 'text-danger' : 'text-text-muted'}`}>{fmtSoma(soma)}</td>
+      </tr>
+      {erro && (
+        <tr>
+          <td colSpan={5} id={`${id}-erro`} className="pb-1.5 pl-7 text-[12px] text-danger">{erro}</td>
+        </tr>
+      )}
+    </>
+  )
+}
+
+export default function RateioCscDrawer({ grupos, salvo, onSalvar, onClose }: RateioCscDrawerProps) {
+  const [estado, setEstado] = useState<EstadoRateio>(() => estadoInicial(salvo))
+  const [erros, setErros] = useState<Record<string, string>>({})
+  const [erroGeral, setErroGeral] = useState<string | null>(null)
+  // Estado simples, NÃO useTransition: dentro de um startTransition(async) o React 19 SEGURA todas as atualizações
+  // (fechar o drawer, ligar o véu "Aplicando o rateio…" no card) até a action inteira terminar — o drawer fechava
+  // tarde e o véu nunca aparecia, deixando a tabela parada sem sinal (Yan, 24/11).
+  const [salvando, setSalvando] = useState(false)
+
+  const orfaos = (salvo?.itens ?? []).filter(i => i.ativo === false)
+
+  const mudar = (k: string) => (c: CentroRateio, v: string) => {
+    setEstado(prev => ({ ...prev, [k]: { ...(prev[k] ?? PCTS_VAZIO), [c]: v } }))
+    setErros(prev => {
+      if (!(k in prev)) return prev
+      const resto = { ...prev }
+      delete resto[k]
+      return resto
+    })
+  }
+
+  async function salvar() {
+    if (salvando) return
+    setErroGeral(null)
+    const r = montarItens(estado, grupos)
+    setErros(r.erros)
+    if (Object.keys(r.erros).length > 0) {
+      setErroGeral('Corrija as linhas marcadas — cada uma precisa somar 100%.')
+      return
+    }
+    setSalvando(true)
+    // A action pode LANÇAR (guard de sessão/permissão fora do try dela): o catch mostra a mensagem em vez de deixar a
+    // exceção derrubar a página (revisor, MÉDIO).
+    try {
+      const res = await onSalvar(r.itens)
+      if (res.ok) onClose()
+      else setErroGeral(res.erro ?? 'Não foi possível salvar o rateio.')
+    } catch (e) {
+      console.error('[rateio CSC] salvar', e)
+      setErroGeral('Não foi possível salvar — sua sessão pode ter expirado. Recarregue a página e tente de novo.')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  return (
+    <ListDrawer
+      titulo="Rateio do CSC"
+      subtitulo={SUBTITULO}
+      onClose={onClose}
+      rodape={(
+        <div className="flex flex-col gap-2">
+          {erroGeral && <p role="alert" className="text-sm text-danger">{erroGeral}</p>}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Limpar e Preencher vazios só mexem no formulário; nada vai ao banco antes de "Aplicar". */}
+            <Button
+              variant="contorno" size="sm" disabled={salvando}
+              onClick={() => { setEstado({}); setErros({}); setErroGeral(null) }}
+              title="Esvaziar todos os campos (nada é gravado até Aplicar)"
+            >
+              Limpar
+            </Button>
+            <Button
+              variant="contorno" size="sm" disabled={salvando}
+              onClick={() => { setEstado(prev => preencherVazios(prev, grupos)); setErroGeral(null) }}
+              title="Categorias vazias (de grupos sem % próprio) recebem 33,33% / 33,33% / 33,34%"
+            >
+              Preencher vazios
+            </Button>
+            <span className="ml-auto flex gap-2">
+              <Button variant="contorno" size="sm" onClick={onClose} disabled={salvando}>Cancelar</Button>
+              <Button variant="solido" size="sm" onClick={() => void salvar()} disabled={salvando || salvo == null}>
+                {salvando ? 'Aplicando…' : 'Aplicar'}
+              </Button>
+            </span>
+          </div>
+        </div>
+      )}
+    >
+      {salvo == null && (
+        <p className="mb-4 rounded-md border border-danger bg-danger-bg px-3 py-2 text-sm text-danger">
+          Não foi possível ler o rateio salvo. Recarregue a página antes de editar — salvar agora apagaria o que existe.
+        </p>
+      )}
+      {orfaos.length > 0 && (
+        <p className="mb-4 rounded-md border border-wt-border bg-band-soft px-3 py-2 text-sm text-text-secondary">
+          {orfaos.length === 1 ? 'Há 1 percentual salvo' : `Há ${orfaos.length} percentuais salvos`} para grupo ou categoria
+          que não está mais na DRE (o editor da estrutura mudou). Ele não vale e sai quando você salvar.
+        </p>
+      )}
+
+      {/* Larguras fixas: a categoria fica com o que sobra; os três centros e a Soma não espremem. Contorno na tabela e
+          a Soma afastada da borda (pedidos do Yan). */}
+      <div className="overflow-hidden rounded-lg border border-wt-border">
+      <table className="w-full table-fixed border-separate border-spacing-0">
+        <caption className="sr-only">Percentuais do rateio do CSC por grupo e categoria</caption>
+        <colgroup>
+          <col />
+          {CENTROS_RATEIO.map(c => <col key={c} className="w-[104px]" />)}
+          <col className="w-[96px]" />
+        </colgroup>
+        <thead>
+          <tr className="text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary">
+            <th scope="col" className="border-b border-wt-border py-2.5 pl-2 text-left">Grupo / categoria</th>
+            {CENTROS_RATEIO.map(c => <th key={c} scope="col" className="whitespace-nowrap border-b border-wt-border px-1 py-2.5 text-right">{ROTULO_RATEIO[c]}</th>)}
+            <th scope="col" className="whitespace-nowrap border-b border-wt-border py-2.5 pl-3 pr-4 text-right">Soma</th>
+          </tr>
+        </thead>
+        <tbody>
+          {grupos.map(g => {
+            const kg = chaveGrupo(g.chave)
+            const travada = categoriaTravada(estado, g.chave)
+            return (
+              <Fragment key={g.chave}>
+                <LinhaRateio
+                  alvo={kg} rotulo={g.rotulo} rotuloAcessivel={g.rotulo} nivel="grupo"
+                  valor={estado[kg]} erro={erros[kg]} onMudar={mudar(kg)}
+                />
+                {g.categorias.map(c => {
+                  const kc = chaveCategoria(c.categoria_id)
+                  return (
+                    <LinhaRateio
+                      key={kc}
+                      alvo={kc}
+                      rotulo={c.rotulo}
+                      rotuloAcessivel={`${g.rotulo} › ${c.rotulo}`}
+                      nivel="categoria"
+                      valor={estado[kc]}
+                      travadaCom={travada ? (estado[kg] ?? PCTS_VAZIO) : undefined}
+                      erro={travada ? undefined : erros[kc]}
+                      onMudar={mudar(kc)}
+                    />
+                  )
+                })}
+              </Fragment>
+            )
+          })}
+        </tbody>
+      </table>
+      </div>
+    </ListDrawer>
+  )
+}
+

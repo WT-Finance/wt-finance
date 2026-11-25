@@ -10,7 +10,7 @@ import { z } from 'zod'
 // nulo) quando o ano pedido é o corrente — a 2ª coluna do mês híbrido.
 
 /** Uma linha do demonstrativo (bloco, sub, totalizador ou categoria-folha). */
-const dreLinhaSchema = z.object({
+export const dreLinhaSchema = z.object({
   t:             z.enum(['blocoH', 'sub', 'tot', 'cat']),
   rotulo:        z.string(),
   estrela:       z.boolean(),

@@ -501,6 +501,22 @@
       "security_definer": false,
       "volatilidade": "STABLE"
     },
+    "financeiro.dre_caixa_centro_nucleo(integer, boolean, boolean)": {
+      "acl": {
+        "postgres": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "961fbae3d1dce1978a90ac3a7ac4db73bbe8c97b42094f37ff715b56db1b47a3",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "json",
+      "security_definer": false,
+      "volatilidade": "VOLATILE"
+    },
     "financeiro.fn_broadcast_gerencial()": {
       "acl": {
         "postgres": {
@@ -3037,7 +3053,32 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "1b677ca41db34f81bd45f56427c2db0dc4146ef01d4b2920159980d1f87b4ea2",
+      "hash_corpo": "0a2ad51701adf9dd788e20098781dc521aa2c7fc68e5362edd0b9d584b405e15",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "json",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
+    "public.get_dre_caixa_centro_rateio(integer)": {
+      "acl": {
+        "authenticated": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        },
+        "verificador": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "21ee91939f376cdd7b29d594870ce5225a8d55630d1e3e64ebb4244119d41ee8",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -3088,6 +3129,31 @@
       },
       "dono": "postgres",
       "hash_corpo": "cb87aad8d47d5cd06c64b80c538300eb7980c779c6f0fa15f2bfee5a254e9edc",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "json",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
+    "public.get_dre_rateio_csc()": {
+      "acl": {
+        "authenticated": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        },
+        "verificador": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "818c6954488b8a23799f2119e656997e7b93933e3a3b15a731e43d30b2182e11",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -6797,6 +6863,28 @@
       "security_definer": true,
       "volatilidade": "STABLE"
     },
+    "public.salvar_dre_rateio_csc(jsonb)": {
+      "acl": {
+        "authenticated": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "4f3e7dfb9056c2359d6f9f724730cbb11005e873e1041b57b7f76fe158011713",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "json",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
     "public.solic_anexar(bigint, jsonb)": {
       "acl": {
         "authenticated": {
@@ -7727,8 +7815,10 @@
         "public.get_contratos_casamento_mes(date, date)",
         "public.get_decomposicao_bloco(text, text)",
         "public.get_dre_caixa_centro(integer, boolean)",
+        "public.get_dre_caixa_centro_rateio(integer)",
         "public.get_dre_competencia_mensal(integer)",
         "public.get_dre_mensal(integer)",
+        "public.get_dre_rateio_csc()",
         "public.get_executiva_kpis(date, date, text, date, date, date, date)",
         "public.get_fluxo_antecipacoes_mensal()",
         "public.get_fluxo_caixa_kpis_b(text, text)",
@@ -12978,6 +13068,98 @@
         "trg_touch_dre_comp_par": "CREATE TRIGGER trg_touch_dre_comp_par BEFORE UPDATE ON financeiro.dre_comp_par FOR EACH ROW EXECUTE FUNCTION financeiro.fn_dre_touch_atualizado_em()"
       }
     },
+    "financeiro.dre_rateio_csc": {
+      "acl": {
+        "postgres": {
+          "DELETE": false,
+          "INSERT": false,
+          "MAINTAIN": false,
+          "REFERENCES": false,
+          "SELECT": false,
+          "TRIGGER": false,
+          "TRUNCATE": false,
+          "UPDATE": false
+        }
+      },
+      "colunas": {
+        "atualizado_em": {
+          "default": "now()",
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "timestamp with time zone"
+        },
+        "atualizado_por": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "uuid"
+        },
+        "bloco_chave": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "text"
+        },
+        "categoria_id": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "integer"
+        },
+        "id": {
+          "default": null,
+          "generated": null,
+          "identity": "ALWAYS",
+          "not_null": true,
+          "tipo": "bigint"
+        },
+        "pct_corp": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "numeric(7,4)"
+        },
+        "pct_trips": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "numeric(7,4)"
+        },
+        "pct_weddings": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "numeric(7,4)"
+        }
+      },
+      "constraints": {
+        "dre_rateio_csc_categoria_id_fkey": "FOREIGN KEY (categoria_id) REFERENCES financeiro.dim_categoria(id) ON DELETE CASCADE",
+        "dre_rateio_csc_pct_corp_check": "CHECK (pct_corp >= 0::numeric AND pct_corp <= 100::numeric)",
+        "dre_rateio_csc_pct_trips_check": "CHECK (pct_trips >= 0::numeric AND pct_trips <= 100::numeric)",
+        "dre_rateio_csc_pct_weddings_check": "CHECK (pct_weddings >= 0::numeric AND pct_weddings <= 100::numeric)",
+        "dre_rateio_csc_pkey": "PRIMARY KEY (id)",
+        "dre_rateio_csc_soma_100": "CHECK ((pct_trips + pct_weddings + pct_corp) = 100::numeric)",
+        "dre_rateio_csc_um_alvo": "CHECK ((categoria_id IS NULL) <> (bloco_chave IS NULL))"
+      },
+      "dono": "postgres",
+      "indices": {
+        "dre_rateio_csc_bloco_uq": "CREATE UNIQUE INDEX dre_rateio_csc_bloco_uq ON financeiro.dre_rateio_csc USING btree (bloco_chave) WHERE (bloco_chave IS NOT NULL)",
+        "dre_rateio_csc_categoria_uq": "CREATE UNIQUE INDEX dre_rateio_csc_categoria_uq ON financeiro.dre_rateio_csc USING btree (categoria_id) WHERE (categoria_id IS NOT NULL)",
+        "dre_rateio_csc_pkey": "CREATE UNIQUE INDEX dre_rateio_csc_pkey ON financeiro.dre_rateio_csc USING btree (id)"
+      },
+      "policies": {},
+      "rls_forcado": false,
+      "rls_habilitado": true,
+      "tipo": "tabela",
+      "triggers": {}
+    },
     "financeiro.fato_fluxo": {
       "acl": {
         "postgres": {
@@ -17201,7 +17383,7 @@
       "triggers": {}
     }
   },
-  "ultima_migration": "0307",
+  "ultima_migration": "0308",
   "views": {
     "analytics.mv_ranking_produtos_mensal": {
       "acl": {

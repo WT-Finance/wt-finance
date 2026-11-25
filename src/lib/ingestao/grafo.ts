@@ -20,10 +20,11 @@ import type { BaseIngestao } from './bases'
  *                 └─► lancamentos-aberto ───────┘        (só esta aresta é bloqueante)
  * demonstrativo-competencia  (independente — nenhuma aresta a toca)
  * contas-receber             (independente — v6.4.0; nenhuma aresta a toca)
+ * lancamentos-centro-custo   (independente — v6.5.1; nenhuma aresta a toca)
  * ```
  *
- * `contas-receber` não depende de outra base: lê só o próprio export. A sonda `grafo.test.ts` trava as duas bases
- * isoladas.
+ * `contas-receber` e `lancamentos-centro-custo` não dependem de outra base: leem só o próprio export. A
+ * sonda `grafo.test.ts` trava as três bases isoladas.
  */
 export interface ArestaGrafo {
   readonly de: BaseIngestao
