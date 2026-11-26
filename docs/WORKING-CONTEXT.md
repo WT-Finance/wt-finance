@@ -9,11 +9,11 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-11-26 (fechamento da v6.5.3 — PR aberto, aguardando merge).
+Última atualização: 2026-11-26 (fechamento da v6.5.3 — PR #316 aberto, aguardando merge).
 
 ---
 
-## Em voo — v6.5.3 "Solicitações: data limite, moeda e notas" + % no Registro de Antecipações (PR aberto)
+## Em voo — v6.5.3 "Solicitações: data limite, moeda e notas" + % no Registro de Antecipações (PR #316)
 
 Branch `fix/v6-5-3-solicitacoes` · out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-5-3_Solicitacoes.md` ·
 ADR-0185. Migration **0309 APLICADA** (26/11, aditiva). Banco na **0309**, livre **0310**. ADR livre **0186**.

@@ -1,6 +1,6 @@
 # Out-briefing — v6.5.3 · Solicitações: data limite, moeda e notas (+ % no Registro de Antecipações)
 
-**PATCH** (decisão do Yan — pelo critério usual seria MINOR) · Branch `fix/v6-5-3-solicitacoes` · Base `38da4e57`
+**PATCH** (decisão do Yan — pelo critério usual seria MINOR) · **PR #316** · Branch `fix/v6-5-3-solicitacoes` · Base `38da4e57`
 (pós-merge da v6.5.2) · Briefing `docs/briefings/briefing-v6-5-3-solicitacoes-correcoes-melhorias.md` ·
 Migration **0309** (aditiva, **APLICADA em 26/11**) · ADR-**0185** · Banco na **0309**, livre **0310**; ADR livre **0186**.
 
@@ -24,7 +24,7 @@ melhorias no mesmo patch (moeda R$/US$/€, Notas, moeda na API); mais tarde, a 
 | M5 | `abe484cc` | Notas: `linhaDoTempo`, `NotasSolicitacao`, `adicionarNota`, e-mail `nota`, ADR-0185 |
 | M7 | `0c857541` | Coluna **%** no Registro de Antecipações (tabela, linha nova, ordenação, Exportar com Total ponderado) |
 | Revisão | `7dcb2b65` | Achados do `revisor` (seção 5) |
-| Fechamento | (este commit) | Bump 6.5.3, CHANGELOGs, out-briefing, WORKING-CONTEXT |
+| Fechamento | `69eeb95f` | Bump 6.5.3, CHANGELOGs, out-briefing, WORKING-CONTEXT, aprendizado nas skills |
 
 ## 3. Banco
 
@@ -93,10 +93,15 @@ usuário): **registrados**, aceitáveis no volume de hoje (284 solicitações, n
 
 ## 6. Advisor
 
-Orquestrador: 2 consultas, as duas mudaram o rumo. (1) Antes da migration: escrever o briefing antes de seguir
-(Rota A), medir o volume antes de pôr notas em `solic_json`, armadilhas do `jsonb_each` (aspas no escalar), da
-moeda dentro de `valores` (aviso de troca de tipo) e do e-mail sem data. (2) Na análise de "corrigir e reenviar"
-(13/10). Revisores: 0. 🔴 Custo: pendência do Yan (`/usage`).
+Orquestrador: 3 consultas, as três mudaram o rumo. (1) Na análise de "corrigir e reenviar" (13/10). (2) Antes da
+migration: escrever o briefing antes de seguir (Rota A), medir o volume antes de pôr notas em `solic_json`,
+armadilhas do `jsonb_each` (aspas no escalar), da moeda dentro de `valores` (aviso de troca de tipo) e do e-mail
+sem data. (3) No fechamento: reconferir `migration list` depois da aplicação, atualizar este out-briefing com o PR e
+declarar a decisão D-12 abaixo. Revisores: 0. 🔴 Custo: pendência do Yan (`/usage`).
+
+**D-12 (skill `banco-e-rpc` × checklist do `revisor-db`):** a nota nova da skill (sequência não volta no
+`ROLLBACK` de um ensaio) é OBSERVAÇÃO sobre ensaio, não convenção de banco — o checklist do `revisor-db` ficou
+intocado de propósito. Não é divergência entre os dois.
 
 ## 7. 🔴 Pendências do Yan
 
