@@ -1,7 +1,9 @@
 // Ordenação por clique no cabeçalho da lista de registros de antecipação (v6.5.0) — módulo puro, só de UI:
 // muda a ORDEM, nunca o conjunto de linhas. Mesmo molde de `src/lib/gerencial/ordenacao.ts`.
 
-export type ColRegistro = 'data' | 'conta' | 'antecipado' | 'liquido' | 'desconto'
+import { taxaPercentual } from './gestao'
+
+export type ColRegistro = 'data' | 'conta' | 'antecipado' | 'liquido' | 'desconto' | 'percentual'
 export type DirRegistro = 'asc' | 'desc'
 
 /** Subconjunto de `RegistroAntecipacao` que o comparador lê. */
@@ -21,7 +23,7 @@ export const DIR_PADRAO_REGISTRO: DirRegistro = 'desc'
 
 /** Direção ao TROCAR de coluna: texto em asc (A→Z); data e valores em desc (maior/mais recente primeiro). */
 export const DIR_PADRAO_COL_REGISTRO: Record<ColRegistro, DirRegistro> = {
-  data: 'desc', conta: 'asc', antecipado: 'desc', liquido: 'desc', desconto: 'desc',
+  data: 'desc', conta: 'asc', antecipado: 'desc', liquido: 'desc', desconto: 'desc', percentual: 'desc',
 }
 
 function compararTexto(a: string, b: string): number {
@@ -36,6 +38,8 @@ function compararPrincipal(col: ColRegistro, a: LinhaRegistro, b: LinhaRegistro)
     case 'antecipado': return a.valor_antecipado - b.valor_antecipado
     case 'liquido':    return a.valor_liquido - b.valor_liquido
     case 'desconto':   return a.desconto - b.desconto
+    // v6.5.3 — taxa ÷ antecipado; sem percentual (antecipado ≤ 0, que o banco recusa) fica no fim do asc.
+    case 'percentual': return (taxaPercentual(a.valor_antecipado, a.desconto) ?? -1) - (taxaPercentual(b.valor_antecipado, b.desconto) ?? -1)
   }
 }
 

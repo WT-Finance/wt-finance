@@ -3,7 +3,7 @@ import { fmtBRL2 } from '@/lib/fmt'
 import {
   FRASE_FALHA_ACAO, centavosParaReais, dataIsoValida, descontoEmCentavos, descontoFormatado, lerValorDigitado,
   mensagemDeFalhaDaAcao, podeDesfazerEntrada, podeGerirAntecipacoes, registroDaEntrada, rotuloOperacao,
-  traduzirErroAntecipacao, validarFormulario,
+  traduzirErroAntecipacao, validarFormulario, taxaPercentual, fmtTaxaPercentual, taxaPercentualFormatada,
 } from './gestao'
 import { antecipacaoHistoricoSchema, antecipacaoListarSchema, salvarAntecipacaoSchema } from './schemas'
 
@@ -198,5 +198,22 @@ describe('contrato da 0296 nos schemas', () => {
     expect(antecipacaoHistoricoSchema.parse([entrada])).toHaveLength(1)
     expect(antecipacaoHistoricoSchema.parse(null)).toEqual([])
     expect(antecipacaoHistoricoSchema.safeParse([{ ...entrada, usuario_nome: null, registro_id: null }]).success).toBe(true)
+  })
+})
+
+describe('percentual da taxa (v6.5.3)', () => {
+  it('taxa ÷ antecipado, em fração; sem antecipado positivo não há percentual', () => {
+    expect(taxaPercentual(199996.31, 9719.9)).toBeCloseTo(0.0486, 4)
+    expect(taxaPercentual(0, 10)).toBeNull()
+  })
+  it('formata com 2 casas', () => {
+    expect(fmtTaxaPercentual(taxaPercentual(199996.31, 9719.9))).toBe('4,86%')
+    expect(fmtTaxaPercentual(taxaPercentual(209993.67, 1855.33))).toBe('0,88%')
+    expect(fmtTaxaPercentual(null)).toBe('—')
+  })
+  it('linha nova: calcula do que foi digitado, e só quando dá', () => {
+    expect(taxaPercentualFormatada('199.996,31', '190.276,41')).toBe('4,86%')
+    expect(taxaPercentualFormatada('100,00', '')).toBeNull()
+    expect(taxaPercentualFormatada('100,00', '120,00')).toBeNull()
   })
 })

@@ -1,4 +1,4 @@
-import { emAndamento } from './schemas'
+import { emAndamento, moedaDe } from './schemas'
 import type { StatusSolic, Solicitacao } from './schemas'
 import type { z } from 'zod'
 import type { respostaSchema } from './schemas'
@@ -51,6 +51,24 @@ export function hojeSP(): string {
   return FMT_SP.format(new Date())
 }
 
+/** 'AAAA-MM-DD' + N dias corridos → 'AAAA-MM-DD'. Calendário puro: Date.UTC dos componentes,
+ *  sem fuso no caminho (o `Date.UTC` normaliza 31/12 + 1 para 01/01 e o fim de fevereiro). */
+export function somarDiasISO(iso: string, dias: number): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d + dias)).toISOString().slice(0, 10)
+}
+
+/** Prazo com que a Data limite da Nova solicitação já vem preenchida — o "Prazo padrão de 3
+ *  dias" do "?" do campo. Dias CORRIDOS (decisão do Yan, 26/11/2026). */
+export const PRAZO_PADRAO_DIAS = 3
+
+/** v6.5.3 — a Data limite nasce preenchida (hoje + 3 corridos, SP) e editável. Antes nascia
+ *  VAZIA, e o Safari do macOS mostra a data de HOJE dentro de um `<input type="date">` vazio:
+ *  quem abria o modal via uma data, enviava e levava "Informe a data-limite." sem entender. */
+export function dataLimitePadrao(hoje: string = hojeSP()): string {
+  return somarDiasISO(hoje, PRAZO_PADRAO_DIAS)
+}
+
 /** Vencida = data-limite anterior a hoje (SP) e a solicitação ainda em andamento.
  *  v5.9.0: 'aprovada' também vence — uma aprovação parada há duas semanas continua
  *  sendo atraso; o que encerra a contagem é o desfecho, não a autorização. */
@@ -73,8 +91,10 @@ export function fmtValor(r: Resposta): string {
   if (r.tipo_campo === 'moeda') {
     // Coerção de moeda agora vem do módulo canônico (v4.17.0/Balde 2) — mesma
     // desambiguação BR/US que os parsers de carga usam (fonte única).
+    // v6.5.3 — na moeda da RESPOSTA (sem `moeda` = resposta anterior à 0309 = R$). O Intl
+    // pt-BR escreve "US$ 1.200,00" e "€ 1.200,00", os mesmos símbolos do seletor.
     const n = toNum(r.valor)
-    return n !== null ? n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : r.valor
+    return n !== null ? n.toLocaleString('pt-BR', { style: 'currency', currency: moedaDe(r.moeda) }) : r.valor
   }
   if (r.tipo_campo === 'data') return fmtDataBR(r.valor)
   return r.valor
@@ -125,10 +145,10 @@ export function valorNumericoCanonico(tipo: 'numero' | 'moeda', digitado: string
 /** v6.2.1 — prévia de como o valor digitado vai ser GRAVADO e exibido ("R$ 1.318,00"), ou
  *  null se não der para ler. Sai do mesmo `fmtValor` que o drawer usa depois — a prévia não
  *  pode prometer uma leitura diferente da que a solicitação vai mostrar. */
-export function previaValorNumerico(tipo: 'numero' | 'moeda', digitado: string): string | null {
+export function previaValorNumerico(tipo: 'numero' | 'moeda', digitado: string, moeda?: string): string | null {
   const canonico = valorNumericoCanonico(tipo, digitado)
   if (canonico === null) return null
-  return fmtValor({ campo_id: 0, rotulo: '', tipo_campo: tipo, valor: canonico })
+  return fmtValor({ campo_id: 0, rotulo: '', tipo_campo: tipo, valor: canonico, moeda })
 }
 
 /** v6.2.1 — aplica `valorNumericoCanonico` às respostas de um tipo, no ENVIO do modal (nunca no
@@ -138,7 +158,7 @@ export function previaValorNumerico(tipo: 'numero' | 'moeda', digitado: string):
 export function normalizarRespostasNumericas(
   campos: readonly { id?: number; rotulo: string; tipo_campo: string }[],
   valores: Record<string, string>,
-): { ok: true; respostas: Record<string, string> } | { ok: false; rotulo: string } {
+): { ok: true; respostas: Record<string, string> } | { ok: false; rotulo: string; campoId: number } {
   const respostas = { ...valores }
   for (const campo of campos) {
     if ((campo.tipo_campo !== 'numero' && campo.tipo_campo !== 'moeda') || campo.id == null) continue
@@ -146,10 +166,57 @@ export function normalizarRespostasNumericas(
     const digitado = (valores[chave] ?? '').trim()
     if (!digitado) continue
     const canonico = valorNumericoCanonico(campo.tipo_campo, digitado)
-    if (canonico === null) return { ok: false, rotulo: campo.rotulo }
+    if (canonico === null) return { ok: false, rotulo: campo.rotulo, campoId: campo.id }
     respostas[chave] = canonico
   }
   return { ok: true, respostas }
+}
+
+/**
+ * v6.5.3 — obrigatórios e "data no passado" checados NO MODAL, antes de ir ao banco. Espelho de
+ * `app.solic_validar_e_snapshotar` (0212), que segue sendo a fonte de verdade — isto só faz o erro
+ * aparecer no campo certo (foco + borda) em vez de voltar do servidor como faixa no rodapé.
+ * Ordem = ordem dos campos na tela; devolve o PRIMEIRO problema. `anexosOk[id]` = quantos anexos
+ * daquele campo já subiram sem erro.
+ */
+export function validarCamposAbertura(
+  campos: readonly { id?: number; rotulo: string; tipo_campo: string; obrigatorio: boolean; data_permite_passado?: boolean }[],
+  valores: Record<string, string>,
+  anexosOk: Record<number, number>,
+  hoje: string = hojeSP(),
+): { campoId: number; mensagem: string } | null {
+  for (const campo of campos) {
+    if (campo.id == null) continue
+    if (campo.tipo_campo === 'anexo') {
+      if (campo.obrigatorio && !(anexosOk[campo.id] > 0)) {
+        return { campoId: campo.id, mensagem: `Anexe um arquivo em "${campo.rotulo}".` }
+      }
+      continue
+    }
+    const v = (valores[String(campo.id)] ?? '').trim()
+    if (!v) {
+      if (!campo.obrigatorio) continue
+      return {
+        campoId: campo.id,
+        mensagem: campo.tipo_campo === 'data'
+          ? `Escolha uma data em "${campo.rotulo}".`
+          : `Preencha o campo obrigatório "${campo.rotulo}".`,
+      }
+    }
+    // Banco: `NOT data_permite_passado AND valor < hoje (SP)`. Ausente = permite (o default do
+    // campo é true, e a RPC de tipos pode não emitir a chave em campo antigo).
+    if (campo.tipo_campo === 'data' && campo.data_permite_passado === false && v < hoje) {
+      return { campoId: campo.id, mensagem: `"${campo.rotulo}" não admite data no passado.` }
+    }
+  }
+  return null
+}
+
+/** v6.5.3 — destinatários do e-mail de uma NOTA: os envolvidos menos quem comentou (sem diferenciar
+ *  maiúscula nem espaço). Autor desconhecido (`null`) não exclui ninguém. */
+export function semOAutor(envolvidos: readonly string[], autor: string | null | undefined): string[] {
+  const a = autor?.trim().toLowerCase()
+  return a ? envolvidos.filter(e => e.trim().toLowerCase() !== a) : [...envolvidos]
 }
 
 /** Resumo (2-3 primeiros campos preenchidos) para cards/linhas. */

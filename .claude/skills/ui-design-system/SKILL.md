@@ -161,6 +161,19 @@ Migração de call-site legado (tela antiga que ainda não usa o primitivo) é i
 byte-equivalente quando a tela for tocada por outro motivo; não é preciso caçar e
 converter one-offs que ninguém está mexendo.
 
+### 2.0 — Campo de data e campo inválido: duas armadilhas que nenhum gate vê (v6.5.3)
+
+- **`<input type="date">` VAZIO no Safari do macOS mostra a data de HOJE**, com cara de preenchido — o valor é
+  `''`. Uma usuária enviou "26/11/2026" e levou "Informe a data-limite." (o erro de validação no navegador não
+  chega a log nenhum; só se soube pela reclamação). Campo de data obrigatório: nasça com valor padrão quando
+  houver um sensato, e pinte o vazio como placeholder — molde `CampoData`
+  (`src/components/solicitacoes/campo-data.tsx`). Os outros `type="date"` do app (Antecipações, Inventário,
+  Estante, filtros de período) ainda têm o risco.
+- **Borda de erro em campo focado precisa de `!`.** O `.foco-neutro:focus-visible` do `globals.css` está FORA de
+  `@layer`, e CSS sem layer vence utilitário do Tailwind 4 qualquer que seja a especificidade: um
+  `aria-invalid:border-danger` some exatamente quando o formulário FOCA o campo inválido. Por isso o `CAMPO` usa
+  `aria-invalid:border-danger!`. Vale para qualquer utilitário que precise ganhar do foco neutro.
+
 ### 2.1 — Cortina (qualquer coisa que expande/recolhe)
 
 A curva é uma só, aprovada em mockup pelo Yan (v5.1.9): **450ms

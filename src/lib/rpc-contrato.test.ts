@@ -505,6 +505,29 @@ describe('contrato RPC — ITEM de solic_json (M7: shape real + invariante NULL-
       expect(r.data.status).toBe('concluida')
     }
   })
+  // v6.5.3 (0309) — `notas` e `respostas[].moeda`, nas três formas (achado MÉDIO do revisor):
+  // AUSENTE (RPC antiga durante o rollout → `notas` vira []), vazio/nulo e PREENCHIDO. O fixture
+  // acima é anterior à 0309 e só cobriria o "ausente" — implicitamente.
+  it('notas: ausente vira [], [] passa, preenchida conserva autor/texto/instante', () => {
+    const ausente = solicitacaoSchema.safeParse(SOLIC_JSON_FIXTURE)
+    expect(ausente.success).toBe(true)
+    if (ausente.success) expect(ausente.data.notas).toEqual([])
+    expect(solicitacaoSchema.safeParse({ ...SOLIC_JSON_FIXTURE, notas: [] }).success).toBe(true)
+    const nota = { id: 1, autor_email: 'yan@welcometrips.com.br', texto: 'segue o comprovante', criado_em: '2026-11-26T19:42:00.000000+00:00' }
+    const r = solicitacaoSchema.safeParse({ ...SOLIC_JSON_FIXTURE, notas: [nota, { ...nota, id: 2, autor_email: null }] })
+    expect(r.success, r.success ? '' : `drift de notas: ${JSON.stringify(r.error!.issues.slice(0, 5))}`).toBe(true)
+    if (r.success) expect(r.data.notas.map(n => n.autor_email)).toEqual(['yan@welcometrips.com.br', null])
+  })
+  it('respostas[].moeda: ausente (pré-0309), código da lista e código inesperado NÃO reprovam a lista', () => {
+    const comMoeda = (moeda: unknown) => ({
+      ...SOLIC_JSON_FIXTURE,
+      respostas: SOLIC_JSON_FIXTURE.respostas.map(x => (x.tipo_campo === 'moeda' ? { ...x, moeda } : x)),
+    })
+    for (const m of ['USD', 'EUR', 'BRL', 'GBP', null]) {
+      const r = solicitacaoSchema.safeParse(comMoeda(m))
+      expect(r.success, `moeda ${String(m)} reprovou o item inteiro`).toBe(true)
+    }
+  })
 })
 
 // v4.34.0: o acervo em produção está VAZIO — o caso de acervo_listar em CONTRATOS_PARSE_RPC
@@ -998,7 +1021,10 @@ describe.skipIf(!ON || !ANON)('contrato RBAC — guards e revogações (v4.13)',
     // tipo de mudança que precisa de guarda mecânica.
     for (const fn of ['solic_minhas', 'solic_caixa', 'solic_tipos_abertura', 'solic_destinatarios',
                       'solic_concluir', 'criar_solicitacao', 'admin_solic_listar_tipos',
-                      'solic_tipos_documentacao', 'solic_movimentacoes']) {
+                      'solic_tipos_documentacao', 'solic_movimentacoes',
+                      // v6.5.3 (0309) — escreve; por isso SÓ aqui (string solta, fora do
+                      // `fn:`/`rpc('…')` que o derivador da allowlist do `verificador` lê).
+                      'solic_nota_adicionar']) {
       const status = await rpcAnonStatus(fn, {})
       expect(status, `${fn} deveria negar anon`).toBeGreaterThanOrEqual(400)
     }

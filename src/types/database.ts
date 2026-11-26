@@ -1071,6 +1071,10 @@ export type Database = {
       solic_minhas: { Args: never; Returns: Json }
       solic_minhas_pendencias: { Args: never; Returns: number }
       solic_movimentacoes: { Args: never; Returns: Json }
+      solic_nota_adicionar: {
+        Args: { p_id: number; p_texto: string }
+        Returns: Json
+      }
       solic_promover_anexos: {
         Args: { p_de_para: Json; p_solicitacao_id: number }
         Returns: number

@@ -35,6 +35,38 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '6.5.3',
+    data: '2026-11-26T16:27', // horário real de autoria; reconciliar ao horário do merge no /pos-merge
+    itens: [
+      {
+        tipo: 'correcao',
+        texto:
+          'Quem usa Safari no Mac não conseguia abrir uma solicitação: o campo de prazo parecia preenchido, mas ' +
+          'estava vazio. O prazo agora já vem preenchido com três dias a partir de hoje (dá para alterar), e, ' +
+          'quando falta alguma informação, o formulário leva direto ao campo que precisa ser corrigido.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'Pedidos com valor podem ser feitos em real, dólar ou euro, e a moeda aparece na solicitação, na ' +
+          'planilha exportada e nos pedidos que chegam por integração.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'Cada solicitação ganhou uma área de Notas: mostra o histórico (quem abriu, aprovou, concluiu ou ' +
+          'rejeitou, e quando) e permite deixar comentários, mesmo depois de encerrada. Quem acompanha o pedido ' +
+          'recebe o comentário por e-mail.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'O Registro de Antecipações mostra o percentual da taxa sobre o valor antecipado de cada operação, ' +
+          'também na planilha exportada.',
+      },
+    ],
+  },
+  {
     versao: '6.5.2',
     data: '2026-11-25T16:39', // horário real do merge (PR #312), reconciliado no /pos-merge
     itens: [

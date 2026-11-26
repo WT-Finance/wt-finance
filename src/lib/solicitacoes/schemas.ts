@@ -44,6 +44,17 @@ export const campoDefSchema = z.object({
 })
 export type CampoDef = z.infer<typeof campoDefSchema>
 
+// Moedas de um campo `moeda` (v6.5.3, migration 0309). Código ISO no banco; símbolo na tela.
+// Ordem = ordem do seletor. Lista FECHADA, espelho do `IN ('BRL','USD','EUR')` da 0309.
+export const MOEDAS = ['BRL', 'USD', 'EUR'] as const
+export type Moeda = (typeof MOEDAS)[number]
+export const SIMBOLO_MOEDA: Record<Moeda, string> = { BRL: 'R$', USD: 'US$', EUR: '€' }
+/** Código de moeda lido do snapshot → Moeda. Ausente (resposta anterior à 0309) ou fora da
+ *  lista = BRL: o "R$" era fixo no campo, então tudo o que já existe é real. */
+export function moedaDe(codigo: string | null | undefined): Moeda {
+  return (MOEDAS as readonly string[]).includes(codigo ?? '') ? (codigo as Moeda) : 'BRL'
+}
+
 // Resposta gravada (snapshot imutável por solicitação).
 export const respostaSchema = z.object({
   campo_id:    z.number(),
@@ -52,6 +63,9 @@ export const respostaSchema = z.object({
   obrigatorio: z.boolean().optional(),
   opcoes:      z.array(z.string()).nullable().optional(),
   valor:       z.string().nullable(),
+  // v6.5.3 (0309) — só em campo `moeda`. String livre (não enum): um código inesperado não
+  // pode reprovar o parse da LISTA inteira (HTTP 500 na tela); `moedaDe` o normaliza.
+  moeda:       z.string().nullable().optional(),
 })
 
 export const anexoSchema = z.object({
@@ -67,6 +81,15 @@ export const anexoSchema = z.object({
   // o parse quando vem undefined, e parse reprovado vira 500 na tela).
   sou_autor: z.boolean().optional(),
 })
+
+// Comentário (v6.5.3, migration 0309) — evento imutável; a ordem vem do banco (criado_em, id).
+export const notaSchema = z.object({
+  id:          z.number(),
+  autor_email: z.string().nullable(),
+  texto:       z.string(),
+  criado_em:   z.string(),
+})
+export type Nota = z.infer<typeof notaSchema>
 
 const destinatarioSchema = z.object({ tipo: z.enum(['usuario','role']), rotulo: z.string().nullable() })
 
@@ -100,6 +123,9 @@ export const solicitacaoSchema = z.object({
   // na tela. .optional() (não só .nullable()): a RPC antiga pode ainda não
   // emitir esta chave durante o rollout (lição v4.12.1/ADR-0118).
   origem: z.object({ plataforma: z.string() }).nullable().optional(),
+  // Notas (v6.5.3, 0309). .default([]): a RPC antiga não emite a chave durante o rollout —
+  // e quem lê não precisa distinguir "sem notas" de "chave ausente".
+  notas: z.array(notaSchema).optional().default([]),
 }).passthrough()
 export type Solicitacao = z.infer<typeof solicitacaoSchema>
 

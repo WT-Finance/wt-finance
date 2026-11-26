@@ -165,10 +165,12 @@ export function templateSenhaProvisoria(input: {
 // Rejeição inclui a justificativa. Reusa TemplateSenha como shape de retorno. (scaffold
 // duplicado de propósito — ver docs/email-layout-guide.md §5.)
 
-export type MovimentacaoEmail = 'criada' | 'aprovada' | 'concluida' | 'rejeitada' | 'cancelada'
+// v6.5.3 — 'nota': comentário na seção Notas (0309). Não é mudança de estado: assunto e
+// cabeçalho próprios ("Nova nota"), e o corpo traz quem comentou e o texto.
+export type MovimentacaoEmail = 'criada' | 'aprovada' | 'concluida' | 'rejeitada' | 'cancelada' | 'nota'
 const MOV_PT: Record<MovimentacaoEmail, string> = {
   criada: 'criada', aprovada: 'aprovada', concluida: 'concluída',
-  rejeitada: 'rejeitada', cancelada: 'cancelada',
+  rejeitada: 'rejeitada', cancelada: 'cancelada', nota: 'comentada',
 }
 // Cor do status (badge + faixa lateral) por movimentação — MESMA paleta das badges da
 // página Movimentações: criada=dourado, aprovada=âmbar, concluída=verde,
@@ -176,9 +178,10 @@ const MOV_PT: Record<MovimentacaoEmail, string> = {
 // 'aprovada' usa o --warning-DEEP (#8A6413), não o --warning puro (#D9A23F): este último
 // é vizinho demais do dourado de 'criada' (#BD965C) e as duas faixas ficariam quase
 // indistinguíveis na caixa de entrada — que é justamente onde a distinção importa.
+// 'nota' = neutro (o --text-primary), como o comentário na tela.
 const MOV_COR: Record<MovimentacaoEmail, string> = {
   criada: '#BD965C', aprovada: '#8A6413', concluida: '#5F7A3D',
-  rejeitada: '#A35442', cancelada: '#75777B',
+  rejeitada: '#A35442', cancelada: '#75777B', nota: '#2D2A26',
 }
 
 export function templateNotificacaoSolicitacao(input: {
@@ -189,6 +192,8 @@ export function templateNotificacaoSolicitacao(input: {
   /** 'DD/MM/AAAA às HH:MM' (fuso SP) — quando a movimentação ocorreu. */
   quando?:         string | null
   justificativa?:  string | null
+  /** v6.5.3 — só em 'nota': quem comentou (e-mail) e o texto. */
+  nota?:           { autor: string; texto: string } | null
   link?:           string | null
 }): TemplateSenha {
   const mov    = MOV_PT[input.movimentacao]
@@ -197,12 +202,19 @@ export function templateNotificacaoSolicitacao(input: {
   const quando = input.quando?.trim() || null
   const link   = input.link?.trim() || null
   const just   = input.movimentacao === 'rejeitada' ? (input.justificativa?.trim() || null) : null
+  const nota   = input.movimentacao === 'nota' && input.nota?.texto.trim()
+    ? { autor: input.nota.autor, texto: input.nota.texto.trim() } : null
+  const rotuloFaixa = input.movimentacao === 'nota' ? 'Nova nota' : `Solicitação ${mov}`
 
   // Formato do assunto interno (checkpoint v4.40.0): "[Assunto] | Janus".
-  const assunto = `Solicitação ${mov}: ${titulo} | ${APP_NOME_INTERNO}`
+  const assunto = input.movimentacao === 'nota'
+    ? `Nova nota: ${titulo} | ${APP_NOME_INTERNO}`
+    : `Solicitação ${mov}: ${titulo} | ${APP_NOME_INTERNO}`
 
   const text =
-    `A solicitação "${titulo}" foi ${mov}${quando ? ` em ${quando}` : ''}.\n\n` +
+    (nota
+      ? `${nota.autor} comentou na solicitação "${titulo}"${quando ? ` em ${quando}` : ''}:\n\n${nota.texto}\n\n`
+      : `A solicitação "${titulo}" foi ${mov}${quando ? ` em ${quando}` : ''}.\n\n`) +
     `Atribuída a ${input.atribuidoRotulo}, por ${input.autorRotulo}.\n\n` +
     (just ? `Justificativa: ${just}\n\n` : '') +
     (link ? `Acesse suas solicitações: ${link}\n\n` : '') +
@@ -211,6 +223,18 @@ export function templateNotificacaoSolicitacao(input: {
 
   const dataLinha = quando
     ? `<div style="font-size:12px;color:${COR_TENUE};margin-top:7px;">${escaparHtml(quando)}</div>`
+    : ''
+
+  // v6.5.3 — o comentário: mesmo cartão da justificativa, com quem comentou no rótulo.
+  const notaLinha = nota
+    ? `<tr><td class="em-pad" style="padding:16px 40px 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COR_SENHA_BG};border:1px solid ${COR_BORDA};border-radius:12px;">
+          <tr><td style="padding:14px 16px;">
+            <div style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:${COR_LABEL};margin-bottom:6px;">${escaparHtml(nota.autor)} comentou</div>
+            <div style="font-size:14px;line-height:1.6;color:${COR_TEXTO};">${escaparHtml(nota.texto).replace(/\r?\n/g, '<br>')}</div>
+          </td></tr>
+        </table>
+      </td></tr>`
     : ''
 
   const justLinha = just
@@ -255,7 +279,7 @@ export function templateNotificacaoSolicitacao(input: {
       <tr><td class="em-pad" style="padding:26px 40px 0;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COR_SENHA_BG};border:1px solid ${COR_BORDA};border-left:3px solid ${cor};border-radius:12px;">
           <tr><td style="padding:16px 18px;">
-            <div style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:${cor};font-weight:bold;margin-bottom:7px;">Solicitação ${mov}</div>
+            <div style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:${cor};font-weight:bold;margin-bottom:7px;">${rotuloFaixa}</div>
             <div style="font-size:18px;font-weight:bold;line-height:1.4;color:${COR_TITULO};">${escaparHtml(titulo)}</div>
             ${dataLinha}
           </td></tr>
@@ -264,6 +288,7 @@ export function templateNotificacaoSolicitacao(input: {
       <tr><td class="em-pad" style="padding:18px 40px 0;">
         <p style="margin:0;font-size:14px;line-height:1.65;color:${COR_TEXTO};">Atribuída a <strong style="color:${COR_TITULO};">${escaparHtml(input.atribuidoRotulo)}</strong>, por <strong style="color:${COR_TITULO};">${escaparHtml(input.autorRotulo)}</strong>.</p>
       </td></tr>
+      ${notaLinha}
       ${justLinha}
       ${botaoLinha}
       <tr><td class="em-pad" style="padding:26px 40px 38px;">

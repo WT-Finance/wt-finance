@@ -9,6 +9,7 @@ import { sanitizarNomeArquivo } from '@/lib/storage/nome-arquivo'
 import { fmtDataHoraSP } from '@/lib/fmt'
 import { getDetalhe, getEmailsEnvolvidos } from '@/lib/solicitacoes/rpc'
 import { emAndamento } from '@/lib/solicitacoes/schemas'
+import { semOAutor } from '@/lib/solicitacoes/format'
 import { enviarNotificacaoSolicitacao, type MovimentacaoEmail } from '@/lib/email'
 import type { Solicitacao } from '@/lib/solicitacoes/schemas'
 
@@ -23,6 +24,8 @@ const MIME_OK = new Set([
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv',
 ])
 const MAX_BYTES = 10 * 1024 * 1024
+/** Teto de uma nota — espelho do CHECK de `app.solicitacao_nota` e de `solic_nota_adicionar` (0309). */
+const MAX_NOTA = 2000
 /** Caminho de anexo da abertura como `uploadAnexo` o gera: `tmp/<uuid>/<nome sanitizado>`. */
 const CAMINHO_TMP = /^tmp\/[0-9a-f-]{36}\/[A-Za-z0-9._-]+$/
 
@@ -48,6 +51,8 @@ async function notificarMovimentacao(
    *  a aprovação não toca `decidido_em` de propósito — sem este override o e-mail sairia
    *  sem data, em silêncio. */
   quandoOverride?: string | null,
+  /** v6.5.3 — 'nota': o comentário e o e-mail do AUTOR, que não recebe o próprio aviso. */
+  opcoes?: { nota?: { autor: string; texto: string }; excluirEmail?: string | null },
 ): Promise<void> {
   try {
     const ctx = await getEmailsEnvolvidos(id)
@@ -59,18 +64,26 @@ async function notificarMovimentacao(
       console.error(`[solicitacoes] notificação #${id} (${movimentacao}): nenhum envolvido com e-mail — nada enviado.`)
       return
     }
+    const paras = semOAutor(ctx.envolvidos_emails, opcoes?.excluirEmail)
+    // Quem comentou era o único envolvido (ex.: abriu para si mesmo): não há a quem avisar.
+    // É o caminho normal, não falha — por isso fora do log de erro acima.
+    if (paras.length === 0) return
     // 'criada' usa o criado_em; concluir/rejeitar/cancelar usam o decidido_em (quando agiu);
     // 'aprovada' não tem nenhum dos dois no contexto e chega pelo override do caller.
-    const quando = quandoOverride ?? (movimentacao === 'criada' ? ctx.criado_em_fmt : ctx.decidido_em_fmt)
+    // 'nota' só vale pelo override (o instante que a RPC gravou): cair no decidido_em diria
+    // "comentou em <data do encerramento>" (achado MÉDIO do revisor).
+    const quando = quandoOverride ?? (movimentacao === 'criada' ? ctx.criado_em_fmt
+      : movimentacao === 'nota' ? null : ctx.decidido_em_fmt)
     // Falha parcial é logada pela CAMADA (o rótulo lá inclui "Tipo #id") — não repetir aqui.
     await enviarNotificacaoSolicitacao({
-      paras:           ctx.envolvidos_emails,
+      paras,
       movimentacao,
       titulo:          `${ctx.tipo_nome ?? 'Solicitação'} #${id}`,
       atribuidoRotulo: ctx.atribuido_rotulo ?? '—',
       autorRotulo:     ctx.autor_rotulo ?? '—',
       quando,
       justificativa,
+      nota:            opcoes?.nota ?? null,
     })
   } catch (err) {
     // E-mail é camada ADICIONAL: jamais quebra a movimentação — mas nunca em silêncio.
@@ -382,6 +395,33 @@ export async function rejeitarSolicitacao(id: number, justificativa: string): Pr
   revalidatePath('/solicitacoes'); return { ok: true }
 }
 
+/**
+ * v6.5.3 — comentário na seção Notas (0309). Quem vê a solicitação comenta, em qualquer
+ * status (inclusive encerrada); a RPC enforça. Não fecha o drawer nem muda status.
+ * O e-mail vai aos envolvidos MENOS o autor, com o instante e o e-mail que a RPC devolve
+ * do ato que gravou (skill email: o contexto genérico não conhece a nota).
+ */
+export async function adicionarNota(id: number, texto: string): Promise<{ ok: boolean; erro?: string }> {
+  await requireAreaAction(null)
+  if (typeof texto !== 'string') return { ok: false, erro: 'Escreva a nota antes de salvar.' }
+  const limpo = texto.trim()
+  if (!limpo) return { ok: false, erro: 'Escreva a nota antes de salvar.' }
+  if (limpo.length > MAX_NOTA) return { ok: false, erro: `A nota passa de ${MAX_NOTA} caracteres.` }
+  const { data, error } = await rpcSessao('solic_nota_adicionar', { p_id: id, p_texto: limpo })
+  if (error) return { ok: false, erro: traduzir(error.message) }
+  const r = data as { autor_email?: string | null; criado_em_fmt?: string | null } | null
+  const autor = typeof r?.autor_email === 'string' ? r.autor_email : null
+  if (!autor || typeof r?.criado_em_fmt !== 'string') {
+    // Não derruba a nota (já gravada); só torna visível que o e-mail sai sem excluir o autor/sem data.
+    console.error(`[solicitacoes] nota #${id}: retorno de solic_nota_adicionar sem autor_email/criado_em_fmt.`)
+  }
+  await notificarMovimentacao(id, 'nota', null, typeof r?.criado_em_fmt === 'string' ? r.criado_em_fmt : null, {
+    nota: { autor: autor ?? 'Alguém', texto: limpo },
+    excluirEmail: autor,
+  })
+  revalidatePath('/solicitacoes'); return { ok: true }
+}
+
 export async function cancelarSolicitacao(id: number): Promise<{ ok: boolean; erro?: string }> {
   await requireAreaAction(null)
   const { error } = await rpcSessao('solic_cancelar', { p_id: id })
@@ -416,6 +456,9 @@ function traduzir(msg: string): string {
     // Anexo pós-abertura vai para "Outros anexos"; exclusão só vale lá.
     ANEXO_SO_LIVRE: 'Anexos enviados depois da abertura entram em "Outros anexos".',
     ANEXO_DA_ABERTURA: 'Anexos enviados na abertura da solicitação não podem ser excluídos.',
+    // v6.5.3/0309 — Notas.
+    NOTA_VAZIA: 'Escreva a nota antes de salvar.',
+    NOTA_LONGA: 'A nota passa de 2000 caracteres.',
   }
   const prefixo = (msg.split(':')[0] ?? '').trim()
   // v6.2.1 — nos erros de CAMPO o detalhe diz QUAL campo, e é o que o usuário precisa para

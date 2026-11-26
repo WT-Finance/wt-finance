@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { toNum } from '@/lib/carga/coercao'
-import { fmtValor, vencida, fmtDataBR, hojeSP, casaBuscaSolicitacao, maisRecentePrimeiro, valorNumericoCanonico, previaValorNumerico, normalizarRespostasNumericas, REGEX_NUMERICO_BANCO } from './format'
+import { fmtValor, vencida, fmtDataBR, hojeSP, casaBuscaSolicitacao, maisRecentePrimeiro, valorNumericoCanonico, previaValorNumerico, normalizarRespostasNumericas, REGEX_NUMERICO_BANCO, semOAutor, somarDiasISO, dataLimitePadrao, PRAZO_PADRAO_DIAS, validarCamposAbertura } from './format'
 import type { Solicitacao } from './schemas'
 
 // Cobre a coerção/limite de Solicitações (v4.17.0 / Balde 2). fmtValor agora usa o
@@ -235,7 +235,91 @@ describe('normalizarRespostasNumericas — o envio do modal', () => {
   it('campo vazio fica como está (obrigatório é do servidor)', () => {
     expect(normalizarRespostasNumericas(campos, { '10': '' })).toEqual({ ok: true, respostas: { '10': '' } })
   })
-  it('valor ilegível devolve o RÓTULO do campo', () => {
-    expect(normalizarRespostasNumericas(campos, { '10': '-', '11': '2' })).toEqual({ ok: false, rotulo: 'Valor' })
+  it('valor ilegível devolve o RÓTULO e o id do campo', () => {
+    expect(normalizarRespostasNumericas(campos, { '10': '-', '11': '2' })).toEqual({ ok: false, rotulo: 'Valor', campoId: 10 })
+  })
+})
+
+describe('dataLimitePadrao — hoje + 3 dias CORRIDOS (v6.5.3)', () => {
+  it('soma dias de calendário, cruzando mês, ano e fevereiro', () => {
+    expect(somarDiasISO('2026-11-26', 3)).toBe('2026-11-29')
+    expect(somarDiasISO('2026-11-29', 3)).toBe('2026-12-02')
+    expect(somarDiasISO('2026-12-30', 3)).toBe('2027-01-02')
+    expect(somarDiasISO('2028-02-27', 3)).toBe('2028-03-01') // 2028 é bissexto
+    expect(somarDiasISO('2027-02-27', 3)).toBe('2027-03-02')
+  })
+  it('corridos, não úteis: sexta + 3 = segunda', () => {
+    expect(dataLimitePadrao('2026-11-27')).toBe('2026-11-30')
+  })
+  it('sem argumento, parte de hoje em São Paulo', () => {
+    expect(dataLimitePadrao()).toBe(somarDiasISO(hojeSP(), PRAZO_PADRAO_DIAS))
+  })
+})
+
+describe('validarCamposAbertura — o erro nasce no campo, não só no rodapé (v6.5.3)', () => {
+  const HOJE = '2026-11-26'
+  const campos = [
+    { id: 1, rotulo: 'Venda', tipo_campo: 'texto_curto', obrigatorio: true },
+    { id: 2, rotulo: 'Vencimento', tipo_campo: 'data', obrigatorio: true, data_permite_passado: false },
+    { id: 3, rotulo: 'Comprovante', tipo_campo: 'anexo', obrigatorio: true },
+    { id: 4, rotulo: 'Observação', tipo_campo: 'texto_longo', obrigatorio: false },
+  ]
+  const completo = { '1': '75744', '2': '2026-11-30' }
+  it('tudo preenchido passa', () => {
+    expect(validarCamposAbertura(campos, completo, { 3: 1 }, HOJE)).toBeNull()
+  })
+  it('obrigatório vazio (ou só espaços) devolve o PRIMEIRO, na ordem da tela', () => {
+    expect(validarCamposAbertura(campos, { '1': '  ' }, {}, HOJE))
+      .toEqual({ campoId: 1, mensagem: 'Preencha o campo obrigatório "Venda".' })
+  })
+  it('data obrigatória vazia pede para ESCOLHER a data (o Safari mostra hoje num campo vazio)', () => {
+    expect(validarCamposAbertura(campos, { '1': 'x' }, { 3: 1 }, HOJE))
+      .toEqual({ campoId: 2, mensagem: 'Escolha uma data em "Vencimento".' })
+  })
+  it('data no passado barra só quando o campo não admite; hoje é aceito', () => {
+    expect(validarCamposAbertura(campos, { ...completo, '2': '2026-11-25' }, { 3: 1 }, HOJE))
+      .toEqual({ campoId: 2, mensagem: '"Vencimento" não admite data no passado.' })
+    expect(validarCamposAbertura(campos, { ...completo, '2': HOJE }, { 3: 1 }, HOJE)).toBeNull()
+    const permite = [{ id: 9, rotulo: 'Ocorrência', tipo_campo: 'data', obrigatorio: true }]
+    expect(validarCamposAbertura(permite, { '9': '2020-01-01' }, {}, HOJE)).toBeNull()
+  })
+  it('anexo obrigatório conta só o que SUBIU', () => {
+    expect(validarCamposAbertura(campos, completo, { 3: 0 }, HOJE))
+      .toEqual({ campoId: 3, mensagem: 'Anexe um arquivo em "Comprovante".' })
+  })
+  it('opcional vazio não barra', () => {
+    expect(validarCamposAbertura(campos.slice(3), {}, {}, HOJE)).toBeNull()
+  })
+})
+
+describe('moeda da resposta (v6.5.3, 0309)', () => {
+  const r = (valor: string, moeda?: string | null) => ({ campo_id: 1, rotulo: 'Valor', tipo_campo: 'moeda' as const, valor, moeda })
+  it('sem moeda (resposta anterior à 0309) é real', () => {
+    expect(fmtValor(r('1.318'))).toBe('R$\u00a01.318,00')
+  })
+  it('US$ e € com os símbolos do seletor', () => {
+    expect(fmtValor(r('1200', 'USD'))).toBe('US$\u00a01.200,00')
+    expect(fmtValor(r('1200', 'EUR'))).toBe('€\u00a01.200,00')
+  })
+  it('código fora da lista não quebra: cai em real', () => {
+    expect(fmtValor(r('5', 'GBP'))).toBe('R$\u00a05,00')
+  })
+  it('prévia do modal na moeda escolhida', () => {
+    expect(previaValorNumerico('moeda', '1.234,56', 'USD')).toBe('US$\u00a01.234,56')
+    expect(previaValorNumerico('moeda', '1.234,56')).toBe('R$\u00a01.234,56')
+  })
+})
+
+describe('semOAutor — e-mail da nota não volta para quem comentou (v6.5.3)', () => {
+  const env = ['Ana@X.com', 'carine@x.com', 'yan@x.com']
+  it('exclui o autor sem diferenciar maiúscula nem espaço', () => {
+    expect(semOAutor(env, '  ana@x.com ')).toEqual(['carine@x.com', 'yan@x.com'])
+  })
+  it('autor desconhecido não exclui ninguém', () => {
+    expect(semOAutor(env, null)).toEqual(env)
+    expect(semOAutor(env, '')).toEqual(env)
+  })
+  it('autor único envolvido → ninguém a avisar', () => {
+    expect(semOAutor(['yan@x.com'], 'YAN@x.com')).toEqual([])
   })
 })
