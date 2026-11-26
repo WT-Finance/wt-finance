@@ -15,6 +15,7 @@ import { concluirSolicitacao, rejeitarSolicitacao, cancelarSolicitacao, anexoUrl
   aprovarSolicitacao, anexarEmSolicitacao, uploadAnexo, descartarAnexos, excluirAnexo, type AnexoMeta } from '@/app/solicitacoes/actions'
 import { STATUS_LABEL, statusBadge, fmtDataBR, fmtValor, vencida } from '@/lib/solicitacoes/format'
 import { emAndamento } from '@/lib/solicitacoes/schemas'
+import NotasSolicitacao from './notas-solicitacao'
 import type { Solicitacao } from '@/lib/solicitacoes/schemas'
 
 const INPUT = `${CAMPO} resize-none`
@@ -382,24 +383,13 @@ export default function DrawerSolicitacao({ sol, onClose, onAtualizar }: {
         </div>
       )}
 
-      {/* Trilha da APROVAÇÃO (v5.9.0) — independente do desfecho: continua visível depois
-          de concluída/rejeitada/cancelada, porque `aprovado_em` não é derivado do status.
-          É o que impede o desfecho de apagar o registro de quem autorizou. */}
-      {sol.aprovado_em && (
-        <div className="border-t border-zinc-100 pt-3 mb-4 text-xs text-warning-deep">
-          <p>Aprovada por {sol.aprovado_por_email ?? '—'} em {fmtDataHoraSP(sol.aprovado_em)}.</p>
-        </div>
-      )}
-
-      {/* Encerramento: só quando de fato encerrou. Era `status !== 'aberta'`, o que com a
-          etapa nova exibiria "Aprovada por — em [vazio]" usando os campos da decisão
-          TERMINAL, que uma aprovada ainda não tem. */}
-      {!emAnd && (
-        <div className="border-t border-zinc-100 pt-3 mb-4 text-xs text-zinc-500">
-          <p>{STATUS_LABEL[sol.status]} por {sol.decidido_por_email ?? '—'} em {fmtDataHoraSP(sol.decidido_em)}.</p>
-          {sol.justificativa && <p className="mt-1"><span className="font-medium">Justificativa:</span> {sol.justificativa}</p>}
-        </div>
-      )}
+      {/* v6.5.3 — Notas: a linha do tempo (abertura, aprovação, desfecho com a justificativa) e
+          os comentários. Os blocos "Aprovada por…" e "Encerramento" passaram a viver SÓ aqui
+          (decisão do Yan). A aprovação segue visível depois do desfecho porque `aprovado_em`
+          não é derivado do status (v5.9.0) — a regra mora em `linhaDoTempo`. Comentar vale em
+          qualquer status, inclusive encerrada; por isso a seção fica FORA da barra de ações,
+          que some numa encerrada. */}
+      <NotasSolicitacao sol={sol} onAtualizar={onAtualizar} />
 
       {(podeAprovar || podeConcluir || podeRejeitar || podeCancelar) && (
         <div className="sticky -bottom-5 -mx-6 -mb-5 px-6 py-3 bg-white border-t border-zinc-100 flex flex-wrap gap-2">

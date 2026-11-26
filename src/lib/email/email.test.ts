@@ -185,6 +185,29 @@ describe('templateNotificacaoSolicitacao — 5 movimentações', () => {
     expect(corDe('aprovada')).not.toBe(corDe('criada'))
   })
 
+  // v6.5.3 — 'nota' (0309). Variante nova pede caso que EXIJA o conteúdo (skill email):
+  // o template trata campo ausente como vazio por desenho, e um e-mail de nota sem o texto
+  // ou sem quem comentou sairia bonito e inútil.
+  it('nota: assunto "Nova nota", quem comentou, o TEXTO e a DATA no text e no html', () => {
+    const t = templateNotificacaoSolicitacao({ movimentacao: 'nota', ...base, quando: '26/11/2026 às 16:42',
+      nota: { autor: 'yan@welcometrips.com.br', texto: 'Segue o comprovante <b>ok</b>' } })
+    expect(t.assunto).toBe('Nova nota: Lançamentos #42 | Janus')
+    expect(t.text).toContain('yan@welcometrips.com.br comentou na solicitação "Lançamentos #42" em 26/11/2026 às 16:42:')
+    expect(t.text).toContain('Segue o comprovante <b>ok</b>')
+    expect(t.html).toContain('Nova nota')
+    expect(t.html).toContain('yan@welcometrips.com.br comentou')
+    expect(t.html).toContain('26/11/2026 às 16:42')
+    expect(t.html).toContain('Segue o comprovante &lt;b&gt;ok&lt;/b&gt;')   // escapado
+    expect(t.html).not.toContain('Solicitação comentada')
+  })
+
+  it('nota: texto só aparece na variante nota (e justificativa não vaza para ela)', () => {
+    const outra = templateNotificacaoSolicitacao({ movimentacao: 'concluida', ...base, nota: { autor: 'a@x', texto: 'nao deveria aparecer' } })
+    expect(outra.html).not.toContain('nao deveria aparecer')
+    const nota = templateNotificacaoSolicitacao({ movimentacao: 'nota', ...base, justificativa: 'tambem nao', nota: { autor: 'a@x', texto: 'oi' } })
+    expect(nota.html).not.toContain('tambem nao')
+  })
+
   it('aprovada: SEM justificativa mesmo se passada (só rejeição a exibe)', () => {
     const t = templateNotificacaoSolicitacao({ movimentacao: 'aprovada', ...base, justificativa: 'nao deveria aparecer' })
     expect(t.html).not.toContain('nao deveria aparecer')

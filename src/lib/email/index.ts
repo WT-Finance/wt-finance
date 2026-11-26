@@ -244,6 +244,8 @@ export async function enviarNotificacaoSolicitacao(input: {
   autorRotulo:     string
   quando?:         string | null
   justificativa?:  string | null
+  /** v6.5.3 — só em 'nota': quem comentou e o texto. */
+  nota?:           { autor: string; texto: string } | null
 }): Promise<{ enviados: number; total: number }> {
   const cfg = getConfigSmtp()
   // Dedupe + sanidade mínima (evita enviar para entrada inválida).
@@ -258,6 +260,7 @@ export async function enviarNotificacaoSolicitacao(input: {
       autorRotulo:     input.autorRotulo,
       quando:          input.quando,
       justificativa:   input.justificativa,
+      nota:            input.nota,
       link:            base ? `${base}/solicitacoes` : null,
     })
     return await enviarFanOut({
