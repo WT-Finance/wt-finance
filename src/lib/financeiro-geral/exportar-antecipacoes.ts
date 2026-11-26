@@ -31,11 +31,13 @@ export interface ExportacaoAntecipacoes {
 }
 
 export const NOME_ABA_ANTECIPACOES = 'Antecipações'
-export const CABECALHO_ANTECIPACOES = ['Data', 'Conta', 'Antecipado', 'Líquido', 'Taxa'] as const
+export const CABECALHO_ANTECIPACOES = ['Data', 'Conta', 'Antecipado', 'Líquido', 'Taxa', '%'] as const
 export const FMT_MOEDA = '#,##0.00;(#,##0.00)'
 export const FMT_DATA = 'dd/mm/yyyy'
+/** v6.5.3 — taxa ÷ antecipado: a célula guarda a FRAÇÃO, o formato mostra "4,86%". */
+export const FMT_PCT = '0.00%'
 
-const LARGURAS = [12, 34, 18, 18, 18]
+const LARGURAS = [12, 34, 18, 18, 18, 9]
 
 /** 'AAAA-MM-DD' → serial de data do Excel (inteiro). Entrada inválida → null (célula vazia). */
 export function serialExcel(iso: string): number | null {
@@ -47,6 +49,11 @@ export function serialExcel(iso: string): number | null {
 
 function moeda(centavos: number): CelulaNumero {
   return { t: 'n', v: centavos / 100, z: FMT_MOEDA }
+}
+
+/** Percentual sobre centavos inteiros (o mesmo número que a tela mostra); célula vazia sem antecipado. */
+function percentual(taxaCentavos: number, antCentavos: number): Celula {
+  return antCentavos > 0 ? { t: 'n', v: taxaCentavos / antCentavos, z: FMT_PCT } : null
 }
 
 function emCentavos(v: number): number {
@@ -80,10 +87,12 @@ export function montarExportacaoAntecipacoes(
       moeda(ant),
       moeda(liq),
       moeda(taxa),
+      percentual(taxa, ant),
     ]
   })
 
-  const total: Celula[] = ['Total', null, moeda(somaAnt), moeda(somaLiq), moeda(somaTaxa)]
+  // O % do Total é a taxa total sobre o antecipado total (média PONDERADA), não a média dos percentuais.
+  const total: Celula[] = ['Total', null, moeda(somaAnt), moeda(somaLiq), moeda(somaTaxa), percentual(somaTaxa, somaAnt)]
 
   return {
     nome: NOME_ABA_ANTECIPACOES,

@@ -6,7 +6,7 @@
 // frase certa ANTES de ir ao servidor e para o formulário não prometer o que o banco recusaria.
 
 import { toCentavos, toNum } from '@/lib/carga/coercao'
-import { fmtBRL2 } from '@/lib/fmt'
+import { fmtAxisPct, fmtBRL2 } from '@/lib/fmt'
 import type { EntradaHistorico } from './schemas'
 
 /** Área que dá o botão "Registrar antecipação" e libera as RPCs de escrita. */
@@ -62,6 +62,24 @@ export function descontoEmCentavos(antecipado: string, liquido: string): number 
   const l = lerValorDigitado(liquido)
   if (!a.ok || !l.ok || l.centavos > a.centavos) return null
   return a.centavos - l.centavos
+}
+
+/** v6.5.3 — percentual da taxa sobre o valor ANTECIPADO, como fração (0,0486 = 4,86%). `null` quando o
+ *  antecipado não é positivo (não há percentual a dar). Mesma unidade em reais ou centavos. */
+export function taxaPercentual(valorAntecipado: number, desconto: number): number | null {
+  return valorAntecipado > 0 ? desconto / valorAntecipado : null
+}
+
+/** "4,86%" (2 casas: a taxa costuma ficar entre 0,5% e 6%, e 1 casa apagaria a diferença); "—" sem valor. */
+export function fmtTaxaPercentual(fracao: number | null): string {
+  return fracao === null ? '—' : fmtAxisPct(fracao * 100, 2)
+}
+
+/** Percentual da linha nova, enquanto se digita; `null` quando ainda não dá para calcular. */
+export function taxaPercentualFormatada(antecipado: string, liquido: string): string | null {
+  const a = lerValorDigitado(antecipado)
+  const d = descontoEmCentavos(antecipado, liquido)
+  return !a.ok || d === null ? null : fmtTaxaPercentual(taxaPercentual(a.centavos, d))
 }
 
 /** "R$ 1.234,56" do desconto derivado; `null` quando ainda não dá para calcular. */

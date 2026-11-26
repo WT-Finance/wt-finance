@@ -4,7 +4,7 @@ import { useRef, useState, type KeyboardEvent } from 'react'
 import Button from '@/components/ui/button'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import { salvarAntecipacao } from '@/app/financeiro/geral/actions'
-import { DATA_PISO, descontoFormatado, mensagemDeFalhaDaAcao, validarFormulario } from '@/lib/financeiro-geral/gestao'
+import { DATA_PISO, descontoFormatado, mensagemDeFalhaDaAcao, taxaPercentualFormatada, validarFormulario } from '@/lib/financeiro-geral/gestao'
 import { mascaraMoeda } from '@/lib/fmt'
 
 // Linha EDITÁVEL de "Novo registro" (v6.5.0), logo abaixo do cabeçalho da lista — mesmo comportamento da
@@ -128,6 +128,9 @@ export default function AntecipacoesLinhaNova({ contas, hoje, onCancelar, onSalv
         <td className={`${CEL_VALOR} text-right text-xs tabular-nums text-zinc-500`}>
           {descontoFormatado(antecipado, liquido) ?? '—'}
         </td>
+        <td className={`${CEL} text-right text-xs tabular-nums text-zinc-500`}>
+          {taxaPercentualFormatada(antecipado, liquido) ?? '—'}
+        </td>
         <td className={CEL}>
           <div className="flex justify-end gap-1">
             <Button variant="solido" size="sm" onClick={() => void salvar()} disabled={salvando} className="px-2.5! py-1! text-xs!">
@@ -141,7 +144,7 @@ export default function AntecipacoesLinhaNova({ contas, hoje, onCancelar, onSalv
       </tr>
       {erro && (
         <tr>
-          <td colSpan={6} className="px-2 pt-2">
+          <td colSpan={7} className="px-2 pt-2">
             <FaixaMensagem tipo="erro" texto={erro} onFechar={() => setErro(null)} />
           </td>
         </tr>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  FMT_DATA, FMT_MOEDA, montarExportacaoAntecipacoes, nomeArquivoAntecipacoes, serialExcel,
+  FMT_DATA, FMT_MOEDA, FMT_PCT, montarExportacaoAntecipacoes, nomeArquivoAntecipacoes, serialExcel,
 } from './exportar-antecipacoes'
 import type { RegistroAntecipacao } from './schemas'
 
@@ -18,7 +18,7 @@ describe('exportar-antecipacoes', () => {
 
   it('cabeçalho, ordem preservada e linha de Total ao fim', () => {
     expect(ex.nome).toBe('Antecipações')
-    expect(ex.linhas[0]).toEqual(['Data', 'Conta', 'Antecipado', 'Líquido', 'Taxa'])
+    expect(ex.linhas[0]).toEqual(['Data', 'Conta', 'Antecipado', 'Líquido', 'Taxa', '%'])
     expect(ex.linhas.slice(1, 4).map(l => l[1])).toEqual(['Asaas', 'Itaú', 'Asaas'])
     expect(ex.linhas).toHaveLength(5)
     expect(ex.linhas[4]?.[0]).toBe('Total')
@@ -44,10 +44,17 @@ describe('exportar-antecipacoes', () => {
     expect(t[4]).toEqual({ t: 'n', v: 10.13, z: FMT_MOEDA })
   })
 
+  it('% = taxa ÷ antecipado por linha; no Total, a taxa total sobre o antecipado total (ponderado)', () => {
+    expect(ex.linhas[1]?.[5]).toEqual({ t: 'n', v: 1005 / 100010, z: FMT_PCT })
+    expect(ex.linhas[2]?.[5]).toEqual({ t: 'n', v: 3 / 10, z: FMT_PCT })
+    expect(ex.linhas[4]?.[5]).toEqual({ t: 'n', v: 1013 / 100040, z: FMT_PCT })
+  })
+
   it('lista vazia gera cabeçalho e Total zerado', () => {
     const v = montarExportacaoAntecipacoes([], '2026-11-05')
     expect(v.linhas).toHaveLength(2)
     expect(v.linhas[1]?.[2]).toEqual({ t: 'n', v: 0, z: FMT_MOEDA })
+    expect(v.linhas[1]?.[5]).toBeNull()   // sem antecipado, sem percentual (nada de 0/0)
   })
 
   it('nome do arquivo', () => {

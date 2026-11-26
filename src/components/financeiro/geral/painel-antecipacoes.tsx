@@ -12,7 +12,9 @@ import {
   desfazerAntecipacao, excluirAntecipacao, historicoAntecipacoes, listarAntecipacoes,
   type ResultadoLeitura,
 } from '@/app/financeiro/geral/actions'
-import { mensagemDeFalhaDaAcao, podeDesfazerEntrada, registroDaEntrada, rotuloOperacao } from '@/lib/financeiro-geral/gestao'
+import {
+  fmtTaxaPercentual, mensagemDeFalhaDaAcao, podeDesfazerEntrada, registroDaEntrada, rotuloOperacao, taxaPercentual,
+} from '@/lib/financeiro-geral/gestao'
 import type { EntradaHistorico, ListaAntecipacoes, RegistroAntecipacao } from '@/lib/financeiro-geral/schemas'
 import { fmtBRL2, fmtDataHoraSP, fmtDate, hojeSP } from '@/lib/fmt'
 import { montarExportacaoAntecipacoes } from '@/lib/financeiro-geral/exportar-antecipacoes'
@@ -214,6 +216,7 @@ export default function PainelAntecipacoes({ hoje, onFechar }: Props) {
                     <col />
                     <col />
                     <col />
+                    <col style={{ width: 84 }} />
                     <col style={{ width: 120 }} />
                   </colgroup>
                   <thead>
@@ -223,6 +226,8 @@ export default function PainelAntecipacoes({ hoje, onFechar }: Props) {
                       <ThOrdenavel rotulo="Antecipado" col="antecipado" colAtiva={colAtiva} dir={dirOrd} onOrdenar={ordenarPor} className="text-right px-5! border-b border-zinc-100" />
                       <ThOrdenavel rotulo="Líquido" col="liquido" colAtiva={colAtiva} dir={dirOrd} onOrdenar={ordenarPor} className="text-right px-5! border-b border-zinc-100" />
                       <ThOrdenavel rotulo="Taxa" col="desconto" colAtiva={colAtiva} dir={dirOrd} onOrdenar={ordenarPor} className="text-right px-5! border-b border-zinc-100" />
+                      {/* v6.5.3 — taxa ÷ antecipado (pedido do Yan, 26/11/2026). */}
+                      <ThOrdenavel rotulo="%" col="percentual" colAtiva={colAtiva} dir={dirOrd} onOrdenar={ordenarPor} className="text-right border-b border-zinc-100" />
                       <th scope="col" className="border-b border-zinc-100"><span className="sr-only">Ações</span></th>
                     </tr>
                   </thead>
@@ -237,6 +242,7 @@ export default function PainelAntecipacoes({ hoje, onFechar }: Props) {
                         <td className="px-5 py-2 text-xs text-zinc-700 border-b border-zinc-50"><ValorContabil valor={r.valor_antecipado} /></td>
                         <td className="px-5 py-2 text-xs text-zinc-700 border-b border-zinc-50"><ValorContabil valor={r.valor_liquido} /></td>
                         <td className="px-5 py-2 text-xs text-zinc-700 border-b border-zinc-50"><ValorContabil valor={r.desconto} /></td>
+                        <td className="px-2 py-2 text-right text-xs text-zinc-700 border-b border-zinc-50 tabular-nums">{fmtTaxaPercentual(taxaPercentual(r.valor_antecipado, r.desconto))}</td>
                         <td className="px-1 py-1 border-b border-zinc-50">
                           <div className="flex justify-end gap-0.5">
                             <Button variant="icone" aria-label={`Editar antecipação de ${fmtDate(r.data)} (${r.conta})`} title="Editar" onClick={() => setEdicao(r)}>

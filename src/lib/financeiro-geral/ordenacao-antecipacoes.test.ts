@@ -64,3 +64,12 @@ describe('ordenação dos registros de antecipação', () => {
     expect(DIR_PADRAO_COL_REGISTRO.antecipado).toBe('desc')
   })
 })
+
+describe('coluna % (v6.5.3)', () => {
+  it('ordena pela taxa sobre o antecipado, não pelo valor da taxa', () => {
+    // id 1: taxa maior em R$ (50) mas 1%; id 2: taxa menor (30) mas 3%
+    const l = [reg({ id: 1, valor_antecipado: 5000, desconto: 50 }), reg({ id: 2, valor_antecipado: 1000, desconto: 30 })]
+    expect(ids(ordenarRegistros(l, 'percentual', 'desc'))).toEqual([2, 1])
+    expect(ids(ordenarRegistros(l, 'desconto', 'desc'))).toEqual([1, 2])
+  })
+})
