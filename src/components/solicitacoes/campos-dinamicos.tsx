@@ -4,6 +4,7 @@ import { Paperclip, X } from 'lucide-react'
 import { Input, Select, Textarea } from '@/components/ui/field'
 import { hojeSP, previaValorNumerico } from '@/lib/solicitacoes/format'
 import type { CampoDef } from '@/lib/solicitacoes/schemas'
+import CampoData from './campo-data'
 
 // Motor de render dinâmico dos campos de um tipo (v4.16.0). Presentational: recebe a
 // definição + valores + callbacks; o modal orquestra upload de anexo. O SERVIDOR é a
@@ -26,15 +27,18 @@ interface Props {
   anexos:        Record<number, AnexoLocal[]>
   onAnexoSelect: (campoId: number, files: FileList) => void
   onAnexoRemove: (campoId: number, idx: number) => void
+  /** v6.5.3 — campo que barrou o envio (o modal acha antes de ir ao banco): `aria-invalid`. */
+  invalido?:     number | null
 }
 
-export default function CamposDinamicos({ campos, valores, onValor, anexos, onAnexoSelect, onAnexoRemove }: Props) {
+export default function CamposDinamicos({ campos, valores, onValor, anexos, onAnexoSelect, onAnexoRemove, invalido }: Props) {
   if (campos.length === 0) return null
   return (
     <div className="space-y-3">
       {campos.map(campo => {
         const id = campo.id as number
         const v = valores[String(id)] ?? ''
+        const ariaInvalido = invalido === id ? true : undefined
         return (
           <div key={id}>
             <label htmlFor={`campo-${id}`} className="block text-xs font-medium text-zinc-600 mb-1">
@@ -42,9 +46,9 @@ export default function CamposDinamicos({ campos, valores, onValor, anexos, onAn
             </label>
 
             {campo.tipo_campo === 'texto_longo' ? (
-              <Textarea id={`campo-${id}`} rows={3} value={v} onChange={e => onValor(id, e.target.value)} className="resize-none" />
+              <Textarea id={`campo-${id}`} rows={3} value={v} onChange={e => onValor(id, e.target.value)} aria-invalid={ariaInvalido} className="resize-none" />
             ) : campo.tipo_campo === 'selecao' ? (
-              <Select id={`campo-${id}`} value={v} onChange={e => onValor(id, e.target.value)}>
+              <Select id={`campo-${id}`} value={v} onChange={e => onValor(id, e.target.value)} aria-invalid={ariaInvalido}>
                 <option value="">Selecione…</option>
                 {(campo.opcoes ?? []).map(op => <option key={op} value={op}>{op}</option>)}
               </Select>
@@ -60,12 +64,12 @@ export default function CamposDinamicos({ campos, valores, onValor, anexos, onAn
                 const mostraAviso = dias != null && avisoDias != null && (avisoDirecao === 'abaixo' ? dias < avisoDias : dias > avisoDias)
                 return (
                   <>
-                    <Input
+                    <CampoData
                       id={`campo-${id}`}
-                      type="date"
                       value={v}
                       min={permitePassado ? undefined : hoje}
                       onChange={e => onValor(id, e.target.value)}
+                      aria-invalid={ariaInvalido}
                     />
                     {mostraAviso && (
                       <p className="mt-1 text-xs text-[var(--gestao-fg)]">
@@ -90,7 +94,7 @@ export default function CamposDinamicos({ campos, valores, onValor, anexos, onAn
                       <Input id={`campo-${id}`} inputMode="decimal" value={v}
                         onChange={e => onValor(id, e.target.value.replace(/[^\d.,-]/g, ''))}
                         aria-describedby={v.trim() ? `previa-${id}` : undefined}
-                        aria-invalid={v.trim() && !previa ? true : undefined}
+                        aria-invalid={(v.trim() && !previa) || ariaInvalido ? true : undefined}
                         className={campo.tipo_campo === 'moeda' ? 'pl-9' : ''} placeholder={campo.tipo_campo === 'moeda' ? '0,00' : '0'} />
                     </div>
                     {v.trim() && previa && (
@@ -109,7 +113,7 @@ export default function CamposDinamicos({ campos, valores, onValor, anexos, onAn
               })()
             ) : campo.tipo_campo === 'anexo' ? (
               <div>
-                <label className="foco-neutro flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-zinc-300 px-3 py-2 text-sm text-zinc-500 hover:bg-zinc-50">
+                <label id={`campo-${id}`} className={`foco-neutro flex cursor-pointer items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-zinc-500 hover:bg-zinc-50 ${ariaInvalido ? 'border-danger' : 'border-zinc-300'}`}>
                   <Paperclip size={14} /> Anexar arquivo (PDF, imagem ou planilha, ≤&nbsp;10&nbsp;MB)
                   {/* v5.9.0 — `multiple`: o estado já era uma LISTA por campo e
                       `onAnexoSelect` já iterava o FileList, então dava para acumular
@@ -125,7 +129,7 @@ export default function CamposDinamicos({ campos, valores, onValor, anexos, onAn
                 ))}
               </div>
             ) : (
-              <Input id={`campo-${id}`} type="text" value={v} onChange={e => onValor(id, e.target.value)} />
+              <Input id={`campo-${id}`} type="text" value={v} onChange={e => onValor(id, e.target.value)} aria-invalid={ariaInvalido} />
             )}
           </div>
         )
