@@ -9,7 +9,21 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-11-25 (pós-merge da v6.5.2 — PR #312 mergeado às 16:39; v6.5.1 às 16:17).
+Última atualização: 2026-11-26 (fechamento da v6.5.3 — PR aberto, aguardando merge).
+
+---
+
+## Em voo — v6.5.3 "Solicitações: data limite, moeda e notas" + % no Registro de Antecipações (PR aberto)
+
+Branch `fix/v6-5-3-solicitacoes` · out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-5-3_Solicitacoes.md` ·
+ADR-0185. Migration **0309 APLICADA** (26/11, aditiva). Banco na **0309**, livre **0310**. ADR livre **0186**.
+
+- Bug do Safari (Data limite vazia com cara de preenchida) corrigido: prazo nasce em hoje+3 corridos; erro aponta o campo.
+- Moeda R$/US$/€ nos campos de valor (tela, Exportar, API externa com `{valor, moeda}`); seção **Notas** no drawer
+  (linha do tempo + comentários + e-mail); coluna **%** (taxa ÷ antecipado) no Registro de Antecipações.
+- 🔴 **Yan:** conferir no preview (de preferência no Safari do Mac — roteiro no §7 do out-briefing; o
+  `verificador-visual` não rodou: sessão sem login), mergear, avisar a usuária do print e os integradores da API.
+- 🔴 Dependabot: 26 alertas na `main` (2 críticos) — abrir patch de segurança.
 
 ---
 

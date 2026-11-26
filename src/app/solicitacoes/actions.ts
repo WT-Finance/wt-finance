@@ -9,6 +9,7 @@ import { sanitizarNomeArquivo } from '@/lib/storage/nome-arquivo'
 import { fmtDataHoraSP } from '@/lib/fmt'
 import { getDetalhe, getEmailsEnvolvidos } from '@/lib/solicitacoes/rpc'
 import { emAndamento } from '@/lib/solicitacoes/schemas'
+import { semOAutor } from '@/lib/solicitacoes/format'
 import { enviarNotificacaoSolicitacao, type MovimentacaoEmail } from '@/lib/email'
 import type { Solicitacao } from '@/lib/solicitacoes/schemas'
 
@@ -63,8 +64,7 @@ async function notificarMovimentacao(
       console.error(`[solicitacoes] notificação #${id} (${movimentacao}): nenhum envolvido com e-mail — nada enviado.`)
       return
     }
-    const excluir = opcoes?.excluirEmail?.trim().toLowerCase() || null
-    const paras = excluir ? ctx.envolvidos_emails.filter(e => e.trim().toLowerCase() !== excluir) : ctx.envolvidos_emails
+    const paras = semOAutor(ctx.envolvidos_emails, opcoes?.excluirEmail)
     // Quem comentou era o único envolvido (ex.: abriu para si mesmo): não há a quem avisar.
     // É o caminho normal, não falha — por isso fora do log de erro acima.
     if (paras.length === 0) return

@@ -6,6 +6,43 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [6.5.3] — 2026-11-26
+
+PATCH (decisão do Yan; pelo critério usual seria MINOR: tela nova + migration) · **Solicitações: data limite,
+moeda e notas** + **coluna % no Registro de Antecipações**. Briefing
+`docs/briefings/briefing-v6-5-3-solicitacoes-correcoes-melhorias.md`; out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v6-5-3_Solicitacoes.md`. Migration **0309** (aditiva, APLICADA em 26/11).
+ADR-0185.
+
+### Corrigido
+
+- **Nova solicitação no Safari (macOS):** o campo Data limite vazio mostrava a data de hoje e o envio voltava
+  "Informe a data-limite.". A Data limite agora nasce em **hoje + 3 dias corridos** (editável); data vazia fica
+  em cinza (`CampoData`); o campo que barra o envio ganha foco e borda vermelha (`aria-invalid` no `CAMPO`).
+- Obrigatórios, anexo obrigatório e "data no passado" checados no modal antes do envio (espelho de
+  `app.solic_validar_e_snapshotar`, que segue fonte de verdade), com o nome do campo na mensagem.
+
+### Adicionado
+
+- **Moeda** nos campos de valor: seletor **R$ · US$ · €** (código `BRL/USD/EUR` no snapshot, chave `moeda`;
+  resposta antiga = R$). Drawer, cards e prévia na moeda da resposta. **Exportar:** coluna só em real igual a
+  antes; coluna com mais de uma moeda leva o símbolo em cada célula e perde o "(R$)".
+- **API externa:** campo de moeda aceita `{"valor": …, "moeda": "USD"}`; texto/número segue = BRL. Documentado
+  no `.md` e na página da plataforma.
+- **Notas** no drawer, abaixo de "Outros anexos": linha do tempo (abertura, aprovação, comentários, desfecho com
+  a justificativa) e **Adicionar nota** em qualquer status. Comentário imutável (`app.solicitacao_nota`,
+  `solic_nota_adicionar`), e-mail aos envolvidos menos o autor (variante `nota`). Os blocos "Aprovada por…" e
+  "Encerramento" passaram a viver só ali. ADR-0185.
+- **Registro de Antecipações:** coluna **%** (taxa ÷ antecipado, 2 casas) à direita de Taxa — ordenável, na
+  linha nova e no Exportar (Total = taxa total ÷ antecipado total).
+
+### Banco
+
+- 0309: tabela `app.solicitacao_nota`; RPC `solic_nota_adicionar`; `CREATE OR REPLACE` de
+  `app.solic_validar_e_snapshotar` (moeda), `public.criar_solicitacao_externa` (objeto de moeda) e `app.solic_json`
+  (`notas`), a partir do catálogo vivo. Ensaio em transação revertida (26 casos) antes e depois; baseline e
+  `database.ts` regenerados.
+
 ## [6.5.2] — 2026-11-10
 
 PATCH · **Faturamento Corporativo: Cadastro de clientes alinhado à planilha oficial.** Out-briefing

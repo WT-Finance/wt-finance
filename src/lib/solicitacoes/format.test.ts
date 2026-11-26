@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { toNum } from '@/lib/carga/coercao'
-import { fmtValor, vencida, fmtDataBR, hojeSP, casaBuscaSolicitacao, maisRecentePrimeiro, valorNumericoCanonico, previaValorNumerico, normalizarRespostasNumericas, REGEX_NUMERICO_BANCO, somarDiasISO, dataLimitePadrao, PRAZO_PADRAO_DIAS, validarCamposAbertura } from './format'
+import { fmtValor, vencida, fmtDataBR, hojeSP, casaBuscaSolicitacao, maisRecentePrimeiro, valorNumericoCanonico, previaValorNumerico, normalizarRespostasNumericas, REGEX_NUMERICO_BANCO, semOAutor, somarDiasISO, dataLimitePadrao, PRAZO_PADRAO_DIAS, validarCamposAbertura } from './format'
 import type { Solicitacao } from './schemas'
 
 // Cobre a coerção/limite de Solicitações (v4.17.0 / Balde 2). fmtValor agora usa o
@@ -307,5 +307,19 @@ describe('moeda da resposta (v6.5.3, 0309)', () => {
   it('prévia do modal na moeda escolhida', () => {
     expect(previaValorNumerico('moeda', '1.234,56', 'USD')).toBe('US$\u00a01.234,56')
     expect(previaValorNumerico('moeda', '1.234,56')).toBe('R$\u00a01.234,56')
+  })
+})
+
+describe('semOAutor — e-mail da nota não volta para quem comentou (v6.5.3)', () => {
+  const env = ['Ana@X.com', 'carine@x.com', 'yan@x.com']
+  it('exclui o autor sem diferenciar maiúscula nem espaço', () => {
+    expect(semOAutor(env, '  ana@x.com ')).toEqual(['carine@x.com', 'yan@x.com'])
+  })
+  it('autor desconhecido não exclui ninguém', () => {
+    expect(semOAutor(env, null)).toEqual(env)
+    expect(semOAutor(env, '')).toEqual(env)
+  })
+  it('autor único envolvido → ninguém a avisar', () => {
+    expect(semOAutor(['yan@x.com'], 'YAN@x.com')).toEqual([])
   })
 })

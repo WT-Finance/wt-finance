@@ -212,6 +212,13 @@ export function validarCamposAbertura(
   return null
 }
 
+/** v6.5.3 — destinatários do e-mail de uma NOTA: os envolvidos menos quem comentou (sem diferenciar
+ *  maiúscula nem espaço). Autor desconhecido (`null`) não exclui ninguém. */
+export function semOAutor(envolvidos: readonly string[], autor: string | null | undefined): string[] {
+  const a = autor?.trim().toLowerCase()
+  return a ? envolvidos.filter(e => e.trim().toLowerCase() !== a) : [...envolvidos]
+}
+
 /** Resumo (2-3 primeiros campos preenchidos) para cards/linhas. */
 export function resumo(respostas: Resposta[], max = 3): string {
   const preenchidos = respostas.filter(r => r.tipo_campo !== 'anexo' && r.valor != null && r.valor !== '')

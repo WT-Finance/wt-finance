@@ -140,7 +140,7 @@ export default function NotasSolicitacao({ sol, onAtualizar }: {
             className="resize-none"
           />
           <div className="flex items-center justify-between gap-2">
-            <span id={`nota-${sol.id}-dica`} className="text-2xs text-zinc-500 tabular-nums">{texto.length}/{MAX_NOTA} · Ctrl+Enter salva</span>
+            <span id={`nota-${sol.id}-dica`} className="text-2xs text-zinc-500 tabular-nums">{texto.length}/{MAX_NOTA} · Ctrl/⌘+Enter salva</span>
             <div className="flex gap-2">
               <button type="button" onClick={cancelar} disabled={salvando} className={`${PILL} ${PILL_NEUTRO}`}>Cancelar</button>
               <button type="button" onClick={salvar} disabled={vazio || salvando}

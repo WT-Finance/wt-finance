@@ -838,6 +838,11 @@ CHECK que só um patch destrutivo amplia, amplie-o DENTRO da transação (o ROLL
 offline com as mesmas fixtures (a da identificação de antecipações bateu 3.186/3.186 só depois de achar o
 desempate por Número e a regra "taxa vai à antecipação mais antiga") — o ensaio confirma, não descobre.
 
+⚠️ **Sequência não volta no `ROLLBACK`.** Um ensaio que INSERE numa tabela de PK `IDENTITY`/`serial` consome
+números mesmo revertido. Em tabela cujo id o usuário VÊ (o "Nº" de solicitação), cada rodada abre um buraco na
+numeração (v6.5.3: o ensaio da 0309 rodou 4 vezes e a próxima solicitação real pulou números). Rode o ensaio o
+mínimo de vezes, ou crie a fixture em tabela sintética, e registre o salto no out-briefing.
+
 Referência viva: `src/lib/dre/reverter-diario.test.ts` (0268). **Enforcement:**
 `src/lib/sonda-teste-escreve-banco.test.ts` — **allowlist**: TODO `src/**/*.test.ts` que obtém o
 driver `pg` é alvo e precisa de `BEGIN`/`ROLLBACK`/`lock_timeout`/`skipIf` sem `COMMIT`, a menos

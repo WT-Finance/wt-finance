@@ -51,7 +51,8 @@ function moeda(centavos: number): CelulaNumero {
   return { t: 'n', v: centavos / 100, z: FMT_MOEDA }
 }
 
-/** Percentual sobre centavos inteiros (o mesmo número que a tela mostra); célula vazia sem antecipado. */
+/** Percentual sobre centavos inteiros (a tela divide os reais; a diferença só aparece num empate de
+ *  arredondamento na 2ª casa, raro); célula vazia sem antecipado. */
 function percentual(taxaCentavos: number, antCentavos: number): Celula {
   return antCentavos > 0 ? { t: 'n', v: taxaCentavos / antCentavos, z: FMT_PCT } : null
 }
