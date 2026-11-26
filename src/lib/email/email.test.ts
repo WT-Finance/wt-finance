@@ -201,6 +201,11 @@ describe('templateNotificacaoSolicitacao — 5 movimentações', () => {
     expect(t.html).not.toContain('Solicitação comentada')
   })
 
+  it('nota: quebra de linha vira <br> (o Outlook ignora white-space), sem abrir brecha de HTML', () => {
+    const t = templateNotificacaoSolicitacao({ movimentacao: 'nota', ...base, nota: { autor: 'a@x', texto: 'linha 1\nlinha 2\r\n<i>3</i>' } })
+    expect(t.html).toContain('linha 1<br>linha 2<br>&lt;i&gt;3&lt;/i&gt;')
+  })
+
   it('nota: texto só aparece na variante nota (e justificativa não vaza para ela)', () => {
     const outra = templateNotificacaoSolicitacao({ movimentacao: 'concluida', ...base, nota: { autor: 'a@x', texto: 'nao deveria aparecer' } })
     expect(outra.html).not.toContain('nao deveria aparecer')

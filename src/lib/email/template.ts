@@ -231,7 +231,7 @@ export function templateNotificacaoSolicitacao(input: {
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COR_SENHA_BG};border:1px solid ${COR_BORDA};border-radius:12px;">
           <tr><td style="padding:14px 16px;">
             <div style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:${COR_LABEL};margin-bottom:6px;">${escaparHtml(nota.autor)} comentou</div>
-            <div style="font-size:14px;line-height:1.6;color:${COR_TEXTO};white-space:pre-wrap;">${escaparHtml(nota.texto)}</div>
+            <div style="font-size:14px;line-height:1.6;color:${COR_TEXTO};">${escaparHtml(nota.texto).replace(/\r?\n/g, '<br>')}</div>
           </td></tr>
         </table>
       </td></tr>`

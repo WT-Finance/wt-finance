@@ -238,7 +238,12 @@ export function colunasDoTipo(maisRecentesPrimeiro: Solicitacao[]): { colunas: C
 function cabecalhosDeCampo(colunas: ColunaCampo[], fixas: readonly string[], soReal: readonly boolean[]): string[] {
   const vistos = new Map<string, number>(fixas.map(f => [f, 1]))
   return colunas.map((c, i) => {
-    const base = c.tipo === 'moeda' && soReal[i] && !c.rotulo.includes('R$') ? `${c.rotulo} (R$)` : c.rotulo
+    // Coluna mista: o "(R$)" sai também quando é o ADMIN que o pôs no rótulo ("Valor (R$)"), senão o
+    // cabeçalho diria real sobre células em US$ (achado MÉDIO do revisor).
+    const semReal = c.rotulo.replace(/\s*\(?R\$\)?/g, '').trim() || c.rotulo
+    const base = c.tipo !== 'moeda' ? c.rotulo
+      : soReal[i] ? (c.rotulo.includes('R$') ? c.rotulo : `${c.rotulo} (R$)`)
+      : semReal
     const n = (vistos.get(base) ?? 0) + 1
     vistos.set(base, n)
     return n > 1 ? `${base} [${n}]` : base

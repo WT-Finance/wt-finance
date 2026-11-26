@@ -154,7 +154,7 @@ Regras:
   o que a tela recusa, a API recusa.
 - **Moeda (desde a v6.5.3).** Um campo `tipo_campo: "moeda"` aceita o valor como texto/número
   (**real**, como sempre) **ou** como objeto `{"valor": "200,50", "moeda": "USD"}`, com `moeda` ∈
-  `BRL · USD · EUR`. Sem `moeda` (ou com o texto puro), vale `BRL`. Moeda fora da lista →
+  `BRL · USD · EUR` (maiúscula ou minúscula). Sem `moeda` (ou com o texto puro), vale `BRL`. Moeda fora da lista →
   `VALOR_INVALIDO`; o objeto num campo que **não** é de moeda → `VALOR_INVALIDO`. Exemplo:
   `"campos": { "valor_do_reembolso": { "valor": "1200,00", "moeda": "EUR" } }`.
 - **`titulo`** (recomendado): o texto curto que identifica a solicitação nas listas do Janus —

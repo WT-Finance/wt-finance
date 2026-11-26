@@ -11,7 +11,6 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 
 import { z } from 'zod'
-import { MOEDAS } from '@/lib/solicitacoes/schemas'
 import {
   autenticarChamadaSolicitacoes, lerBodyLimitado, chamarRpcExterna, respostaErro, traduzirErroRpc, registrarChamada,
   getEmailsEnvolvidosSvc,
@@ -28,13 +27,12 @@ const ROTA = '/api/externo/solicitacoes'
 // ambiguidade de separador de milhar/decimal a resolver.
 const valorEscalar = z.union([z.string(), z.number()]).transform(v => (typeof v === 'number' ? String(v) : v))
 // v6.5.3 (0309) — campo de MOEDA aceita também { valor, moeda } (BRL/USD/EUR). Texto/número
-// cru continua valendo e é BRL. O banco recusa o objeto num campo que não é de moeda.
+// cru continua valendo e é BRL. Aqui só se TIPA o objeto: a lista de moedas (sem diferenciar
+// maiúscula) e "objeto só em campo de moeda" são do banco, que responde VALOR_INVALIDO nomeando o
+// campo — como a documentação promete. Um enum aqui recusaria antes, com 422 genérico de `union`.
 const valorCampo = z.union([
   valorEscalar,
-  z.object({
-    valor: valorEscalar,
-    moeda: z.enum(MOEDAS, { message: 'moeda deve ser BRL, USD ou EUR' }),
-  }),
+  z.object({ valor: valorEscalar, moeda: z.string().optional() }),
 ])
 
 const bodySchema = z.object({

@@ -70,7 +70,10 @@ async function notificarMovimentacao(
     if (paras.length === 0) return
     // 'criada' usa o criado_em; concluir/rejeitar/cancelar usam o decidido_em (quando agiu);
     // 'aprovada' não tem nenhum dos dois no contexto e chega pelo override do caller.
-    const quando = quandoOverride ?? (movimentacao === 'criada' ? ctx.criado_em_fmt : ctx.decidido_em_fmt)
+    // 'nota' só vale pelo override (o instante que a RPC gravou): cair no decidido_em diria
+    // "comentou em <data do encerramento>" (achado MÉDIO do revisor).
+    const quando = quandoOverride ?? (movimentacao === 'criada' ? ctx.criado_em_fmt
+      : movimentacao === 'nota' ? null : ctx.decidido_em_fmt)
     // Falha parcial é logada pela CAMADA (o rótulo lá inclui "Tipo #id") — não repetir aqui.
     await enviarNotificacaoSolicitacao({
       paras,
@@ -400,14 +403,19 @@ export async function rejeitarSolicitacao(id: number, justificativa: string): Pr
  */
 export async function adicionarNota(id: number, texto: string): Promise<{ ok: boolean; erro?: string }> {
   await requireAreaAction(null)
+  if (typeof texto !== 'string') return { ok: false, erro: 'Escreva a nota antes de salvar.' }
   const limpo = texto.trim()
   if (!limpo) return { ok: false, erro: 'Escreva a nota antes de salvar.' }
   if (limpo.length > MAX_NOTA) return { ok: false, erro: `A nota passa de ${MAX_NOTA} caracteres.` }
   const { data, error } = await rpcSessao('solic_nota_adicionar', { p_id: id, p_texto: limpo })
   if (error) return { ok: false, erro: traduzir(error.message) }
   const r = data as { autor_email?: string | null; criado_em_fmt?: string | null } | null
-  const autor = r?.autor_email ?? null
-  await notificarMovimentacao(id, 'nota', null, r?.criado_em_fmt ?? null, {
+  const autor = typeof r?.autor_email === 'string' ? r.autor_email : null
+  if (!autor || typeof r?.criado_em_fmt !== 'string') {
+    // Não derruba a nota (já gravada); só torna visível que o e-mail sai sem excluir o autor/sem data.
+    console.error(`[solicitacoes] nota #${id}: retorno de solic_nota_adicionar sem autor_email/criado_em_fmt.`)
+  }
+  await notificarMovimentacao(id, 'nota', null, typeof r?.criado_em_fmt === 'string' ? r.criado_em_fmt : null, {
     nota: { autor: autor ?? 'Alguém', texto: limpo },
     excluirEmail: autor,
   })

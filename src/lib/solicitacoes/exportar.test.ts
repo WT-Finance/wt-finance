@@ -234,6 +234,14 @@ describe('moeda por célula (v6.5.3, 0309)', () => {
     ])
   })
 
+  it('coluna mista cujo rótulo já trazia "(R$)" perde o "(R$)" do rótulo; coluna só-real o mantém', () => {
+    const misto = doTipo([[resp(1, 'Valor (R$)', 'moeda', '1')], [{ ...resp(1, 'Valor (R$)', 'moeda', '2'), moeda: 'EUR' }]])
+    expect(misto.linhas[0]).toContain('Valor')
+    expect(misto.linhas[0]).not.toContain('Valor (R$)')
+    const real = doTipo([[resp(1, 'Valor (R$)', 'moeda', '1')]])
+    expect(real.linhas[0]).toContain('Valor (R$)')
+  })
+
   it('celulaMoeda aceita o formato da moeda e segue devolvendo o texto quando não lê número', () => {
     expect(celulaMoeda('1.234,56', FMT_MOEDA_COM_SIMBOLO.USD)).toEqual({ t: 'n', v: 1234.56, z: '"US$" #,##0.00' })
     expect(celulaMoeda('abc', FMT_MOEDA_COM_SIMBOLO.USD)).toBe('abc')
