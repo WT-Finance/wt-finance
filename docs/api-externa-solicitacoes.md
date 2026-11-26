@@ -152,6 +152,11 @@ Regras:
   ou ponto decimal (`"1500,00"` ou `"1500.00"`). Chave desconhecida → erro `CAMPO_DESCONHECIDO`
   (nada é ignorado silenciosamente). A validação é **idêntica** à do formulário humano do Janus:
   o que a tela recusa, a API recusa.
+- **Moeda (desde a v6.5.3).** Um campo `tipo_campo: "moeda"` aceita o valor como texto/número
+  (**real**, como sempre) **ou** como objeto `{"valor": "200,50", "moeda": "USD"}`, com `moeda` ∈
+  `BRL · USD · EUR`. Sem `moeda` (ou com o texto puro), vale `BRL`. Moeda fora da lista →
+  `VALOR_INVALIDO`; o objeto num campo que **não** é de moeda → `VALOR_INVALIDO`. Exemplo:
+  `"campos": { "valor_do_reembolso": { "valor": "1200,00", "moeda": "EUR" } }`.
 - **`titulo`** (recomendado): o texto curto que identifica a solicitação nas listas do Janus —
   inclua o contexto (ex.: o casamento). `referencia_origem`: o id do registro no SEU sistema;
   volta na consulta (seção 5).

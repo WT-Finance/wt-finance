@@ -11,7 +11,7 @@ import CampoData from './campo-data'
 import { Select, Textarea } from '@/components/ui/field'
 import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import { criarSolicitacao, uploadAnexo, type AnexoMeta } from '@/app/solicitacoes/actions'
-import type { TipoAbertura, Destinatarios } from '@/lib/solicitacoes/schemas'
+import type { TipoAbertura, Destinatarios, Moeda } from '@/lib/solicitacoes/schemas'
 import { normalizarRespostasNumericas, dataLimitePadrao, validarCamposAbertura } from '@/lib/solicitacoes/format'
 
 type AnexoItem = AnexoLocal & { meta?: AnexoMeta }
@@ -30,6 +30,9 @@ export default function ModalNovaSolicitacao({ tipos, destinatarios, onFechar }:
   const [destUser, setDestUser] = useState<string>('')
   const [descricao, setDescricao] = useState('')
   const [valores, setValores] = useState<Record<string, string>>({})
+  // v6.5.3 — moeda por campo `moeda` (ausente = BRL), fora de `valores` de propósito: o aviso
+  // de "trocar o tipo limpa os campos" olha `valores`, e uma moeda padrão não é preenchimento.
+  const [moedas, setMoedas] = useState<Record<number, Moeda>>({})
   const [anexos, setAnexos] = useState<Record<number, AnexoItem[]>>({})
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
@@ -48,7 +51,7 @@ export default function ModalNovaSolicitacao({ tipos, destinatarios, onFechar }:
   function trocarTipo(novo: number) {
     const temPreenchimento = Object.values(valores).some(Boolean) || Object.keys(anexos).length > 0
     if (temPreenchimento && !window.confirm('Trocar o tipo limpa os campos preenchidos. Continuar?')) return
-    setTipoId(novo); setValores({}); setAnexos({})
+    setTipoId(novo); setValores({}); setMoedas({}); setAnexos({})
   }
 
   function setAnexosCampo(id: number, fn: (arr: AnexoItem[]) => AnexoItem[]) {
@@ -97,7 +100,11 @@ export default function ModalNovaSolicitacao({ tipos, destinatarios, onFechar }:
     if (falha) { barrar(falha.mensagem, `campo-${falha.campoId}`); return }
     const norm = normalizarRespostasNumericas(tipo.campos, valores)
     if (!norm.ok) { barrar(`${norm.rotulo}: valor não reconhecido. Use, por exemplo, 1.234,56.`, `campo-${norm.campoId}`); return }
-    const { respostas } = norm
+    // A moeda viaja como `<campo_id>:moeda`, chave que `app.solic_validar_e_snapshotar` lê (0309).
+    const respostas: Record<string, string> = { ...norm.respostas }
+    for (const c of tipo.campos) {
+      if (c.tipo_campo === 'moeda' && c.id != null) respostas[`${c.id}:moeda`] = moedas[c.id] ?? 'BRL'
+    }
     const anexosMeta = Object.values(anexos).flat().map(a => a.meta).filter((m): m is AnexoMeta => !!m)
     setEnviando(true)
     const res = await criarSolicitacao({
@@ -201,6 +208,7 @@ export default function ModalNovaSolicitacao({ tipos, destinatarios, onFechar }:
               onValor={(id, val) => { limparSe(`campo-${id}`); setValores(p => ({ ...p, [String(id)]: val })) }}
               anexos={anexosUI} onAnexoSelect={(id, files) => { limparSe(`campo-${id}`); void onAnexoSelect(id, files) }}
               onAnexoRemove={onAnexoRemove}
+              moedas={moedas} onMoeda={(id, m) => setMoedas(p => ({ ...p, [id]: m }))}
               invalido={invalido?.startsWith('campo-') ? Number(invalido.slice('campo-'.length)) : null} />
           </div>
         )}

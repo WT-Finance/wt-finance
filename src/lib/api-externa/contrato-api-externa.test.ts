@@ -322,6 +322,32 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
     expect(prefixo(r.erro)).toBe('VALOR_INVALIDO')
   })
 
+  // v6.5.3 (0309) — campo de moeda aceita { valor, moeda }; o snapshot guarda a moeda.
+  it('moeda como objeto { valor, moeda: USD } → gravada no snapshot', async () => {
+    const r = await chamarRpc('criar_solicitacao_externa', {
+      p_chave_id: chaveId, p_tipo_slug: 'zz_teste_api_v540', p_destinatario: 'ZZ_TESTE_API_V540',
+      p_titulo: null, p_campos: { assunto: 'x', valor: { valor: '200,50', moeda: 'USD' }, data_evento: '2027-01-01', categoria: 'a' },
+      p_data_limite: '2027-01-01', p_chave_idempotencia: 'zz-v653-moeda-objeto', p_referencia_origem: null,
+      p_solicitante_email: solicitanteEmail,
+    })
+    expect(r.ok, r.erro ?? '').toBe(true)
+    const d = r.data as { id: number }
+    const linha = await client.query(`SELECT respostas FROM app.solicitacao WHERE id = $1`, [d.id])
+    const valor = (linha.rows[0].respostas as { tipo_campo: string; valor: string; moeda?: string }[]).find(x => x.tipo_campo === 'moeda')
+    expect(valor).toMatchObject({ valor: '200,50', moeda: 'USD' })
+  })
+
+  it('objeto { valor, moeda } em campo que não é de moeda → VALOR_INVALIDO', async () => {
+    const r = await chamarRpc('criar_solicitacao_externa', {
+      p_chave_id: chaveId, p_tipo_slug: 'zz_teste_api_v540', p_destinatario: 'ZZ_TESTE_API_V540',
+      p_titulo: null, p_campos: { assunto: { valor: 'x', moeda: 'USD' }, valor: '10', data_evento: '2027-01-01', categoria: 'a' },
+      p_data_limite: '2027-01-01', p_chave_idempotencia: 'zz-v653-objeto-texto', p_referencia_origem: null,
+      p_solicitante_email: solicitanteEmail,
+    })
+    expect(r.ok).toBe(false)
+    expect(prefixo(r.erro)).toBe('VALOR_INVALIDO')
+  })
+
   it('data no passado em campo sem passado (regra v4.19) → VALOR_INVALIDO', async () => {
     const r = await chamarRpc('criar_solicitacao_externa', {
       p_chave_id: chaveId, p_tipo_slug: 'zz_teste_api_v540', p_destinatario: 'ZZ_TESTE_API_V540',

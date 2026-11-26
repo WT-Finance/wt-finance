@@ -387,6 +387,13 @@ export function DocumentacaoContent({
               API recusa.
             </li>
             <li>
+              <strong>Moeda</strong> (desde a v6.5.3): um campo <code className="font-mono text-xs">moeda</code> aceita
+              o valor como texto (real, como sempre) ou como objeto{' '}
+              <code className="font-mono text-xs">{'{"valor": "200,50", "moeda": "USD"}'}</code>, com moeda BRL, USD
+              ou EUR. Sem moeda, vale BRL. Moeda fora da lista, ou o objeto num campo que não é de moeda →
+              VALOR_INVALIDO.
+            </li>
+            <li>
               <code className="font-mono text-xs">titulo</code> (recomendado): o texto curto que identifica a
               solicitação nas listas do Janus. <code className="font-mono text-xs">referencia_origem</code>: o
               id do registro no sistema de origem; volta na consulta (seção 5).

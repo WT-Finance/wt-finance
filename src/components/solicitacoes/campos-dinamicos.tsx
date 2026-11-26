@@ -3,7 +3,7 @@
 import { Paperclip, X } from 'lucide-react'
 import { Input, Select, Textarea } from '@/components/ui/field'
 import { hojeSP, previaValorNumerico } from '@/lib/solicitacoes/format'
-import type { CampoDef } from '@/lib/solicitacoes/schemas'
+import { MOEDAS, SIMBOLO_MOEDA, type CampoDef, type Moeda } from '@/lib/solicitacoes/schemas'
 import CampoData from './campo-data'
 
 // Motor de render dinâmico dos campos de um tipo (v4.16.0). Presentational: recebe a
@@ -29,9 +29,14 @@ interface Props {
   onAnexoRemove: (campoId: number, idx: number) => void
   /** v6.5.3 — campo que barrou o envio (o modal acha antes de ir ao banco): `aria-invalid`. */
   invalido?:     number | null
+  /** v6.5.3 — moeda de cada campo `moeda` (ausente = BRL). Estado À PARTE de `valores`: se
+   *  morasse lá, o "trocar o tipo limpa os campos" do modal pediria confirmação sem nada
+   *  digitado (ele olha se algum valor está preenchido). */
+  moedas?:       Record<number, Moeda>
+  onMoeda?:      (campoId: number, moeda: Moeda) => void
 }
 
-export default function CamposDinamicos({ campos, valores, onValor, anexos, onAnexoSelect, onAnexoRemove, invalido }: Props) {
+export default function CamposDinamicos({ campos, valores, onValor, anexos, onAnexoSelect, onAnexoRemove, invalido, moedas, onMoeda }: Props) {
   if (campos.length === 0) return null
   return (
     <div className="space-y-3">
@@ -86,16 +91,23 @@ export default function CamposDinamicos({ campos, valores, onValor, anexos, onAn
                 // v6.2.1 — prévia de como o valor vai ser GRAVADO. Desambigua o que só o olho
                 // não resolve ("1.318" é mil trezentos e dezoito, não um vírgula três) e avisa
                 // na hora o que não dá para ler, em vez de só no envio.
-                const previa = v.trim() ? previaValorNumerico(campo.tipo_campo, v) : null
+                const moeda = moedas?.[id] ?? 'BRL'
+                const previa = v.trim() ? previaValorNumerico(campo.tipo_campo, v, moeda) : null
                 return (
                   <>
-                    <div className="relative">
-                      {campo.tipo_campo === 'moeda' && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">R$</span>}
+                    <div className="flex gap-2">
+                      {/* v6.5.3 — o "R$" fixo virou seletor (R$, US$, €; decisão do Yan). */}
+                      {campo.tipo_campo === 'moeda' && (
+                        <Select aria-label={`Moeda de ${campo.rotulo}`} value={moeda}
+                          onChange={e => onMoeda?.(id, e.target.value as Moeda)} className="!w-20 shrink-0">
+                          {MOEDAS.map(m => <option key={m} value={m}>{SIMBOLO_MOEDA[m]}</option>)}
+                        </Select>
+                      )}
                       <Input id={`campo-${id}`} inputMode="decimal" value={v}
                         onChange={e => onValor(id, e.target.value.replace(/[^\d.,-]/g, ''))}
                         aria-describedby={v.trim() ? `previa-${id}` : undefined}
                         aria-invalid={(v.trim() && !previa) || ariaInvalido ? true : undefined}
-                        className={campo.tipo_campo === 'moeda' ? 'pl-9' : ''} placeholder={campo.tipo_campo === 'moeda' ? '0,00' : '0'} />
+                        placeholder={campo.tipo_campo === 'moeda' ? '0,00' : '0'} />
                     </div>
                     {v.trim() && previa && (
                       <p id={`previa-${id}`} className="mt-1 text-xs text-zinc-500">Será registrado como {previa}</p>

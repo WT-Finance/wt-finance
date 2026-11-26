@@ -35,7 +35,7 @@
 
 import { toNum } from '@/lib/carga/coercao'
 import { STATUS_LABEL } from './format'
-import type { Solicitacao } from './schemas'
+import { moedaDe, type Moeda, type Solicitacao } from './schemas'
 
 // ── Tipos da saída ───────────────────────────────────────────────────────────────
 
@@ -60,6 +60,13 @@ export interface AbaExportacao {
 }
 
 export const FMT_MOEDA = '#,##0.00'
+/** v6.5.3 — coluna de moeda com MAIS de uma moeda: cada célula leva o símbolo da sua (somar a
+ *  coluna inteira deixaria de fazer sentido, e o cabeçalho perde o "(R$)"). Coluna só em real
+ *  segue como sempre foi: número puro e "(R$)" no cabeçalho. */
+export const FMT_MOEDA_COM_SIMBOLO: Record<Moeda, string> = {
+  BRL: '"R$" #,##0.00', USD: '"US$" #,##0.00', EUR: '"€" #,##0.00',
+}
+const FORMATOS_MOEDA = new Set<string>([FMT_MOEDA, ...Object.values(FMT_MOEDA_COM_SIMBOLO)])
 export const FMT_DATA = 'dd/mm/yyyy'
 export const FMT_DATA_HORA = 'dd/mm/yyyy hh:mm'
 
@@ -108,10 +115,10 @@ export function celulaDataHora(iso: string | null | undefined): Celula {
 }
 
 /** Valor de campo `moeda` → número pela leitura canônica da tela. Ilegível → texto cru. */
-export function celulaMoeda(valor: string | null | undefined): Celula {
+export function celulaMoeda(valor: string | null | undefined, formato: string = FMT_MOEDA): Celula {
   if (valor == null || valor === '') return null
   const n = toNum(valor)
-  return n === null || !Number.isFinite(n) ? valor : { t: 'n', v: n, z: FMT_MOEDA }
+  return n === null || !Number.isFinite(n) ? valor : { t: 'n', v: n, z: formato }
 }
 
 function inteiro(n: number): Celula {
@@ -127,7 +134,7 @@ function larguraDe(c: Celula): number {
   if (typeof c === 'string') return Math.max(...c.split('\n').map(l => l.length))
   if (c.z === FMT_DATA_HORA) return 16
   if (c.z === FMT_DATA) return 10
-  return c.z === FMT_MOEDA ? 14 : String(c.v).length
+  return c.z && FORMATOS_MOEDA.has(c.z) ? (c.z === FMT_MOEDA ? 14 : 17) : String(c.v).length
 }
 
 function larguras(linhas: Celula[][]): number[] {
@@ -228,10 +235,10 @@ export function colunasDoTipo(maisRecentesPrimeiro: Solicitacao[]): { colunas: C
 
 /** Cabeçalho de cada coluna de campo. Desduplica entre os campos E contra as colunas fixas
  *  da aba (um campo chamado "Status" não pode gerar dois "Status" no filtro). */
-function cabecalhosDeCampo(colunas: ColunaCampo[], fixas: readonly string[]): string[] {
+function cabecalhosDeCampo(colunas: ColunaCampo[], fixas: readonly string[], soReal: readonly boolean[]): string[] {
   const vistos = new Map<string, number>(fixas.map(f => [f, 1]))
-  return colunas.map(c => {
-    const base = c.tipo === 'moeda' && !c.rotulo.includes('R$') ? `${c.rotulo} (R$)` : c.rotulo
+  return colunas.map((c, i) => {
+    const base = c.tipo === 'moeda' && soReal[i] && !c.rotulo.includes('R$') ? `${c.rotulo} (R$)` : c.rotulo
     const n = (vistos.get(base) ?? 0) + 1
     vistos.set(base, n)
     return n > 1 ? `${base} [${n}]` : base
@@ -243,6 +250,12 @@ const COLUNAS_FIXAS_TIPO = ['Nº', 'Status', 'Solicitante', 'Aberta em', 'Prazo'
 function abaDoTipo(nome: string, doTipo: Solicitacao[]): AbaExportacao {
   const recentesPrimeiro = [...doTipo].sort((a, b) => Date.parse(b.criado_em) - Date.parse(a.criado_em) || b.id - a.id)
   const { colunas, colunaDoCampo } = colunasDoTipo(recentesPrimeiro)
+  // v6.5.3 — coluna de moeda em que só há real (inclusive toda resposta anterior à 0309).
+  const soReal = colunas.map(() => true)
+  for (const s of doTipo) for (const r of s.respostas) {
+    const idx = colunaDoCampo.get(r.campo_id)
+    if (idx !== undefined && colunas[idx].tipo === 'moeda' && r.valor && moedaDe(r.moeda) !== 'BRL') soReal[idx] = false
+  }
   const linhas: Celula[][] = doTipo.map(s => {
     const campos: Celula[] = colunas.map(() => null)
     for (const r of s.respostas) {
@@ -250,7 +263,8 @@ function abaDoTipo(nome: string, doTipo: Solicitacao[]): AbaExportacao {
       if (idx === undefined) continue
       const col = colunas[idx]
       if (col.tipo === 'anexo') continue // o arquivo vive em `anexos`, não no snapshot
-      campos[idx] = col.tipo === 'moeda' ? celulaMoeda(r.valor)
+      campos[idx] = col.tipo === 'moeda'
+          ? celulaMoeda(r.valor, soReal[idx] ? FMT_MOEDA : FMT_MOEDA_COM_SIMBOLO[moedaDe(r.moeda)])
         : col.tipo === 'data' ? celulaData(r.valor)
         : texto(r.valor)
     }
@@ -265,7 +279,7 @@ function abaDoTipo(nome: string, doTipo: Solicitacao[]): AbaExportacao {
       texto(s.descricao), ...campos,
     ]
   })
-  return aba(nome, [[...COLUNAS_FIXAS_TIPO, ...cabecalhosDeCampo(colunas, COLUNAS_FIXAS_TIPO)], ...linhas])
+  return aba(nome, [[...COLUNAS_FIXAS_TIPO, ...cabecalhosDeCampo(colunas, COLUNAS_FIXAS_TIPO, soReal)], ...linhas])
 }
 
 function abaAnexos(lista: Solicitacao[]): AbaExportacao {
@@ -296,7 +310,7 @@ function abaSobre(lista: Solicitacao[], geradoEm: Date): AbaExportacao {
     ['Notas', null],
     ['Horários no fuso de São Paulo. Nº é o número da solicitação na plataforma.', null],
     ['Nas abas por tipo, os campos do formulário viram colunas, como estavam quando a solicitação foi aberta; um campo retirado do tipo depois fica vazio nas mais novas.', null],
-    ['Valores em R$ lidos com a mesma regra da tela da solicitação.', null],
+    ['Valores lidos com a mesma regra da tela da solicitação. Coluna só em reais traz "(R$)" no título; coluna com mais de uma moeda mostra o símbolo em cada célula (R$, US$, €) — não some a coluna inteira.', null],
     ['"Decisão em/por" é a conclusão, a rejeição ou o cancelamento. A plataforma guarda só a decisão final, não o histórico de mudanças.', null],
   ], false)
 }

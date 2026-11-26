@@ -291,3 +291,21 @@ describe('validarCamposAbertura — o erro nasce no campo, não só no rodapé (
     expect(validarCamposAbertura(campos.slice(3), {}, {}, HOJE)).toBeNull()
   })
 })
+
+describe('moeda da resposta (v6.5.3, 0309)', () => {
+  const r = (valor: string, moeda?: string | null) => ({ campo_id: 1, rotulo: 'Valor', tipo_campo: 'moeda' as const, valor, moeda })
+  it('sem moeda (resposta anterior à 0309) é real', () => {
+    expect(fmtValor(r('1.318'))).toBe('R$\u00a01.318,00')
+  })
+  it('US$ e € com os símbolos do seletor', () => {
+    expect(fmtValor(r('1200', 'USD'))).toBe('US$\u00a01.200,00')
+    expect(fmtValor(r('1200', 'EUR'))).toBe('€\u00a01.200,00')
+  })
+  it('código fora da lista não quebra: cai em real', () => {
+    expect(fmtValor(r('5', 'GBP'))).toBe('R$\u00a05,00')
+  })
+  it('prévia do modal na moeda escolhida', () => {
+    expect(previaValorNumerico('moeda', '1.234,56', 'USD')).toBe('US$\u00a01.234,56')
+    expect(previaValorNumerico('moeda', '1.234,56')).toBe('R$\u00a01.234,56')
+  })
+})

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   montarExportacaoSolicitacoes, colunasDoTipo, nomeDeAba, nomeArquivoExportacao,
   celulaData, celulaDataHora, celulaMoeda, MAX_CELULA,
-  FMT_MOEDA, FMT_DATA, FMT_DATA_HORA, NOME_ABA_TODAS, NOME_ABA_ANEXOS, NOME_ABA_SOBRE,
+  FMT_MOEDA, FMT_MOEDA_COM_SIMBOLO, FMT_DATA, FMT_DATA_HORA, NOME_ABA_TODAS, NOME_ABA_ANEXOS, NOME_ABA_SOBRE,
   type AbaExportacao, type Celula,
 } from './exportar'
 import type { Solicitacao } from './schemas'
@@ -209,4 +209,33 @@ describe('montarExportacaoSolicitacoes', () => {
 
 it('nomeArquivoExportacao', () => {
   expect(nomeArquivoExportacao('2026-10-08')).toBe('solicitacoes-2026-10-08.xlsx')
+})
+
+describe('moeda por célula (v6.5.3, 0309)', () => {
+  const doTipo = (respostas: Solicitacao['respostas'][number][][]) =>
+    abaPorNome(montarExportacaoSolicitacoes(respostas.map((r, i) => sol({ id: i + 1, respostas: r })), new Date('2026-11-26T12:00:00Z')), 'Contas a pagar')
+
+  it('coluna só em real (inclusive resposta sem `moeda`, anterior à 0309) segue como antes: "(R$)" e número puro', () => {
+    const a = doTipo([[resp(1, 'Valor', 'moeda', '10,00')], [{ ...resp(1, 'Valor', 'moeda', '20,00'), moeda: 'BRL' }]])
+    expect(coluna(a, 'Valor (R$)')).toEqual([{ t: 'n', v: 10, z: FMT_MOEDA }, { t: 'n', v: 20, z: FMT_MOEDA }])
+  })
+
+  it('coluna com mais de uma moeda perde o "(R$)" e cada célula leva o símbolo da sua', () => {
+    const a = doTipo([
+      [resp(1, 'Valor', 'moeda', '10,00')],
+      [{ ...resp(1, 'Valor', 'moeda', '200,50'), moeda: 'USD' }],
+      [{ ...resp(1, 'Valor', 'moeda', '3'), moeda: 'EUR' }],
+    ])
+    expect(a.linhas[0]).not.toContain('Valor (R$)')
+    expect(coluna(a, 'Valor')).toEqual([
+      { t: 'n', v: 10, z: FMT_MOEDA_COM_SIMBOLO.BRL },
+      { t: 'n', v: 200.5, z: FMT_MOEDA_COM_SIMBOLO.USD },
+      { t: 'n', v: 3, z: FMT_MOEDA_COM_SIMBOLO.EUR },
+    ])
+  })
+
+  it('celulaMoeda aceita o formato da moeda e segue devolvendo o texto quando não lê número', () => {
+    expect(celulaMoeda('1.234,56', FMT_MOEDA_COM_SIMBOLO.USD)).toEqual({ t: 'n', v: 1234.56, z: '"US$" #,##0.00' })
+    expect(celulaMoeda('abc', FMT_MOEDA_COM_SIMBOLO.USD)).toBe('abc')
+  })
 })

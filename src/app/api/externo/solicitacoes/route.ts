@@ -11,6 +11,7 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 
 import { z } from 'zod'
+import { MOEDAS } from '@/lib/solicitacoes/schemas'
 import {
   autenticarChamadaSolicitacoes, lerBodyLimitado, chamarRpcExterna, respostaErro, traduzirErroRpc, registrarChamada,
   getEmailsEnvolvidosSvc,
@@ -25,7 +26,16 @@ const ROTA = '/api/externo/solicitacoes'
 // formato por tipo_campo: moeda/data/selecao). Mesmo espírito de @/lib/carga/coercao,
 // mas aqui é achatamento de shape de payload HTTP, não parsing numérico — não há
 // ambiguidade de separador de milhar/decimal a resolver.
-const valorCampo = z.union([z.string(), z.number()]).transform(v => (typeof v === 'number' ? String(v) : v))
+const valorEscalar = z.union([z.string(), z.number()]).transform(v => (typeof v === 'number' ? String(v) : v))
+// v6.5.3 (0309) — campo de MOEDA aceita também { valor, moeda } (BRL/USD/EUR). Texto/número
+// cru continua valendo e é BRL. O banco recusa o objeto num campo que não é de moeda.
+const valorCampo = z.union([
+  valorEscalar,
+  z.object({
+    valor: valorEscalar,
+    moeda: z.enum(MOEDAS, { message: 'moeda deve ser BRL, USD ou EUR' }),
+  }),
+])
 
 const bodySchema = z.object({
   tipo:               z.string().min(1, 'tipo é obrigatório'),

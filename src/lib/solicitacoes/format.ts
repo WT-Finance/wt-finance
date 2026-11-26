@@ -1,4 +1,4 @@
-import { emAndamento } from './schemas'
+import { emAndamento, moedaDe } from './schemas'
 import type { StatusSolic, Solicitacao } from './schemas'
 import type { z } from 'zod'
 import type { respostaSchema } from './schemas'
@@ -91,8 +91,10 @@ export function fmtValor(r: Resposta): string {
   if (r.tipo_campo === 'moeda') {
     // Coerção de moeda agora vem do módulo canônico (v4.17.0/Balde 2) — mesma
     // desambiguação BR/US que os parsers de carga usam (fonte única).
+    // v6.5.3 — na moeda da RESPOSTA (sem `moeda` = resposta anterior à 0309 = R$). O Intl
+    // pt-BR escreve "US$ 1.200,00" e "€ 1.200,00", os mesmos símbolos do seletor.
     const n = toNum(r.valor)
-    return n !== null ? n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : r.valor
+    return n !== null ? n.toLocaleString('pt-BR', { style: 'currency', currency: moedaDe(r.moeda) }) : r.valor
   }
   if (r.tipo_campo === 'data') return fmtDataBR(r.valor)
   return r.valor
@@ -143,10 +145,10 @@ export function valorNumericoCanonico(tipo: 'numero' | 'moeda', digitado: string
 /** v6.2.1 — prévia de como o valor digitado vai ser GRAVADO e exibido ("R$ 1.318,00"), ou
  *  null se não der para ler. Sai do mesmo `fmtValor` que o drawer usa depois — a prévia não
  *  pode prometer uma leitura diferente da que a solicitação vai mostrar. */
-export function previaValorNumerico(tipo: 'numero' | 'moeda', digitado: string): string | null {
+export function previaValorNumerico(tipo: 'numero' | 'moeda', digitado: string, moeda?: string): string | null {
   const canonico = valorNumericoCanonico(tipo, digitado)
   if (canonico === null) return null
-  return fmtValor({ campo_id: 0, rotulo: '', tipo_campo: tipo, valor: canonico })
+  return fmtValor({ campo_id: 0, rotulo: '', tipo_campo: tipo, valor: canonico, moeda })
 }
 
 /** v6.2.1 — aplica `valorNumericoCanonico` às respostas de um tipo, no ENVIO do modal (nunca no
