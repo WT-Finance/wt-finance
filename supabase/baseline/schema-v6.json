@@ -393,7 +393,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "36f32b83f4407de94a9f4480165dcae6ae7a128f27125a950372073c18269978",
+      "hash_corpo": "31d5aead14dc88720b146701aca9efae6eb0b131defb66fcfceae925b8693ea1",
       "linguagem": "sql",
       "proconfig": [
         "search_path=\"\""
@@ -412,7 +412,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "4cc450ef6e712c07601ea5cf420f30773cbb653c30b2cee26efe52fe7aee4465",
+      "hash_corpo": "49d98779bc6c567e73c40b131eb29ce262f06f19e6e7e2450d16dc8743d55c4b",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -1856,7 +1856,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "c5df279b7915d629bd5605c1d91291261e1172246705e66b8867d1752ace61ff",
+      "hash_corpo": "d49c660641f0b161779f79b91278d6a8ff27b5b4493d26ac404bb1110d46b365",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -7205,6 +7205,28 @@
       "security_definer": true,
       "volatilidade": "STABLE"
     },
+    "public.solic_nota_adicionar(bigint, text)": {
+      "acl": {
+        "authenticated": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "f5f67771daaff36b6a420fa0e5d383d7e48dca0fda2d42319f72cf1e934f9bd3",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "jsonb",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
     "public.solic_promover_anexos(bigint, jsonb)": {
       "acl": {
         "authenticated": {
@@ -11373,6 +11395,74 @@
         "idx_solicitacao_campo_tipo": "CREATE INDEX idx_solicitacao_campo_tipo ON app.solicitacao_campo USING btree (tipo_id, ordem)",
         "idx_solicitacao_campo_tipo_chave_uniq": "CREATE UNIQUE INDEX idx_solicitacao_campo_tipo_chave_uniq ON app.solicitacao_campo USING btree (tipo_id, chave) WHERE (chave IS NOT NULL)",
         "solicitacao_campo_pkey": "CREATE UNIQUE INDEX solicitacao_campo_pkey ON app.solicitacao_campo USING btree (id)"
+      },
+      "policies": {},
+      "rls_forcado": false,
+      "rls_habilitado": true,
+      "tipo": "tabela",
+      "triggers": {}
+    },
+    "app.solicitacao_nota": {
+      "acl": {
+        "postgres": {
+          "DELETE": false,
+          "INSERT": false,
+          "MAINTAIN": false,
+          "REFERENCES": false,
+          "SELECT": false,
+          "TRIGGER": false,
+          "TRUNCATE": false,
+          "UPDATE": false
+        }
+      },
+      "colunas": {
+        "autor_id": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "uuid"
+        },
+        "criado_em": {
+          "default": "now()",
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "timestamp with time zone"
+        },
+        "id": {
+          "default": null,
+          "generated": null,
+          "identity": "ALWAYS",
+          "not_null": true,
+          "tipo": "bigint"
+        },
+        "solicitacao_id": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "bigint"
+        },
+        "texto": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "text"
+        }
+      },
+      "constraints": {
+        "solicitacao_nota_autor_id_fkey": "FOREIGN KEY (autor_id) REFERENCES auth.users(id)",
+        "solicitacao_nota_pkey": "PRIMARY KEY (id)",
+        "solicitacao_nota_solicitacao_id_fkey": "FOREIGN KEY (solicitacao_id) REFERENCES app.solicitacao(id) ON DELETE CASCADE",
+        "solicitacao_nota_texto_check": "CHECK (length(btrim(texto)) >= 1 AND length(btrim(texto)) <= 2000)"
+      },
+      "dono": "postgres",
+      "indices": {
+        "idx_solicitacao_nota_autor": "CREATE INDEX idx_solicitacao_nota_autor ON app.solicitacao_nota USING btree (autor_id)",
+        "idx_solicitacao_nota_sol": "CREATE INDEX idx_solicitacao_nota_sol ON app.solicitacao_nota USING btree (solicitacao_id, criado_em, id)",
+        "solicitacao_nota_pkey": "CREATE UNIQUE INDEX solicitacao_nota_pkey ON app.solicitacao_nota USING btree (id)"
       },
       "policies": {},
       "rls_forcado": false,
@@ -17383,7 +17473,7 @@
       "triggers": {}
     }
   },
-  "ultima_migration": "0308",
+  "ultima_migration": "0309",
   "views": {
     "analytics.mv_ranking_produtos_mensal": {
       "acl": {

@@ -998,7 +998,10 @@ describe.skipIf(!ON || !ANON)('contrato RBAC — guards e revogações (v4.13)',
     // tipo de mudança que precisa de guarda mecânica.
     for (const fn of ['solic_minhas', 'solic_caixa', 'solic_tipos_abertura', 'solic_destinatarios',
                       'solic_concluir', 'criar_solicitacao', 'admin_solic_listar_tipos',
-                      'solic_tipos_documentacao', 'solic_movimentacoes']) {
+                      'solic_tipos_documentacao', 'solic_movimentacoes',
+                      // v6.5.3 (0309) — escreve; por isso SÓ aqui (string solta, fora do
+                      // `fn:`/`rpc('…')` que o derivador da allowlist do `verificador` lê).
+                      'solic_nota_adicionar']) {
       const status = await rpcAnonStatus(fn, {})
       expect(status, `${fn} deveria negar anon`).toBeGreaterThanOrEqual(400)
     }
